@@ -5,7 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import { storage } from "./storage";
-import { generateOpenCLIPEmbedding } from "./services/openclip";
+import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap } from "./services/midas";
 import { analyzeChartWithGPT } from "./services/openai";
 import { insertChartSchema, insertAnalysisSchema } from "@shared/schema";
@@ -115,18 +115,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const validatedData = insertChartSchema.parse(chartData);
         const chart = await storage.createChart(validatedData);
 
-        // Automatically generate OpenCLIP embedding after upload
+        // Automatically generate CLIP embedding after upload
         try {
           const imagePath = path.join(uploadsDir, chart.filename);
-          const result = await generateOpenCLIPEmbedding(imagePath);
+          const result = await generateCLIPEmbedding(imagePath);
           if (result.embedding && result.embedding.length === 1024) {
             await storage.updateChart(chart.id, { embedding: result.embedding });
-            console.log(`✓ Generated OpenCLIP embedding for chart ${chart.id} (${finalInstrument}) - 1024D vector`);
+            console.log(`✓ Generated CLIP embedding for chart ${chart.id} (${finalInstrument}) - 1024D vector using ${result.model}`);
           } else {
-            console.error(`OpenCLIP embedding failed for chart ${chart.id}:`, result.error);
+            console.error(`CLIP embedding failed for chart ${chart.id}:`, result.error);
           }
         } catch (embeddingError) {
-          console.error(`Failed to generate OpenCLIP embedding for chart ${chart.id}:`, embeddingError);
+          console.error(`Failed to generate CLIP embedding for chart ${chart.id}:`, embeddingError);
           // Continue without embedding - don't fail the upload
         }
 
@@ -139,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         charts: uploadedCharts,
-        message: `Successfully uploaded ${uploadedCharts.length} chart(s) with OpenCLIP 1024D embeddings`
+        message: `Successfully uploaded ${uploadedCharts.length} chart(s) with 1024D CLIP embeddings`
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -161,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const imagePath = path.join(uploadsDir, chart.filename);
-      const result = await generateOpenCLIPEmbedding(imagePath);
+      const result = await generateCLIPEmbedding(imagePath);
       
       if (result.embedding && result.embedding.length === 1024) {
         await storage.updateChart(chartId, { embedding: result.embedding });
@@ -240,8 +240,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         chartImagePath = path.join(uploadsDir, chart.filename);
       }
 
-      // Generate OpenCLIP embedding for similarity search
-      const embeddingResult = await generateOpenCLIPEmbedding(chartImagePath);
+      // Generate CLIP embedding for similarity search
+      const embeddingResult = await generateCLIPEmbedding(chartImagePath);
       if (!embeddingResult.embedding || embeddingResult.embedding.length !== 1024) {
         return res.status(500).json({ message: 'Failed to generate embedding for similarity search' });
       }
