@@ -53,10 +53,10 @@ Preferred communication style: Simple, everyday language.
 
 #### AI Integration Pipeline
 1. **Image Upload**: Charts uploaded via drag-and-drop or file selection
-2. **Embedding Generation**: CLIP model generates vector embeddings for similarity search
+2. **Embedding Generation**: OpenCLIP ViT-H/14 generates 1024-dimensional vector embeddings for enhanced similarity search
 3. **Depth Map Creation**: MiDaS model generates depth maps for pattern analysis
 4. **GPT Analysis**: OpenAI GPT-4o analyzes charts with technical trading insights
-5. **Similarity Search**: Vector similarity search to find related charts
+5. **Similarity Search**: Cosine similarity search with 1024D vectors to find related charts
 
 ## Data Flow
 
@@ -81,7 +81,7 @@ Preferred communication style: Simple, everyday language.
 
 ### AI Services
 - **OpenAI GPT-4o**: Chart analysis and technical insights
-- **CLIP Model**: Image embedding generation for similarity search
+- **OpenCLIP ViT-H/14**: 1024-dimensional image embedding generation for enhanced similarity search
 - **MiDaS Model**: Depth map generation for pattern analysis
 
 ### Database & Storage
