@@ -8,23 +8,36 @@ import { useToast } from "@/hooks/use-toast";
 import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar } from "lucide-react";
 import TimeframeSelector from "@/components/timeframe-selector";
 import DragDropZone from "@/components/drag-drop-zone";
+import InstrumentSelector from "@/components/instrument-selector";
 import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
-import type { Timeframe } from "@shared/schema";
+import type { Timeframe, Session } from "@shared/schema";
 
 export default function UploadPage() {
   const [location, setLocation] = useLocation();
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("5M");
+  const [selectedInstrument, setSelectedInstrument] = useState<string>("auto");
+  const [selectedSession, setSelectedSession] = useState<Session | undefined>(undefined);
   const [analysisResults, setAnalysisResults] = useState(null);
   const { toast } = useToast();
 
   const analyzeChartsMutation = useMutation({
     mutationFn: async (files: FileList) => {
       const formData = new FormData();
-      formData.append('chart', files[0]);
+      
+      // Add all files to FormData
+      Array.from(files).forEach(file => {
+        formData.append('charts', file);
+      });
+      
       formData.append('timeframe', selectedTimeframe);
-      formData.append('quickAnalysis', 'false');
+      if (selectedInstrument && selectedInstrument !== "auto") {
+        formData.append('instrument', selectedInstrument);
+      }
+      if (selectedSession) {
+        formData.append('session', selectedSession);
+      }
 
-      // First upload the chart
+      // Upload charts with automatic CLIP embedding
       const uploadResponse = await apiRequest('POST', '/api/upload', formData);
       const uploadData = await uploadResponse.json();
 
@@ -32,25 +45,31 @@ export default function UploadPage() {
         throw new Error('Upload failed');
       }
 
-      // Generate embedding
-      await apiRequest('POST', '/api/embed', { chartId: uploadData.chart.id });
+      // For analysis, use the first uploaded chart
+      const firstChart = uploadData.charts[0];
+      
+      // Generate depth map for first chart
+      await apiRequest('POST', '/api/depth', { chartId: firstChart.id });
 
-      // Generate depth map
-      await apiRequest('POST', '/api/depth', { chartId: uploadData.chart.id });
-
-      // Analyze chart
+      // Analyze first chart
       const analysisFormData = new FormData();
-      analysisFormData.append('chartId', uploadData.chart.id.toString());
+      analysisFormData.append('chartId', firstChart.id.toString());
       analysisFormData.append('quickAnalysis', 'false');
 
       const analysisResponse = await apiRequest('POST', '/api/analyze', analysisFormData);
-      return analysisResponse.json();
+      const analysisData = await analysisResponse.json();
+      
+      return {
+        ...analysisData,
+        uploadedCount: uploadData.charts.length,
+        uploadMessage: uploadData.message
+      };
     },
     onSuccess: (data) => {
       setAnalysisResults(data);
       toast({
-        title: "Analysis Complete",
-        description: "Chart has been analyzed and saved to your dashboard.",
+        title: "Analysis Complete", 
+        description: data.uploadMessage || `${data.uploadedCount || 1} chart(s) uploaded and analyzed successfully.`,
       });
     },
     onError: (error) => {
@@ -170,15 +189,23 @@ export default function UploadPage() {
                 onTimeframeSelect={setSelectedTimeframe}
               />
 
+              <InstrumentSelector
+                selectedInstrument={selectedInstrument}
+                selectedSession={selectedSession}
+                onInstrumentChange={setSelectedInstrument}
+                onSessionChange={setSelectedSession}
+              />
+
               <DragDropZone
                 onFilesSelected={handleAnalyzeCharts}
                 className="mb-6"
                 isLoading={analyzeChartsMutation.isPending}
+                multiple={true}
+                placeholder="Drop multiple chart images here for the same instrument"
               />
 
               <Button 
                 onClick={() => {
-                  // Trigger file input
                   const input = document.createElement('input');
                   input.type = 'file';
                   input.accept = 'image/*';
@@ -220,6 +247,7 @@ export default function UploadPage() {
                 className="mb-6 hover:border-amber-400"
                 isLoading={quickAnalysisMutation.isPending}
                 placeholder="Paste or Drag & Drop chart image(s) here"
+                multiple={false}
               />
 
               <Button 

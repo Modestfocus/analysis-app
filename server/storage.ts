@@ -7,7 +7,8 @@ export interface IStorage {
   
   createChart(chart: InsertChart): Promise<Chart>;
   getChart(id: number): Promise<Chart | undefined>;
-  getAllCharts(timeframe?: string): Promise<Chart[]>;
+  getAllCharts(timeframe?: string, instrument?: string): Promise<Chart[]>;
+  getChartsByInstrument(instrument: string): Promise<Chart[]>;
   updateChart(id: number, updates: Partial<Chart>): Promise<Chart | undefined>;
   deleteChart(id: number): Promise<boolean>;
   deleteCharts(ids: number[]): Promise<boolean>;
@@ -61,6 +62,8 @@ export class MemStorage implements IStorage {
       comment: insertChart.comment || null,
       depthMapPath: insertChart.depthMapPath || null,
       embedding: insertChart.embedding || null,
+      instrument: insertChart.instrument,
+      session: insertChart.session || null,
     };
     this.charts.set(id, chart);
     return chart;
@@ -70,12 +73,22 @@ export class MemStorage implements IStorage {
     return this.charts.get(id);
   }
 
-  async getAllCharts(timeframe?: string): Promise<Chart[]> {
-    const allCharts = Array.from(this.charts.values());
+  async getAllCharts(timeframe?: string, instrument?: string): Promise<Chart[]> {
+    let allCharts = Array.from(this.charts.values());
     if (timeframe) {
-      return allCharts.filter(chart => chart.timeframe === timeframe);
+      allCharts = allCharts.filter(chart => chart.timeframe === timeframe);
+    }
+    if (instrument) {
+      allCharts = allCharts.filter(chart => chart.instrument === instrument);
     }
     return allCharts.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+  }
+
+  async getChartsByInstrument(instrument: string): Promise<Chart[]> {
+    const allCharts = Array.from(this.charts.values());
+    return allCharts
+      .filter(chart => chart.instrument === instrument)
+      .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
   }
 
   async updateChart(id: number, updates: Partial<Chart>): Promise<Chart | undefined> {

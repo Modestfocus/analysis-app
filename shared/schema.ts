@@ -13,6 +13,8 @@ export const charts = pgTable("charts", {
   filename: text("filename").notNull(),
   originalName: text("original_name").notNull(),
   timeframe: text("timeframe").notNull(),
+  instrument: text("instrument").notNull(), // e.g., "XAUUSD", "EURUSD"
+  session: text("session"), // e.g., "Asia", "London", "NY"
   uploadedAt: text("uploaded_at").notNull(),
   comment: text("comment").default(""),
   depthMapPath: text("depth_map_path"),
@@ -52,3 +54,13 @@ export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
 
 export const timeframes = ["5M", "15M", "1H", "4H", "Daily"] as const;
 export type Timeframe = typeof timeframes[number];
+
+export const sessions = ["Asia", "London", "NY", "Sydney"] as const;
+export type Session = typeof sessions[number];
+
+// Common forex and commodity instruments
+export const commonInstruments = [
+  "XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF", 
+  "AUDUSD", "NZDUSD", "USDCAD", "EURJPY", "GBPJPY", "EURGBP",
+  "BTCUSD", "ETHUSD", "SPX500", "NAS100", "US30"
+] as const;

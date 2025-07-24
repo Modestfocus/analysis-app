@@ -51,6 +51,25 @@ const upload = multer({
   }
 });
 
+// Helper function to extract instrument from filename
+function extractInstrumentFromFilename(filename: string): string {
+  const upperFilename = filename.toUpperCase();
+  const commonInstruments = [
+    "XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF", 
+    "AUDUSD", "NZDUSD", "USDCAD", "EURJPY", "GBPJPY", "EURGBP",
+    "BTCUSD", "ETHUSD", "SPX500", "NAS100", "US30"
+  ];
+  
+  for (const instrument of commonInstruments) {
+    if (upperFilename.includes(instrument)) {
+      return instrument;
+    }
+  }
+  
+  // Default fallback
+  return "UNKNOWN";
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   await ensureDirectories();
 
@@ -62,34 +81,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/uploads', express.static(uploadsDir));
   app.use('/depthmaps', express.static(depthmapsDir));
 
-  // Upload route - saves chart image and metadata
-  app.post('/api/upload', upload.single('chart'), async (req, res) => {
+  // Multi-file upload route with automatic CLIP embedding
+  app.post('/api/upload', upload.array('charts', 10), async (req, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: 'No files uploaded' });
       }
 
-      const { timeframe } = req.body;
+      const { timeframe, instrument: manualInstrument, session } = req.body;
       if (!timeframe) {
         return res.status(400).json({ message: 'Timeframe is required' });
       }
 
-      const chartData = {
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        timeframe,
-        comment: "",
-        depthMapPath: null,
-        embedding: null,
-      };
+      const uploadedCharts = [];
 
-      const validatedData = insertChartSchema.parse(chartData);
-      const chart = await storage.createChart(validatedData);
+      for (const file of files) {
+        // Auto-detect instrument from filename or use manual input
+        const detectedInstrument = extractInstrumentFromFilename(file.originalname);
+        const finalInstrument = manualInstrument || detectedInstrument;
+
+        const chartData = {
+          filename: file.filename,
+          originalName: file.originalname,
+          timeframe,
+          instrument: finalInstrument,
+          session: session || null,
+          comment: "",
+          depthMapPath: null,
+          embedding: null,
+        };
+
+        const validatedData = insertChartSchema.parse(chartData);
+        const chart = await storage.createChart(validatedData);
+
+        // Automatically generate CLIP embedding after upload
+        try {
+          const imagePath = path.join(uploadsDir, chart.filename);
+          const embedding = await generateImageEmbedding(imagePath);
+          await storage.updateChart(chart.id, { embedding });
+          console.log(`✓ Generated CLIP embedding for chart ${chart.id} (${finalInstrument})`);
+        } catch (embeddingError) {
+          console.error(`Failed to generate embedding for chart ${chart.id}:`, embeddingError);
+          // Continue without embedding - don't fail the upload
+        }
+
+        uploadedCharts.push({
+          ...chart,
+          filePath: `/uploads/${file.filename}`
+        });
+      }
 
       res.json({
         success: true,
-        chart,
-        filePath: `/uploads/${req.file.filename}`
+        charts: uploadedCharts,
+        message: `Successfully uploaded ${uploadedCharts.length} chart(s) with CLIP embeddings`
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -249,15 +295,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all charts
+  // Get all charts with filtering
   app.get('/api/charts', async (req, res) => {
     try {
-      const { timeframe } = req.query;
-      const charts = await storage.getAllCharts(timeframe as string);
+      const { timeframe, instrument } = req.query;
+      const charts = await storage.getAllCharts(timeframe as string, instrument as string);
       res.json({ charts });
     } catch (error) {
       console.error('Get charts error:', error);
       res.status(500).json({ message: 'Failed to get charts: ' + (error as Error).message });
+    }
+  });
+
+  // Get charts grouped by instrument
+  app.get('/api/charts/grouped', async (req, res) => {
+    try {
+      const allCharts = await storage.getAllCharts();
+      const grouped = allCharts.reduce((acc, chart) => {
+        if (!acc[chart.instrument]) {
+          acc[chart.instrument] = [];
+        }
+        acc[chart.instrument].push(chart);
+        return acc;
+      }, {} as Record<string, typeof allCharts>);
+      
+      res.json({ grouped });
+    } catch (error) {
+      console.error('Get grouped charts error:', error);
+      res.status(500).json({ message: 'Failed to get grouped charts: ' + (error as Error).message });
     }
   });
 

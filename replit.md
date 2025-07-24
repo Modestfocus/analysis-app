@@ -2,11 +2,20 @@
 
 ## Overview
 
-This is a full-stack chart analysis application that combines React frontend with Express backend to analyze trading charts using AI-powered services. The application allows users to upload trading chart images, automatically analyze them using GPT-4, generate depth maps, and find similar charts through vector embeddings.
+This is a full-stack chart analysis application that combines React frontend with Express backend to analyze trading charts using AI-powered services. The application allows users to upload multiple trading chart images, automatically analyze them using GPT-4o, generate depth maps, and find similar charts through vector embeddings with automatic instrument detection and CLIP vector embeddings.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Recent Changes (January 2025)
+
+✓ **Enhanced Multi-File Upload**: Added support for uploading multiple chart images simultaneously for the same instrument
+✓ **Automatic CLIP Embeddings**: Integrated automatic CLIP vector embedding generation on every upload for similarity search
+✓ **Instrument Detection**: Added automatic instrument detection from filenames (XAUUSD, EURUSD, etc.) with manual override option
+✓ **Session Tagging**: Added trading session support (Asia, London, NY, Sydney) for better chart organization
+✓ **Database Schema Enhancement**: Extended charts table with instrument and session fields
+✓ **Grouped Chart Display**: Added API endpoints for instrument-based chart grouping and filtering
 
 ## System Architecture
 

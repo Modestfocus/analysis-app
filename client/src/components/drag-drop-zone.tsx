@@ -7,13 +7,15 @@ interface DragDropZoneProps {
   className?: string;
   isLoading?: boolean;
   placeholder?: string;
+  multiple?: boolean;
 }
 
 export default function DragDropZone({ 
   onFilesSelected, 
   className, 
   isLoading = false,
-  placeholder = "Click a timeframe above, then paste / drag-and-drop chart here"
+  placeholder = "Click a timeframe above, then paste / drag-and-drop chart here",
+  multiple = false
 }: DragDropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -43,7 +45,7 @@ export default function DragDropZone({
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.multiple = true;
+    input.multiple = multiple;
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files) onFilesSelected(files);
@@ -77,7 +79,9 @@ export default function DragDropZone({
             <ChartBar className="inline mr-2 h-5 w-5" />
             {placeholder}
           </p>
-          <p className="text-sm text-gray-500">Supports PNG, JPG, GIF up to 10MB</p>
+          <p className="text-sm text-gray-500">
+            Supports PNG, JPG, GIF up to 10MB {multiple && "(Multiple files supported)"}
+          </p>
         </>
       )}
     </div>
