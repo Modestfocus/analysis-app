@@ -1,4 +1,6 @@
 import { users, charts, analysisResults, type User, type InsertUser, type Chart, type InsertChart, type AnalysisResult, type InsertAnalysis } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -162,4 +164,130 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values([insertUser])
+      .returning();
+    return user;
+  }
+
+  async createChart(insertChart: InsertChart): Promise<Chart> {
+    const [chart] = await db
+      .insert(charts)
+      .values([{
+        ...insertChart,
+        uploadedAt: new Date().toISOString()
+      }])
+      .returning();
+    return chart;
+  }
+
+  async getChart(id: number): Promise<Chart | undefined> {
+    const [chart] = await db.select().from(charts).where(eq(charts.id, id));
+    return chart || undefined;
+  }
+
+  async getAllCharts(timeframe?: string, instrument?: string): Promise<Chart[]> {
+    let query = db.select().from(charts).orderBy(desc(charts.uploadedAt));
+    
+    if (timeframe && instrument) {
+      return await query.where(and(eq(charts.timeframe, timeframe), eq(charts.instrument, instrument)));
+    } else if (timeframe) {
+      return await query.where(eq(charts.timeframe, timeframe));
+    } else if (instrument) {
+      return await query.where(eq(charts.instrument, instrument));
+    }
+    
+    return await query;
+  }
+
+  async getChartsByInstrument(instrument: string): Promise<Chart[]> {
+    return await db.select().from(charts)
+      .where(eq(charts.instrument, instrument))
+      .orderBy(desc(charts.uploadedAt));
+  }
+
+  async updateChart(id: number, updates: Partial<Chart>): Promise<Chart | undefined> {
+    const [updatedChart] = await db
+      .update(charts)
+      .set(updates)
+      .where(eq(charts.id, id))
+      .returning();
+    return updatedChart || undefined;
+  }
+
+  async deleteChart(id: number): Promise<boolean> {
+    const result = await db.delete(charts).where(eq(charts.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async deleteCharts(ids: number[]): Promise<boolean> {
+    const results = await Promise.all(
+      ids.map(id => db.delete(charts).where(eq(charts.id, id)))
+    );
+    return results.every(result => (result.rowCount ?? 0) > 0);
+  }
+
+  async createAnalysis(insertAnalysis: InsertAnalysis): Promise<AnalysisResult> {
+    const [analysis] = await db
+      .insert(analysisResults)
+      .values([{
+        ...insertAnalysis,
+        createdAt: new Date().toISOString()
+      }])
+      .returning();
+    return analysis;
+  }
+
+  async getAnalysisByChartId(chartId: number): Promise<AnalysisResult | undefined> {
+    const [analysis] = await db.select().from(analysisResults).where(eq(analysisResults.chartId, chartId));
+    return analysis || undefined;
+  }
+
+  async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {
+    // Get all charts with embeddings (note: the WHERE clause needs to be corrected for checking non-null)
+    const allCharts = await db.select().from(charts);
+    
+    // Calculate similarities in memory (for now - could be optimized with vector DB extensions)
+    const similarities = allCharts
+      .filter(chart => chart.embedding && chart.embedding.length > 0)
+      .map(chart => {
+        const similarity = this.calculateCosineSimilarity(embedding, chart.embedding!);
+        return { chart, similarity };
+      });
+
+    return similarities
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit);
+  }
+
+  private calculateCosineSimilarity(a: number[], b: number[]): number {
+    if (a.length !== b.length) return 0;
+    
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    
+    for (let i = 0; i < a.length; i++) {
+      dotProduct += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+}
+
+export const storage = new DatabaseStorage();

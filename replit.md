@@ -30,19 +30,21 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
 - **File Handling**: Multer for multipart form uploads
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: PostgreSQL with Drizzle ORM and Neon serverless hosting
 - **AI Services**: Integration with OpenAI GPT-4o, CLIP, and MiDaS models
 - **Session Management**: Connect-pg-simple for PostgreSQL session storage
+- **Storage Layer**: DatabaseStorage class implementing IStorage interface for persistent data operations
 
 ### Key Components
 
 #### Data Storage
 - **Database**: PostgreSQL with three main tables:
-  - `users`: User authentication data
-  - `charts`: Chart metadata, file paths, embeddings, and timeframe information
-  - `analysis_results`: GPT analysis results and similar chart references
+  - `users`: User authentication data with username/password
+  - `charts`: Chart metadata, file paths, CLIP embeddings, instrument, session, and timeframe information
+  - `analysis_results`: GPT analysis results and similar chart references with confidence scores
 - **File Storage**: Local filesystem storage for uploaded images and generated depth maps
-- **ORM**: Drizzle ORM with Zod schema validation
+- **ORM**: Drizzle ORM with Zod schema validation and automated timestamp handling
+- **Storage Interface**: IStorage interface ensures consistent data operations across memory and database implementations
 
 #### Authentication & Authorization
 - Session-based authentication using Express sessions
