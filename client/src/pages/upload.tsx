@@ -19,14 +19,15 @@ export default function UploadPage() {
   const [selectedSession, setSelectedSession] = useState<Session | undefined>(undefined);
   const [analysisResults, setAnalysisResults] = useState(null);
   const [currentChartId, setCurrentChartId] = useState<number | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { toast } = useToast();
 
   const analyzeChartsMutation = useMutation({
-    mutationFn: async (files: FileList) => {
+    mutationFn: async (files: File[]) => {
       const formData = new FormData();
       
       // Add all files to FormData with correct field name
-      Array.from(files).forEach((file) => {
+      files.forEach((file) => {
         formData.append('charts', file);
       });
       
@@ -133,6 +134,33 @@ export default function UploadPage() {
     regenerateAnalysisMutation.mutate();
   };
 
+  const handleFilesSelected = (files: FileList) => {
+    // Add files to selected files instead of immediately uploading
+    const newFiles = Array.from(files);
+    setSelectedFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitBatch = () => {
+    if (selectedFiles.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please select some chart images first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    analyzeChartsMutation.mutate(selectedFiles);
+    setSelectedFiles([]); // Clear after submission
+  };
+
+  const handleClearAll = () => {
+    setSelectedFiles([]);
+  };
+
   const handleAnalyzeCharts = (files: FileList) => {
     if (files.length === 0) {
       toast({
@@ -142,7 +170,7 @@ export default function UploadPage() {
       });
       return;
     }
-    analyzeChartsMutation.mutate(files);
+    analyzeChartsMutation.mutate(Array.from(files));
   };
 
   const handleQuickAnalysis = (files: FileList) => {
@@ -224,40 +252,93 @@ export default function UploadPage() {
               />
 
               <DragDropZone
-                onFilesSelected={handleAnalyzeCharts}
+                onFilesSelected={handleFilesSelected}
                 className="mb-6"
                 isLoading={analyzeChartsMutation.isPending}
                 multiple={true}
                 placeholder="Drop multiple chart images here for the same instrument"
               />
 
-              <Button 
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = 'image/*';
-                  input.multiple = true;
-                  input.onchange = (e) => {
-                    const files = (e.target as HTMLInputElement).files;
-                    if (files) handleAnalyzeCharts(files);
-                  };
-                  input.click();
-                }}
-                className="w-full bg-primary-500 hover:bg-primary-600"
-                disabled={analyzeChartsMutation.isPending}
-              >
-                {analyzeChartsMutation.isPending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <ChartLine className="mr-2 h-4 w-4" />
-                    Analyze Charts
-                  </>
-                )}
-              </Button>
+              {/* Selected Files Preview */}
+              {selectedFiles.length > 0 && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-gray-700">
+                      Selected Files ({selectedFiles.length})
+                    </h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleClearAll}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveFile(index)}
+                          className="text-gray-400 hover:text-red-500 h-6 w-6 p-0"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <Button 
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.multiple = true;
+                    input.onchange = (e) => {
+                      const files = (e.target as HTMLInputElement).files;
+                      if (files) handleFilesSelected(files);
+                    };
+                    input.click();
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Select Files
+                </Button>
+
+                <Button 
+                  onClick={handleSubmitBatch}
+                  className="flex-1 bg-primary-500 hover:bg-primary-600"
+                  disabled={analyzeChartsMutation.isPending || selectedFiles.length === 0}
+                >
+                  {analyzeChartsMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <ChartLine className="mr-2 h-4 w-4" />
+                      Analyze Charts ({selectedFiles.length})
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
