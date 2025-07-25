@@ -12,12 +12,24 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  console.log('API Request:', method, url);
+  console.log('Data type:', data instanceof FormData ? 'FormData' : typeof data);
+  
+  if (data instanceof FormData) {
+    console.log('FormData entries:');
+    for (const [key, value] of data.entries()) {
+      console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
+    }
+  }
+
+  const config: RequestInit = {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers: data instanceof FormData ? {} : (data ? { "Content-Type": "application/json" } : {}),
+    body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     credentials: "include",
-  });
+  };
+
+  const res = await fetch(url, config);
 
   await throwIfResNotOk(res);
   return res;
