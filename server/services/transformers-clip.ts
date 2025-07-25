@@ -55,8 +55,8 @@ export async function generateCLIPEmbedding(imagePath: string): Promise<CLIPEmbe
       imageArray[i] = (r + g + b) / 3; // Simple grayscale conversion
     }
     
-    // Generate embedding
-    const embedding = await model(imageArray);
+    // Generate embedding - pass image as tensor, not as text
+    const embedding = await model({ images: imageArray });
     
     // Extract the embedding vector and ensure it's 1024D
     let embeddingVector: number[];
@@ -64,7 +64,7 @@ export async function generateCLIPEmbedding(imagePath: string): Promise<CLIPEmbe
       embeddingVector = Array.from(embedding.data);
     } else {
       // Fallback: create deterministic 1024D embedding
-      const crypto = require('crypto');
+      const crypto = await import('crypto');
       const hash = crypto.createHash('md5').update(imageBuffer).digest('hex');
       const seed = parseInt(hash.substring(0, 8), 16);
       

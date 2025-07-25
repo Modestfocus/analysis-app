@@ -12,15 +12,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  console.log('API Request:', method, url);
-  console.log('Data type:', data instanceof FormData ? 'FormData' : typeof data);
-  
-  if (data instanceof FormData) {
-    console.log('FormData entries:');
-    for (const [key, value] of data.entries()) {
-      console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
-    }
-  }
+
 
   const config: RequestInit = {
     method,
