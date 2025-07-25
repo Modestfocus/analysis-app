@@ -6,7 +6,7 @@ import path from "path";
 import fs from "fs/promises";
 import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
-import { generateDepthMap } from "./services/midas";
+import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT } from "./services/openai";
 import { insertChartSchema, insertAnalysisSchema } from "@shared/schema";
 
@@ -181,7 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Depth route - generates MiDaS depth map
+  // Depth route - generates MiDaS depth map for single chart
   app.post('/api/depth', async (req, res) => {
     try {
       const { chartId } = req.body;
@@ -195,19 +195,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const imagePath = path.join(uploadsDir, chart.filename);
-      const depthMapFilename = `depth-${chart.filename}`;
+      const depthMapFilename = `depth_${chart.filename.replace(/\.[^/.]+$/, '.png')}`;
       const depthMapPath = path.join(depthmapsDir, depthMapFilename);
       
-      await generateDepthMap(imagePath, depthMapPath);
-      await storage.updateChart(chartId, { depthMapPath: `/depthmaps/${depthMapFilename}` });
-
-      res.json({
-        success: true,
-        depthMapPath: `/depthmaps/${depthMapFilename}`
-      });
+      const result = await generateDepthMap(imagePath, depthMapPath);
+      
+      if (result.success) {
+        await storage.updateChart(chartId, { depthMapPath: `/depthmaps/${depthMapFilename}` });
+        
+        res.json({
+          success: true,
+          depthMapPath: `/depthmaps/${depthMapFilename}`,
+          model: result.model,
+          depthRange: result.depth_range
+        });
+      } else {
+        res.status(500).json({ 
+          success: false,
+          message: result.error || 'Depth map generation failed' 
+        });
+      }
     } catch (error) {
       console.error('Depth map error:', error);
       res.status(500).json({ message: 'Depth map generation failed: ' + (error as Error).message });
+    }
+  });
+
+  // Depth batch route - generates depth maps for multiple charts
+  app.post('/api/depth/batch', async (req, res) => {
+    try {
+      const { instrument, timeframe } = req.body;
+      
+      // Get charts to process
+      const charts = await storage.getAllCharts(timeframe, instrument);
+      const unprocessedCharts = charts.filter(chart => !chart.depthMapPath);
+      
+      if (unprocessedCharts.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No charts need depth map processing',
+          processed: 0
+        });
+      }
+
+      const results = [];
+      
+      for (const chart of unprocessedCharts) {
+        const imagePath = path.join(uploadsDir, chart.filename);
+        const depthMapFilename = `depth_${chart.filename.replace(/\.[^/.]+$/, '.png')}`;
+        const depthMapPath = path.join(depthmapsDir, depthMapFilename);
+        
+        try {
+          const result = await generateDepthMap(imagePath, depthMapPath);
+          
+          if (result.success) {
+            await storage.updateChart(chart.id, { depthMapPath: `/depthmaps/${depthMapFilename}` });
+            results.push({
+              chartId: chart.id,
+              filename: chart.filename,
+              success: true,
+              depthMapPath: `/depthmaps/${depthMapFilename}`,
+              model: result.model
+            });
+          } else {
+            results.push({
+              chartId: chart.id,
+              filename: chart.filename,
+              success: false,
+              error: result.error
+            });
+          }
+        } catch (error) {
+          results.push({
+            chartId: chart.id,
+            filename: chart.filename,
+            success: false,
+            error: (error as Error).message
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+
+      res.json({
+        success: true,
+        processed: results.length,
+        successful: successCount,
+        failed: results.length - successCount,
+        results: results
+      });
+      
+    } catch (error) {
+      console.error('Batch depth map error:', error);
+      res.status(500).json({ message: 'Batch depth map generation failed: ' + (error as Error).message });
     }
   });
 
