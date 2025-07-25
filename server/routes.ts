@@ -130,9 +130,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue without embedding - don't fail the upload
         }
 
+        // Automatically generate depth map after upload
+        try {
+          const imagePath = path.join(uploadsDir, chart.filename);
+          const depthMapFilename = `depth_${chart.filename.replace(/\.[^/.]+$/, '.png')}`;
+          const depthMapPath = path.join(depthmapsDir, depthMapFilename);
+          
+          const depthResult = await generateDepthMap(imagePath, depthMapPath);
+          if (depthResult.success) {
+            await storage.updateChart(chart.id, { depthMapPath: `/depthmaps/${depthMapFilename}` });
+            console.log(`✓ Generated depth map for chart ${chart.id} using ${depthResult.model}: /depthmaps/${depthMapFilename}`);
+          } else {
+            console.error(`Depth map generation failed for chart ${chart.id}:`, depthResult.error);
+          }
+        } catch (depthError) {
+          console.error(`Failed to generate depth map for chart ${chart.id}:`, depthError);
+          // Continue without depth map - don't fail the upload
+        }
+
         uploadedCharts.push({
           ...chart,
-          filePath: `/uploads/${file.filename}`
+          filePath: `/uploads/${file.filename}`,
+          depthMapUrl: chart.depthMapPath // Include depth map URL in response
         });
       }
 
@@ -392,7 +411,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { timeframe, instrument } = req.query;
       const charts = await storage.getAllCharts(timeframe as string, instrument as string);
-      res.json({ charts });
+      
+      // Include both file path and depth map URL in response
+      const chartsWithPaths = charts.map(chart => ({
+        ...chart,
+        filePath: `/uploads/${chart.filename}`,
+        depthMapUrl: chart.depthMapPath // Include depth map URL for GPT prompts
+      }));
+      
+      res.json({ charts: chartsWithPaths });
     } catch (error) {
       console.error('Get charts error:', error);
       res.status(500).json({ message: 'Failed to get charts: ' + (error as Error).message });
