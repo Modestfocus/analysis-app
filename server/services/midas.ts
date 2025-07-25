@@ -51,7 +51,27 @@ export async function generateDepthMap(inputPath: string, outputPath: string): P
         // Fallback: create simple depth map using Node.js
         createFallbackDepthMap(inputPath, outputPath)
           .then((result) => resolve(result))
-          .catch((error) => resolve({ error: `MiDaS failed and fallback failed: ${error.message}` }));
+          .catch(async (error) => {
+            console.error('Fallback depth map failed:', error);
+            // Create a simple gradient depth map as final fallback
+            try {
+              const sharp = await import('sharp');
+              await sharp.default(inputPath)
+                .grayscale()
+                .blur(2)
+                .toFile(outputPath);
+              
+              resolve({
+                success: true,
+                depthMapPath: outputPath,
+                input: inputPath,
+                output: outputPath,
+                model: 'simple-gradient-fallback'
+              });
+            } catch (finalError) {
+              resolve({ error: `All depth map methods failed: ${finalError.message}` });
+            }
+          });
         return;
       }
 
@@ -102,7 +122,7 @@ export async function generateDepthMap(inputPath: string, outputPath: string): P
  */
 async function createFallbackDepthMap(inputPath: string, outputPath: string): Promise<DepthMapResult> {
   try {
-    const sharp = require('sharp');
+    const sharp = (await import('sharp')).default;
     
     // Read input image and create simple depth effect
     const image = sharp(inputPath);
