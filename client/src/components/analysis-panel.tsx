@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Clock, Target, BarChart3, AlertCircle, CheckCircle2, Link as LinkIcon } from "lucide-react";
+import { TrendingUp, Clock, Target, BarChart3, AlertCircle, CheckCircle2, Link as LinkIcon, RefreshCw, Image as ImageIcon } from "lucide-react";
+import ChartComparison from "./chart-comparison";
 
 interface ChartPrediction {
   prediction: string;
@@ -28,14 +29,22 @@ interface AnalysisData {
   prediction: ChartPrediction;
   similarCharts: SimilarChart[];
   analysisId: number;
+  mainChartPath?: string;
 }
 
 interface AnalysisPanelProps {
   analysisData: AnalysisData | null;
   isLoading: boolean;
+  onRegenerateAnalysis?: () => void;
+  isRegenerating?: boolean;
 }
 
-export default function AnalysisPanel({ analysisData, isLoading }: AnalysisPanelProps) {
+export default function AnalysisPanel({ 
+  analysisData, 
+  isLoading, 
+  onRegenerateAnalysis,
+  isRegenerating = false 
+}: AnalysisPanelProps) {
   if (isLoading) {
     return (
       <div className="w-80 bg-white border-l border-gray-200 p-6">
@@ -100,9 +109,27 @@ export default function AnalysisPanel({ analysisData, isLoading }: AnalysisPanel
     <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto">
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <BarChart3 className="text-blue-600 mr-2 h-5 w-5" />
-            GPT-4o Analysis
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <BarChart3 className="text-blue-600 mr-2 h-5 w-5" />
+              GPT-4o Analysis
+            </div>
+            {analysisData && onRegenerateAnalysis && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRegenerateAnalysis}
+                disabled={isRegenerating}
+                className="ml-2"
+              >
+                {isRegenerating ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-1"></div>
+                ) : (
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                )}
+                {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+              </Button>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -148,62 +175,12 @@ export default function AnalysisPanel({ analysisData, isLoading }: AnalysisPanel
         </CardContent>
       </Card>
 
-      {/* Similar Charts */}
-      {similarCharts && similarCharts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center">
-              <LinkIcon className="text-purple-600 mr-2 h-4 w-4" />
-              Similar Historical Charts
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {similarCharts.map((chart, index) => (
-              <div key={chart.chartId} className="border rounded-lg p-3 bg-gray-50">
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="outline" className="text-xs">
-                    {chart.instrument} | {chart.session || 'Unknown'}
-                  </Badge>
-                  <Badge className="text-xs bg-purple-100 text-purple-800">
-                    {Math.round(chart.similarity * 100)}% match
-                  </Badge>
-                </div>
-                
-                <p className="text-xs text-gray-600 mb-2">{chart.filename}</p>
-                
-                {chart.comment && (
-                  <p className="text-xs text-gray-700 italic">
-                    Previous outcome: {chart.comment}
-                  </p>
-                )}
-
-                <div className="flex gap-2 mt-2">
-                  {chart.filePath && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-xs h-6 px-2"
-                      onClick={() => window.open(chart.filePath, '_blank')}
-                    >
-                      View Chart
-                    </Button>
-                  )}
-                  {chart.depthMapUrl && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-xs h-6 px-2"
-                      onClick={() => window.open(chart.depthMapUrl, '_blank')}
-                    >
-                      Depth Map
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      {/* Visual Chart Comparison */}
+      <ChartComparison 
+        mainChartId={analysisData.chartId}
+        mainChartPath={analysisData.mainChartPath}
+        similarCharts={similarCharts}
+      />
     </div>
   );
 }

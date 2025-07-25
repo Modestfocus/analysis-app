@@ -18,6 +18,7 @@ export default function UploadPage() {
   const [selectedInstrument, setSelectedInstrument] = useState<string>("auto");
   const [selectedSession, setSelectedSession] = useState<Session | undefined>(undefined);
   const [analysisResults, setAnalysisResults] = useState(null);
+  const [currentChartId, setCurrentChartId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const analyzeChartsMutation = useMutation({
@@ -58,11 +59,13 @@ export default function UploadPage() {
       return {
         ...analysisData,
         uploadedCount: uploadData.charts.length,
-        uploadMessage: uploadData.message
+        uploadMessage: uploadData.message,
+        mainChartPath: `/uploads/${firstChart.filename}`
       };
     },
     onSuccess: (data) => {
       setAnalysisResults(data);
+      setCurrentChartId(data.chartId);
       toast({
         title: "Analysis Complete", 
         description: data.uploadMessage || `${data.uploadedCount || 1} chart(s) uploaded and analyzed successfully.`,
@@ -101,6 +104,34 @@ export default function UploadPage() {
       });
     },
   });
+
+  // Regenerate analysis mutation
+  const regenerateAnalysisMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentChartId) throw new Error('No chart selected for regeneration');
+      
+      const response = await apiRequest('POST', `/api/analyze/${currentChartId}`);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      setAnalysisResults(data);
+      toast({
+        title: "Analysis Regenerated", 
+        description: "New analysis completed with updated insights.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Regeneration Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRegenerateAnalysis = () => {
+    regenerateAnalysisMutation.mutate();
+  };
 
   const handleAnalyzeCharts = (files: FileList) => {
     if (files.length === 0) {
@@ -282,6 +313,8 @@ export default function UploadPage() {
       <AnalysisPanel 
         analysisData={analysisResults} 
         isLoading={analyzeChartsMutation.isPending}
+        onRegenerateAnalysis={handleRegenerateAnalysis}
+        isRegenerating={regenerateAnalysisMutation.isPending}
       />
     </div>
   );
