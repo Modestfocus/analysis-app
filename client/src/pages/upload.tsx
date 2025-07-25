@@ -9,7 +9,7 @@ import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar } from "lucide-reac
 import TimeframeSelector from "@/components/timeframe-selector";
 import DragDropZone from "@/components/drag-drop-zone";
 import InstrumentSelector from "@/components/instrument-selector";
-import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
+import AnalysisPanel from "@/components/analysis-panel";
 import type { Timeframe, Session } from "@shared/schema";
 
 export default function UploadPage() {
@@ -51,12 +51,8 @@ export default function UploadPage() {
       // Generate depth map for first chart
       await apiRequest('POST', '/api/depth', { chartId: firstChart.id });
 
-      // Analyze first chart
-      const analysisFormData = new FormData();
-      analysisFormData.append('chartId', firstChart.id.toString());
-      analysisFormData.append('quickAnalysis', 'false');
-
-      const analysisResponse = await apiRequest('POST', '/api/analyze', analysisFormData);
+      // Analyze first chart using new RAG endpoint
+      const analysisResponse = await apiRequest('POST', `/api/analyze/${firstChart.id}`);
       const analysisData = await analysisResponse.json();
       
       return {
@@ -282,8 +278,11 @@ export default function UploadPage() {
         </div>
       </div>
 
-      {/* Right Panel - GPT Analysis */}
-      <GPTAnalysisPanel analysisResults={analysisResults} />
+      {/* Right Panel - RAG Analysis */}
+      <AnalysisPanel 
+        analysisData={analysisResults} 
+        isLoading={analyzeChartsMutation.isPending}
+      />
     </div>
   );
 }

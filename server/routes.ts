@@ -7,7 +7,7 @@ import fs from "fs/promises";
 import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
-import { analyzeChartWithGPT } from "./services/openai";
+import { analyzeChartWithGPT, analyzeChartWithRAG } from "./services/openai";
 import { insertChartSchema, insertAnalysisSchema } from "@shared/schema";
 
 // Ensure upload directories exist
@@ -403,6 +403,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Analysis error:', error);
       res.status(500).json({ message: 'Analysis failed: ' + (error as Error).message });
+    }
+  });
+
+  // NEW: RAG-powered chart analysis endpoint
+  app.post('/api/analyze/:chartId', async (req, res) => {
+    try {
+      const chartId = parseInt(req.params.chartId);
+      
+      if (isNaN(chartId)) {
+        return res.status(400).json({ message: 'Invalid chart ID' });
+      }
+
+      // 1. Get the chart
+      const chart = await storage.getChart(chartId);
+      if (!chart) {
+        return res.status(404).json({ message: 'Chart not found' });
+      }
+
+      const chartImagePath = path.join(uploadsDir, chart.filename);
+      
+      // 2. RAG Retrieval: Get similar charts using vector embeddings
+      let similarCharts: Array<{ chart: any; similarity: number }> = [];
+      if (chart.embedding && chart.embedding.length === 1024) {
+        similarCharts = await storage.findSimilarCharts(chart.embedding, 3);
+        console.log(`Found ${similarCharts.length} similar charts for RAG context`);
+      } else {
+        console.log('No embedding available for similarity search');
+      }
+
+      // 3. Prepare depth map path
+      const depthMapPath = chart.depthMapPath;
+
+      // 4. Call GPT-4o with RAG context
+      const prediction = await analyzeChartWithRAG(chartImagePath, depthMapPath, similarCharts);
+
+      // 5. Save analysis result to database
+      const analysisData = {
+        chartId,
+        gptAnalysis: JSON.stringify(prediction),
+        similarCharts: JSON.stringify(similarCharts.map(sc => ({
+          chartId: sc.chart.id,
+          similarity: sc.similarity,
+          filename: sc.chart.filename,
+          instrument: sc.chart.instrument,
+          session: sc.chart.session,
+          comment: sc.chart.comment
+        }))),
+        confidence: prediction.confidence === 'High' ? 0.9 : prediction.confidence === 'Medium' ? 0.7 : 0.5,
+      };
+
+      const validatedAnalysis = insertAnalysisSchema.parse(analysisData);
+      const savedAnalysis = await storage.createAnalysis(validatedAnalysis);
+
+      // 6. Return structured prediction
+      res.json({
+        success: true,
+        chartId,
+        prediction,
+        similarCharts: similarCharts.map(sc => ({
+          chartId: sc.chart.id,
+          filename: sc.chart.filename,
+          instrument: sc.chart.instrument,
+          session: sc.chart.session,
+          similarity: sc.similarity,
+          filePath: `/uploads/${sc.chart.filename}`,
+          depthMapUrl: sc.chart.depthMapPath,
+          comment: sc.chart.comment
+        })),
+        analysisId: savedAnalysis.id
+      });
+
+    } catch (error) {
+      console.error('RAG Analysis error:', error);
+      res.status(500).json({ 
+        message: 'Chart analysis failed: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
     }
   });
 
