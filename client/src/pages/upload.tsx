@@ -23,10 +23,13 @@ export default function UploadPage() {
 
   const analyzeChartsMutation = useMutation({
     mutationFn: async (files: FileList) => {
+      console.log('Files received for upload:', files.length);
+      
       const formData = new FormData();
       
-      // Add all files to FormData
-      Array.from(files).forEach(file => {
+      // Add all files to FormData with correct field name
+      Array.from(files).forEach((file, index) => {
+        console.log(`Adding file ${index + 1}:`, file.name, file.type, file.size);
         formData.append('charts', file);
       });
       
@@ -37,6 +40,13 @@ export default function UploadPage() {
       if (selectedSession) {
         formData.append('session', selectedSession);
       }
+
+      console.log('Sending FormData with:', {
+        fileCount: files.length,
+        timeframe: selectedTimeframe,
+        instrument: selectedInstrument,
+        session: selectedSession
+      });
 
       // Upload charts with automatic CLIP embedding
       const uploadResponse = await apiRequest('POST', '/api/upload', formData);

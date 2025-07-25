@@ -382,7 +382,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence: analysis.confidence,
         };
 
-        await storage.createAnalysis(analysisData);
+        const validatedAnalysisData = insertAnalysisSchema.parse(analysisData);
+        await storage.createAnalysis(validatedAnalysisData);
       }
 
       // Clean up quick analysis file
