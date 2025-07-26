@@ -103,12 +103,32 @@ export class MemStorage implements IStorage {
   }
 
   async deleteChart(id: number): Promise<boolean> {
+    // First delete any analysis results for this chart
+    const analysesToDelete = Array.from(this.analyses.entries())
+      .filter(([_, analysis]) => analysis.chartId === id)
+      .map(([analysisId, _]) => analysisId);
+    
+    for (const analysisId of analysesToDelete) {
+      this.analyses.delete(analysisId);
+    }
+    
+    // Then delete the chart
     return this.charts.delete(id);
   }
 
   async deleteCharts(ids: number[]): Promise<boolean> {
     let deleted = true;
     for (const id of ids) {
+      // First delete any analysis results for this chart
+      const analysesToDelete = Array.from(this.analyses.entries())
+        .filter(([_, analysis]) => analysis.chartId === id)
+        .map(([analysisId, _]) => analysisId);
+      
+      for (const analysisId of analysesToDelete) {
+        this.analyses.delete(analysisId);
+      }
+      
+      // Then delete the chart
       if (!this.charts.delete(id)) {
         deleted = false;
       }
@@ -229,11 +249,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteChart(id: number): Promise<boolean> {
+    // First delete any analysis results for this chart
+    await db.delete(analysisResults).where(eq(analysisResults.chartId, id));
+    
+    // Then delete the chart
     const result = await db.delete(charts).where(eq(charts.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
   async deleteCharts(ids: number[]): Promise<boolean> {
+    // First delete any analysis results for these charts
+    for (const id of ids) {
+      await db.delete(analysisResults).where(eq(analysisResults.chartId, id));
+    }
+    
+    // Then delete the charts
     const results = await Promise.all(
       ids.map(id => db.delete(charts).where(eq(charts.id, id)))
     );
