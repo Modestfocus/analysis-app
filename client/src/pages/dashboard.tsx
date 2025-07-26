@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,23 +21,30 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: chartsData, isLoading: isLoadingCharts } = useQuery({
-    queryKey: ['/api/charts', selectedTimeframe],
+  const { data: chartsData, isLoading: isLoadingCharts, refetch } = useQuery({
+    queryKey: ['charts', selectedTimeframe],
     queryFn: async () => {
       const url = selectedTimeframe === "All" 
         ? '/api/charts'
         : `/api/charts?timeframe=${encodeURIComponent(selectedTimeframe)}`;
-      console.log('Dashboard API call:', url, 'selectedTimeframe:', selectedTimeframe);
       const response = await apiRequest('GET', url);
       const data = await response.json();
-      console.log('Dashboard API response:', data);
       return data;
     },
+    staleTime: 0,
+    gcTime: 0, // Don't cache at all
   });
 
+  // Force refetch when timeframe changes
+  useEffect(() => {
+    refetch();
+  }, [selectedTimeframe, refetch]);
+
   const { data: bundlesData, isLoading: isLoadingBundles } = useQuery({
-    queryKey: ['/api/bundles'],
+    queryKey: ['bundles'],
     select: (data: any) => data.bundles as (ChartBundle & { parsedMetadata: BundleMetadata })[],
+    staleTime: 0,
+    cacheTime: 1000 * 60 * 5,
   });
 
   const deleteSelectedMutation = useMutation({
@@ -46,7 +53,7 @@ export default function DashboardPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/charts'] });
+      queryClient.invalidateQueries({ queryKey: ['charts'] });
       setSelectedCharts(new Set());
       toast({
         title: "Charts Deleted",
