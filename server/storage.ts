@@ -1,4 +1,4 @@
-import { users, charts, analysisResults, type User, type InsertUser, type Chart, type InsertChart, type AnalysisResult, type InsertAnalysis } from "@shared/schema";
+import { users, charts, analysisResults, chartBundles, type User, type InsertUser, type Chart, type InsertChart, type AnalysisResult, type InsertAnalysis, type ChartBundle, type InsertBundle, type BundleMetadata } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -17,6 +17,14 @@ export interface IStorage {
   
   createAnalysis(analysis: InsertAnalysis): Promise<AnalysisResult>;
   getAnalysisByChartId(chartId: number): Promise<AnalysisResult | undefined>;
+  getAnalysisByBundleId(bundleId: string): Promise<AnalysisResult | undefined>;
+  
+  createBundle(bundle: InsertBundle): Promise<ChartBundle>;
+  getBundle(id: string): Promise<ChartBundle | undefined>;
+  getAllBundles(instrument?: string): Promise<ChartBundle[]>;
+  updateBundle(id: string, updates: Partial<ChartBundle>): Promise<ChartBundle | undefined>;
+  deleteBundle(id: string): Promise<boolean>;
+  getChartsByBundleId(bundleId: string): Promise<Chart[]>;
   
   findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>>;
 }
@@ -25,6 +33,7 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private charts: Map<number, Chart>;
   private analyses: Map<number, AnalysisResult>;
+  private bundles: Map<string, ChartBundle>;
   private currentUserId: number;
   private currentChartId: number;
   private currentAnalysisId: number;
@@ -33,6 +42,7 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.charts = new Map();
     this.analyses = new Map();
+    this.bundles = new Map();
     this.currentUserId = 1;
     this.currentChartId = 1;
     this.currentAnalysisId = 1;
@@ -66,6 +76,7 @@ export class MemStorage implements IStorage {
       embedding: insertChart.embedding || null,
       instrument: insertChart.instrument,
       session: insertChart.session || null,
+      bundleId: insertChart.bundleId || null,
     };
     this.charts.set(id, chart);
     return chart;
@@ -143,6 +154,7 @@ export class MemStorage implements IStorage {
       id,
       createdAt: new Date().toISOString(),
       chartId: insertAnalysis.chartId || null,
+      bundleId: insertAnalysis.bundleId || null,
     };
     this.analyses.set(id, analysis);
     return analysis;
@@ -152,6 +164,71 @@ export class MemStorage implements IStorage {
     return Array.from(this.analyses.values()).find(
       (analysis) => analysis.chartId === chartId,
     );
+  }
+
+  async getAnalysisByBundleId(bundleId: string): Promise<AnalysisResult | undefined> {
+    return Array.from(this.analyses.values()).find(
+      (analysis) => analysis.bundleId === bundleId,
+    );
+  }
+
+  async createBundle(insertBundle: InsertBundle): Promise<ChartBundle> {
+    const bundle: ChartBundle = {
+      ...insertBundle,
+      session: insertBundle.session || null,
+      createdAt: new Date().toISOString(),
+    };
+    this.bundles.set(bundle.id, bundle);
+    return bundle;
+  }
+
+  async getBundle(id: string): Promise<ChartBundle | undefined> {
+    return this.bundles.get(id);
+  }
+
+  async getAllBundles(instrument?: string): Promise<ChartBundle[]> {
+    let allBundles = Array.from(this.bundles.values());
+    if (instrument) {
+      allBundles = allBundles.filter(bundle => bundle.instrument === instrument);
+    }
+    return allBundles.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async updateBundle(id: string, updates: Partial<ChartBundle>): Promise<ChartBundle | undefined> {
+    const bundle = this.bundles.get(id);
+    if (!bundle) return undefined;
+    
+    const updatedBundle = { ...bundle, ...updates };
+    this.bundles.set(id, updatedBundle);
+    return updatedBundle;
+  }
+
+  async deleteBundle(id: string): Promise<boolean> {
+    // First delete any analysis results for this bundle
+    const analysesToDelete = Array.from(this.analyses.entries())
+      .filter(([_, analysis]) => analysis.bundleId === id)
+      .map(([analysisId, _]) => analysisId);
+    
+    for (const analysisId of analysesToDelete) {
+      this.analyses.delete(analysisId);
+    }
+    
+    // Update charts to remove bundle reference
+    Array.from(this.charts.entries()).forEach(([chartId, chart]) => {
+      if (chart.bundleId === id) {
+        const updatedChart = { ...chart, bundleId: null };
+        this.charts.set(chartId, updatedChart);
+      }
+    });
+    
+    // Then delete the bundle
+    return this.bundles.delete(id);
+  }
+
+  async getChartsByBundleId(bundleId: string): Promise<Chart[]> {
+    return Array.from(this.charts.values())
+      .filter(chart => chart.bundleId === bundleId)
+      .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
   }
 
   async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {
@@ -284,6 +361,64 @@ export class DatabaseStorage implements IStorage {
   async getAnalysisByChartId(chartId: number): Promise<AnalysisResult | undefined> {
     const [analysis] = await db.select().from(analysisResults).where(eq(analysisResults.chartId, chartId));
     return analysis || undefined;
+  }
+
+  async getAnalysisByBundleId(bundleId: string): Promise<AnalysisResult | undefined> {
+    const [analysis] = await db.select().from(analysisResults).where(eq(analysisResults.bundleId, bundleId));
+    return analysis || undefined;
+  }
+
+  async createBundle(insertBundle: InsertBundle): Promise<ChartBundle> {
+    const [bundle] = await db
+      .insert(chartBundles)
+      .values([{
+        ...insertBundle,
+        createdAt: new Date().toISOString()
+      }])
+      .returning();
+    return bundle;
+  }
+
+  async getBundle(id: string): Promise<ChartBundle | undefined> {
+    const [bundle] = await db.select().from(chartBundles).where(eq(chartBundles.id, id));
+    return bundle || undefined;
+  }
+
+  async getAllBundles(instrument?: string): Promise<ChartBundle[]> {
+    let query = db.select().from(chartBundles).orderBy(desc(chartBundles.createdAt));
+    
+    if (instrument) {
+      return await query.where(eq(chartBundles.instrument, instrument));
+    }
+    
+    return await query;
+  }
+
+  async updateBundle(id: string, updates: Partial<ChartBundle>): Promise<ChartBundle | undefined> {
+    const [updatedBundle] = await db
+      .update(chartBundles)
+      .set(updates)
+      .where(eq(chartBundles.id, id))
+      .returning();
+    return updatedBundle || undefined;
+  }
+
+  async deleteBundle(id: string): Promise<boolean> {
+    // First delete any analysis results for this bundle
+    await db.delete(analysisResults).where(eq(analysisResults.bundleId, id));
+    
+    // Update charts to remove bundle reference
+    await db.update(charts).set({ bundleId: null }).where(eq(charts.bundleId, id));
+    
+    // Then delete the bundle
+    const result = await db.delete(chartBundles).where(eq(chartBundles.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getChartsByBundleId(bundleId: string): Promise<Chart[]> {
+    return await db.select().from(charts)
+      .where(eq(charts.bundleId, bundleId))
+      .orderBy(desc(charts.uploadedAt));
   }
 
   async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {

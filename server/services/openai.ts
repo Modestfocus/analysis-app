@@ -261,3 +261,102 @@ function extractPatterns(text: string): string[] {
   
   return patterns;
 }
+
+// Multi-timeframe bundle analysis
+export async function analyzeBundleWithGPT(
+  chartData: Array<{ chart: any; base64Image: string; depthMapBase64?: string }>,
+  bundleMetadata: any
+): Promise<AnalysisResult> {
+  try {
+    const instrument = bundleMetadata.instrument;
+    const timeframes = bundleMetadata.timeframes;
+    
+    // Build multi-timeframe context
+    const timeframeContext = chartData.map((data, index) => 
+      `${timeframes[index]} timeframe: Chart ${data.chart.id} (${data.chart.originalName})`
+    ).join('\n');
+
+    const prompt = `You are an expert multi-timeframe trading analyst. Analyze this bundle of ${instrument} charts across different timeframes to provide comprehensive technical analysis.
+
+Chart Bundle Information:
+- Instrument: ${instrument}
+- Timeframes: ${timeframes.join(', ')}
+- Charts: ${chartData.length}
+
+${timeframeContext}
+
+Provide a comprehensive multi-timeframe analysis focusing on:
+1. Overall trend direction across timeframes (higher timeframe bias)
+2. Key confluences between timeframes
+3. Multi-timeframe support/resistance levels
+4. Entry and exit strategies based on timeframe alignment
+5. Risk management considerations
+6. Probability assessment of potential setups
+
+Structure your analysis to show how different timeframes confirm or contradict each other. Rate your confidence level from 1-10.`;
+
+    // Build messages with all chart images
+    const content: any[] = [
+      {
+        type: "text",
+        text: prompt,
+      }
+    ];
+
+    // Add all chart images to the analysis
+    chartData.forEach((data, index) => {
+      content.push({
+        type: "text",
+        text: `\n${timeframes[index]} Timeframe Chart:`,
+      });
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: `data:image/jpeg;base64,${data.base64Image}`,
+        },
+      });
+
+      // Add depth map if available
+      if (data.depthMapBase64) {
+        content.push({
+          type: "text",
+          text: `${timeframes[index]} Depth Map:`,
+        });
+        content.push({
+          type: "image_url",
+          image_url: {
+            url: `data:image/jpeg;base64,${data.depthMapBase64}`,
+          },
+        });
+      }
+    });
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content,
+        },
+      ],
+      max_tokens: 1500, // Increased for multi-timeframe analysis
+    });
+
+    const analysisText = response.choices[0].message.content || "";
+    
+    // Parse the response to extract structured data
+    const confidence = extractConfidenceScore(analysisText);
+    const trends = extractTrends(analysisText);
+    const patterns = extractPatterns(analysisText);
+
+    return {
+      analysis: analysisText,
+      confidence,
+      trends,
+      patterns,
+    };
+  } catch (error) {
+    console.error("Bundle GPT analysis error:", error);
+    throw new Error(`Bundle analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}

@@ -7,8 +7,8 @@ import fs from "fs/promises";
 import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
-import { analyzeChartWithGPT, analyzeChartWithRAG } from "./services/openai";
-import { insertChartSchema, insertAnalysisSchema } from "@shared/schema";
+import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT } from "./services/openai";
+import { insertChartSchema, insertAnalysisSchema, type Chart } from "@shared/schema";
 
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
@@ -366,9 +366,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Analyze with GPT-4o
       const analysis = await analyzeChartWithGPT(
-        chartImageBase64,
-        similarCharts,
-        depthMapBase64
+        chartImagePath,
+        similarCharts
       );
 
       // Save analysis if not quick mode
@@ -597,6 +596,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Delete charts error:', error);
       res.status(500).json({ message: 'Failed to delete charts: ' + (error as Error).message });
+    }
+  });
+
+  // Bundle management routes
+  app.post('/api/bundles', async (req, res) => {
+    try {
+      const { id, instrument, session, chartIds } = req.body;
+      
+      if (!id || !instrument || !Array.isArray(chartIds)) {
+        return res.status(400).json({ message: 'Bundle ID, instrument, and chart IDs are required' });
+      }
+
+      // Create bundle metadata
+      const charts = await Promise.all(chartIds.map(id => storage.getChart(id)));
+      const validCharts = charts.filter(chart => chart !== undefined) as Chart[];
+      
+      if (validCharts.length === 0) {
+        return res.status(400).json({ message: 'No valid charts found' });
+      }
+
+      const timeframes = validCharts.map(chart => chart.timeframe);
+      const bundleMetadata = {
+        bundle_id: id,
+        instrument,
+        chart_ids: chartIds,
+        timeframes,
+        session,
+        created_at: new Date().toISOString()
+      };
+
+      // Create the bundle
+      const bundle = await storage.createBundle({
+        id,
+        instrument,
+        session: session || null,
+        metadata: JSON.stringify(bundleMetadata)
+      });
+
+      // Update charts with bundle ID
+      await Promise.all(chartIds.map(chartId => 
+        storage.updateChart(chartId, { bundleId: id })
+      ));
+
+      res.json({ success: true, bundle, metadata: bundleMetadata });
+    } catch (error) {
+      console.error('Create bundle error:', error);
+      res.status(500).json({ message: 'Failed to create bundle: ' + (error as Error).message });
+    }
+  });
+
+  app.get('/api/bundles', async (req, res) => {
+    try {
+      const { instrument } = req.query;
+      const bundles = await storage.getAllBundles(instrument as string);
+      
+      // Parse metadata for each bundle
+      const bundlesWithMetadata = bundles.map(bundle => ({
+        ...bundle,
+        parsedMetadata: JSON.parse(bundle.metadata)
+      }));
+
+      res.json({ bundles: bundlesWithMetadata });
+    } catch (error) {
+      console.error('Get bundles error:', error);
+      res.status(500).json({ message: 'Failed to get bundles: ' + (error as Error).message });
+    }
+  });
+
+  app.get('/api/bundles/:id', async (req, res) => {
+    try {
+      const bundleId = req.params.id;
+      const bundle = await storage.getBundle(bundleId);
+      
+      if (!bundle) {
+        return res.status(404).json({ message: 'Bundle not found' });
+      }
+
+      const charts = await storage.getChartsByBundleId(bundleId);
+      const analysis = await storage.getAnalysisByBundleId(bundleId);
+
+      res.json({
+        bundle: {
+          ...bundle,
+          parsedMetadata: JSON.parse(bundle.metadata)
+        },
+        charts,
+        analysis
+      });
+    } catch (error) {
+      console.error('Get bundle error:', error);
+      res.status(500).json({ message: 'Failed to get bundle: ' + (error as Error).message });
+    }
+  });
+
+  app.post('/api/analyze/bundle/:bundleId', async (req, res) => {
+    try {
+      const bundleId = req.params.bundleId;
+      const bundle = await storage.getBundle(bundleId);
+      
+      if (!bundle) {
+        return res.status(404).json({ message: 'Bundle not found' });
+      }
+
+      const charts = await storage.getChartsByBundleId(bundleId);
+      if (charts.length === 0) {
+        return res.status(404).json({ message: 'No charts found in bundle' });
+      }
+
+      // Get all chart images and metadata
+      const chartData = await Promise.all(charts.map(async (chart) => {
+        const imagePath = path.join(uploadsDir, chart.filename);
+        const imageBuffer = await fs.readFile(imagePath);
+        const base64Image = imageBuffer.toString('base64');
+        
+        let depthMapBase64: string | undefined;
+        if (chart.depthMapPath) {
+          try {
+            const depthPath = path.join(process.cwd(), 'server', chart.depthMapPath);
+            const depthBuffer = await fs.readFile(depthPath);
+            depthMapBase64 = depthBuffer.toString('base64');
+          } catch (error) {
+            console.log('Could not read depth map for chart', chart.id);
+          }
+        }
+
+        return {
+          chart,
+          base64Image,
+          depthMapBase64
+        };
+      }));
+
+      // Generate bundle analysis using multi-timeframe context
+      const bundleMetadata = JSON.parse(bundle.metadata);
+      const analysis = await analyzeBundleWithGPT(chartData, bundleMetadata);
+
+      // Save bundle analysis
+      const analysisData = {
+        bundleId,
+        chartId: null, // Bundle analysis is not tied to a single chart
+        gptAnalysis: JSON.stringify(analysis),
+        similarCharts: JSON.stringify([]), // Could implement bundle similarity later
+        confidence: analysis.confidence,
+      };
+
+      const validatedAnalysisData = insertAnalysisSchema.parse(analysisData);
+      await storage.createAnalysis(validatedAnalysisData);
+
+      res.json({
+        success: true,
+        bundleId,
+        analysis,
+        charts: charts.length
+      });
+    } catch (error) {
+      console.error('Bundle analysis error:', error);
+      res.status(500).json({ message: 'Failed to analyze bundle: ' + (error as Error).message });
+    }
+  });
+
+  app.delete('/api/bundles/:id', async (req, res) => {
+    try {
+      const bundleId = req.params.id;
+      const bundle = await storage.getBundle(bundleId);
+      
+      if (!bundle) {
+        return res.status(404).json({ message: 'Bundle not found' });
+      }
+
+      const deleted = await storage.deleteBundle(bundleId);
+      res.json({ success: deleted });
+    } catch (error) {
+      console.error('Delete bundle error:', error);
+      res.status(500).json({ message: 'Failed to delete bundle: ' + (error as Error).message });
     }
   });
 

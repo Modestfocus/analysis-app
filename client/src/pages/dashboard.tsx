@@ -8,20 +8,27 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ChartLine, Upload, ChartBar, Filter, Trash2 } from "lucide-react";
 import ChartCard from "@/components/chart-card";
+import BundleCard from "@/components/bundle-card";
 import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
-import type { Chart, Timeframe } from "@shared/schema";
+import type { Chart, Timeframe, ChartBundle, BundleMetadata } from "@shared/schema";
 
 export default function DashboardPage() {
   const [location] = useLocation();
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>("All");
   const [selectedCharts, setSelectedCharts] = useState<Set<number>>(new Set());
   const [analysisResults, setAnalysisResults] = useState(null);
+  const [showView, setShowView] = useState<"charts" | "bundles">("charts");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: chartsData, isLoading } = useQuery({
+  const { data: chartsData, isLoading: isLoadingCharts } = useQuery({
     queryKey: ['/api/charts', selectedTimeframe === "All" ? undefined : selectedTimeframe],
     select: (data: any) => data.charts as Chart[],
+  });
+
+  const { data: bundlesData, isLoading: isLoadingBundles } = useQuery({
+    queryKey: ['/api/bundles'],
+    select: (data: any) => data.bundles as (ChartBundle & { parsedMetadata: BundleMetadata })[],
   });
 
   const deleteSelectedMutation = useMutation({
@@ -71,7 +78,73 @@ export default function DashboardPage() {
     }
   };
 
+  const createBundleMutation = useMutation({
+    mutationFn: async ({ chartIds, instrument, session }: { chartIds: number[], instrument: string, session?: string }) => {
+      const bundleId = `bundle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const response = await apiRequest('POST', '/api/bundles', { 
+        id: bundleId, 
+        instrument, 
+        session,
+        chartIds 
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/charts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bundles'] });
+      setSelectedCharts(new Set());
+      toast({
+        title: "Bundle Created",
+        description: `Chart bundle created successfully with ${selectedCharts.size} charts.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Bundle Creation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateBundle = () => {
+    if (selectedCharts.size < 2) {
+      toast({
+        title: "Not Enough Charts",
+        description: "Please select at least 2 charts to create a bundle.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedChartData = charts.filter(chart => selectedCharts.has(chart.id));
+    const instruments = Array.from(new Set(selectedChartData.map(chart => chart.instrument)));
+    
+    if (instruments.length > 1) {
+      toast({
+        title: "Mixed Instruments",
+        description: "All charts in a bundle must be for the same instrument.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const instrument = instruments[0];
+    const sessions = Array.from(new Set(selectedChartData.map(chart => chart.session).filter(Boolean)));
+    const session = sessions.length === 1 ? sessions[0] : undefined;
+
+    if (confirm(`Create a chart bundle for ${instrument} with ${selectedCharts.size} charts?`)) {
+      createBundleMutation.mutate({ 
+        chartIds: Array.from(selectedCharts), 
+        instrument,
+        session 
+      });
+    }
+  };
+
   const charts = chartsData || [];
+  const bundles = bundlesData || [];
+  const isLoading = showView === "charts" ? isLoadingCharts : isLoadingBundles;
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -116,54 +189,96 @@ export default function DashboardPage() {
           {/* Dashboard Header */}
           <Card className="mb-6">
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <ChartBar className="text-primary-500 mr-2 h-5 w-5" />
-                Uploaded Charts Dashboard
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <ChartBar className="text-primary-500 mr-2 h-5 w-5" />
+                  {showView === "charts" ? "Charts Dashboard" : "Chart Bundles Dashboard"}
+                </h2>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant={showView === "charts" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowView("charts")}
+                  >
+                    Individual Charts
+                  </Button>
+                  <Button
+                    variant={showView === "bundles" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowView("bundles")}
+                  >
+                    Chart Bundles
+                  </Button>
+                </div>
+              </div>
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <label className="flex items-center text-sm font-medium text-gray-700">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filter by timeframe:
-                    <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                      <SelectTrigger className="ml-2 w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="All">All</SelectItem>
-                        <SelectItem value="5M">5M</SelectItem>
-                        <SelectItem value="15M">15M</SelectItem>
-                        <SelectItem value="1H">1H</SelectItem>
-                        <SelectItem value="4H">4H</SelectItem>
-                        <SelectItem value="Daily">Daily</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                </div>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={handleDeleteSelected}
-                  disabled={selectedCharts.size === 0 || deleteSelectedMutation.isPending}
-                >
-                  {deleteSelectedMutation.isPending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Selected ({selectedCharts.size})
-                    </>
+                  {showView === "charts" && (
+                    <label className="flex items-center text-sm font-medium text-gray-700">
+                      <Filter className="mr-2 h-4 w-4" />
+                      Filter by timeframe:
+                      <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                        <SelectTrigger className="ml-2 w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="All">All</SelectItem>
+                          <SelectItem value="5M">5M</SelectItem>
+                          <SelectItem value="15M">15M</SelectItem>
+                          <SelectItem value="1H">1H</SelectItem>
+                          <SelectItem value="4H">4H</SelectItem>
+                          <SelectItem value="Daily">Daily</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
                   )}
-                </Button>
+                </div>
+                {showView === "charts" && (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCreateBundle}
+                      disabled={selectedCharts.size < 2 || createBundleMutation.isPending}
+                    >
+                      {createBundleMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                          Creating Bundle...
+                        </>
+                      ) : (
+                        <>
+                          <ChartLine className="mr-2 h-4 w-4" />
+                          Create Bundle ({selectedCharts.size})
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleDeleteSelected}
+                      disabled={selectedCharts.size === 0 || deleteSelectedMutation.isPending}
+                    >
+                      {deleteSelectedMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Selected ({selectedCharts.size})
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Charts Grid */}
+          {/* Content Grid */}
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
@@ -176,37 +291,67 @@ export default function DashboardPage() {
                 </Card>
               ))}
             </div>
-          ) : charts.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <ChartBar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Charts Found</h3>
-                <p className="text-gray-500 mb-4">
-                  {selectedTimeframe === "All" 
-                    ? "You haven't uploaded any charts yet."
-                    : `No charts found for ${selectedTimeframe} timeframe.`
-                  }
-                </p>
-                <Button asChild>
-                  <Link href="/upload">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Your First Chart
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+          ) : showView === "charts" ? (
+            charts.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <ChartBar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Charts Found</h3>
+                  <p className="text-gray-500 mb-4">
+                    {selectedTimeframe === "All" 
+                      ? "You haven't uploaded any charts yet."
+                      : `No charts found for ${selectedTimeframe} timeframe.`
+                    }
+                  </p>
+                  <Button asChild>
+                    <Link href="/upload">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Your First Chart
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {charts.map((chart) => (
+                  <ChartCard
+                    key={chart.id}
+                    chart={chart}
+                    selected={selectedCharts.has(chart.id)}
+                    onSelect={(selected) => handleChartSelect(chart.id, selected)}
+                    onAnalyze={(results) => setAnalysisResults(results)}
+                  />
+                ))}
+              </div>
+            )
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {charts.map((chart) => (
-                <ChartCard
-                  key={chart.id}
-                  chart={chart}
-                  selected={selectedCharts.has(chart.id)}
-                  onSelect={(selected) => handleChartSelect(chart.id, selected)}
-                  onAnalyze={(results) => setAnalysisResults(results)}
-                />
-              ))}
-            </div>
+            bundles.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <ChartLine className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Chart Bundles Found</h3>
+                  <p className="text-gray-500 mb-4">
+                    You haven't created any chart bundles yet. Bundle multiple charts of the same instrument for comprehensive multi-timeframe analysis.
+                  </p>
+                  <Button asChild>
+                    <Link href="/dashboard">
+                      <ChartBar className="mr-2 h-4 w-4" />
+                      View Individual Charts
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {bundles.map((bundle) => (
+                  <BundleCard
+                    key={bundle.id}
+                    bundle={bundle}
+                    onAnalyze={(results) => setAnalysisResults(results)}
+                  />
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
