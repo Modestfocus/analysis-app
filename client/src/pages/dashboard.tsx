@@ -131,7 +131,7 @@ export default function DashboardPage() {
 
     const instrument = instruments[0];
     const sessions = Array.from(new Set(selectedChartData.map(chart => chart.session).filter(Boolean)));
-    const session = sessions.length === 1 ? sessions[0] : undefined;
+    const session = sessions.length === 1 ? sessions[0] || undefined : undefined;
 
     if (confirm(`Create a chart bundle for ${instrument} with ${selectedCharts.size} charts?`)) {
       createBundleMutation.mutate({ 
