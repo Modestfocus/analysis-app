@@ -44,7 +44,7 @@ export default function DashboardPage() {
     queryKey: ['bundles'],
     select: (data: any) => data.bundles as (ChartBundle & { parsedMetadata: BundleMetadata })[],
     staleTime: 0,
-    cacheTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 5,
   });
 
   const deleteSelectedMutation = useMutation({
@@ -133,8 +133,8 @@ export default function DashboardPage() {
       return;
     }
 
-    const selectedChartData = charts.filter(chart => selectedCharts.has(chart.id));
-    const instruments = Array.from(new Set(selectedChartData.map(chart => chart.instrument)));
+    const selectedChartData = charts.filter((chart: Chart) => selectedCharts.has(chart.id));
+    const instruments = Array.from(new Set(selectedChartData.map((chart: Chart) => chart.instrument)));
     
     if (instruments.length > 1) {
       toast({
@@ -145,9 +145,9 @@ export default function DashboardPage() {
       return;
     }
 
-    const instrument = instruments[0];
-    const sessions = Array.from(new Set(selectedChartData.map(chart => chart.session).filter(Boolean)));
-    const session = sessions.length === 1 ? sessions[0] || undefined : undefined;
+    const instrument = instruments[0] as string;
+    const sessions = Array.from(new Set(selectedChartData.map((chart: Chart) => chart.session).filter(Boolean)));
+    const session = sessions.length === 1 ? (sessions[0] as string) || undefined : undefined;
 
     if (confirm(`Create a chart bundle for ${instrument} with ${selectedCharts.size} charts?`)) {
       createBundleMutation.mutate({ 
@@ -208,10 +208,23 @@ export default function DashboardPage() {
           <Card className="mb-6">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <ChartBar className="text-primary-500 mr-2 h-5 w-5" />
-                  {showView === "charts" ? "Charts Dashboard" : "Chart Bundles Dashboard"}
-                </h2>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <ChartBar className="text-primary-500 mr-2 h-5 w-5" />
+                    {showView === "charts" ? "Charts Dashboard" : "Chart Bundles Dashboard"}
+                  </h2>
+                  {showView === "charts" && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      {isLoadingCharts ? (
+                        "Loading charts..."
+                      ) : (
+                        selectedTimeframe === "All" 
+                          ? `Showing all ${charts.length} charts`
+                          : `Showing ${charts.length} charts for ${selectedTimeframe} timeframe`
+                      )}
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center space-x-2">
                   <Button
                     variant={showView === "charts" ? "default" : "outline"}
@@ -234,10 +247,10 @@ export default function DashboardPage() {
                 <div className="flex items-center space-x-4">
                   {showView === "charts" && (
                     <label className="flex items-center text-sm font-medium text-gray-700">
-                      <Filter className="mr-2 h-4 w-4" />
+                      <Filter className={`mr-2 h-4 w-4 ${selectedTimeframe !== "All" ? "text-primary-500" : ""}`} />
                       Filter by timeframe:
                       <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                        <SelectTrigger className="ml-2 w-32">
+                        <SelectTrigger className={`ml-2 w-32 ${selectedTimeframe !== "All" ? "border-primary-500 bg-primary-50" : ""}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -249,6 +262,16 @@ export default function DashboardPage() {
                           <SelectItem value="Daily">Daily</SelectItem>
                         </SelectContent>
                       </Select>
+                      {selectedTimeframe !== "All" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedTimeframe("All")}
+                          className="ml-2 text-xs"
+                        >
+                          Clear Filter
+                        </Button>
+                      )}
                     </label>
                   )}
                 </div>
@@ -318,7 +341,7 @@ export default function DashboardPage() {
                   <p className="text-gray-500 mb-4">
                     {selectedTimeframe === "All" 
                       ? "You haven't uploaded any charts yet."
-                      : `No charts found for ${selectedTimeframe} timeframe.`
+                      : `No charts found for ${selectedTimeframe} timeframe. Try selecting "All" to see your charts or upload charts for this timeframe.`
                     }
                   </p>
                   <Button asChild>
@@ -331,7 +354,7 @@ export default function DashboardPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {charts.map((chart) => (
+                {charts.map((chart: Chart) => (
                   <ChartCard
                     key={chart.id}
                     chart={chart}
