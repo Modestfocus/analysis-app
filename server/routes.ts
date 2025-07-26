@@ -105,15 +105,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           return res.status(400).json({ message: 'Invalid timeframeMapping JSON format' });
         }
-      } else if (timeframe) {
-        // Fallback to single timeframe for all files (old method)
+      }
+      
+      // Validate timeframe if provided (old method fallback)
+      if (timeframe && timeframe !== "undefined") {
         const validTimeframes = ["5M", "15M", "1H", "4H", "Daily"];
         if (!validTimeframes.includes(timeframe)) {
           return res.status(400).json({ 
             message: `Invalid timeframe "${timeframe}". Valid timeframes are: ${validTimeframes.join(', ')}` 
           });
         }
-      } else {
+      }
+      
+      // Check if we have at least one valid method
+      if (!timeframeMapping && (!timeframe || timeframe === "undefined")) {
         return res.status(400).json({ message: 'Either timeframe or timeframeMapping is required' });
       }
 
@@ -125,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const finalInstrument = manualInstrument || detectedInstrument;
 
         // Get timeframe for this specific file (individual mapping) or use global timeframe
-        const fileTimeframe = parsedTimeframeMapping[file.originalname] || timeframe;
+        const fileTimeframe = parsedTimeframeMapping[file.originalname] || timeframe || "5M";
         
         // Validate individual timeframe
         const validTimeframes = ["5M", "15M", "1H", "4H", "Daily"];
