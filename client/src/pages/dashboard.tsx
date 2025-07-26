@@ -22,7 +22,14 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
 
   const { data: chartsData, isLoading: isLoadingCharts } = useQuery({
-    queryKey: ['/api/charts', selectedTimeframe === "All" ? undefined : selectedTimeframe],
+    queryKey: ['/api/charts', selectedTimeframe],
+    queryFn: async () => {
+      const url = selectedTimeframe === "All" 
+        ? '/api/charts'
+        : `/api/charts?timeframe=${encodeURIComponent(selectedTimeframe)}`;
+      const response = await apiRequest('GET', url);
+      return response.json();
+    },
     select: (data: any) => data.charts as Chart[],
   });
 
