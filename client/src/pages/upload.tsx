@@ -14,68 +14,210 @@ import type { Timeframe, Session } from "@shared/schema";
 
 export default function UploadPage() {
   const [location, setLocation] = useLocation();
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("5M");
   const [selectedInstrument, setSelectedInstrument] = useState<string>("auto");
   const [selectedSession, setSelectedSession] = useState<Session | undefined>(undefined);
   const [analysisResults, setAnalysisResults] = useState(null);
   const [currentChartId, setCurrentChartId] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileTimeframes, setFileTimeframes] = useState<Record<string, Timeframe>>({});
   const { toast } = useToast();
+
+  // Helper functions for file timeframe management
+  const updateFileTimeframe = (fileName: string, timeframe: Timeframe) => {
+    setFileTimeframes(prev => ({
+      ...prev,
+      [fileName]: timeframe
+    }));
+  };
+
+  const handleFilesSelected = (files: File[]) => {
+    setSelectedFiles(files);
+    // Initialize timeframes for new files with default value
+    const newTimeframes = { ...fileTimeframes };
+    files.forEach(file => {
+      if (!newTimeframes[file.name]) {
+        newTimeframes[file.name] = "5M";
+      }
+    });
+    setFileTimeframes(newTimeframes);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    const fileToRemove = selectedFiles[index];
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    
+    // Remove timeframe for the removed file
+    const newTimeframes = { ...fileTimeframes };
+    delete newTimeframes[fileToRemove.name];
+    setFileTimeframes(newTimeframes);
+  };
+
+  const handleClearAll = () => {
+    setSelectedFiles([]);
+    setFileTimeframes({});
+  };
+
+  const handleSaveChartsOnly = () => {
+    if (selectedFiles.length === 0) {
+      toast({
+        title: "No Files Selected",
+        description: "Please select at least one chart image to save.",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveChartsOnlyMutation.mutate(selectedFiles);
+  };
+
+  const handleSubmitBatch = () => {
+    if (selectedFiles.length === 0) {
+      toast({
+        title: "No Files Selected",
+        description: "Please select at least one chart image to analyze.",
+        variant: "destructive",
+      });
+      return;
+    }
+    analyzeUploadedChartsMutation.mutate(selectedFiles);
+  };
+
+  const handleQuickAnalysis = (files: FileList) => {
+    if (files.length === 0) {
+      toast({
+        title: "No Files Selected",
+        description: "Please select at least one chart image for quick analysis.",
+        variant: "destructive",
+      });
+      return;
+    }
+    quickAnalysisMutation.mutate(files);
+  };
 
   const analyzeChartsMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      const formData = new FormData();
+      // For individual file uploads, we'll upload one at a time with their specific timeframes
+      const results = [];
       
-      // Add all files to FormData with correct field name
-      files.forEach((file) => {
+      for (const file of files) {
+        const formData = new FormData();
         formData.append('charts', file);
-      });
-      
-      formData.append('timeframe', selectedTimeframe);
-      if (selectedInstrument && selectedInstrument !== "auto") {
-        formData.append('instrument', selectedInstrument);
+        
+        const fileTimeframe = fileTimeframes[file.name] || "5M";
+        formData.append('timeframe', fileTimeframe);
+        
+        if (selectedInstrument && selectedInstrument !== "auto") {
+          formData.append('instrument', selectedInstrument);
+        }
+        if (selectedSession) {
+          formData.append('session', selectedSession);
+        }
+
+        // Upload each chart individually
+        const uploadResponse = await apiRequest('POST', '/api/upload', formData);
+        const uploadData = await uploadResponse.json();
+
+        if (!uploadData.success) {
+          throw new Error(`Upload failed for ${file.name}`);
+        }
+
+        results.push(...uploadData.charts);
       }
-      if (selectedSession) {
-        formData.append('session', selectedSession);
-      }
 
-      // Upload charts with automatic CLIP embedding
-      const uploadResponse = await apiRequest('POST', '/api/upload', formData);
-      const uploadData = await uploadResponse.json();
-
-      if (!uploadData.success) {
-        throw new Error('Upload failed');
-      }
-
-      // For analysis, use the first uploaded chart
-      const firstChart = uploadData.charts[0];
-      
-      // Generate depth map for first chart
-      await apiRequest('POST', '/api/depth', { chartId: firstChart.id });
-
-      // Analyze first chart using new RAG endpoint
-      const analysisResponse = await apiRequest('POST', `/api/analyze/${firstChart.id}`);
-      const analysisData = await analysisResponse.json();
-      
       return {
-        ...analysisData,
-        uploadedCount: uploadData.charts.length,
-        uploadMessage: uploadData.message,
-        mainChartPath: `/uploads/${firstChart.filename}`
+        uploadedCount: results.length,
+        charts: results,
+        uploadMessage: `Successfully uploaded ${results.length} chart(s) with individual timeframes`
       };
     },
     onSuccess: (data) => {
-      setAnalysisResults(data);
-      setCurrentChartId(data.chartId);
+      setSelectedFiles([]);
+      setFileTimeframes({});
       toast({
-        title: "Analysis Complete", 
-        description: data.uploadMessage || `${data.uploadedCount || 1} chart(s) uploaded with ${selectedTimeframe} timeframe and analyzed successfully.`,
+        title: "Charts Saved Successfully", 
+        description: `${data.uploadedCount} chart(s) uploaded with individual timeframes and saved to dashboard.`,
       });
     },
     onError: (error) => {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "An error occurred during upload.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Separate mutation for analyzing uploaded charts
+  const analyzeUploadedChartsMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      // First upload all charts with individual timeframes
+      const results = [];
+      
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('charts', file);
+        
+        const fileTimeframe = fileTimeframes[file.name] || "5M";
+        formData.append('timeframe', fileTimeframe);
+        
+        if (selectedInstrument && selectedInstrument !== "auto") {
+          formData.append('instrument', selectedInstrument);
+        }
+        if (selectedSession) {
+          formData.append('session', selectedSession);
+        }
+
+        const uploadResponse = await apiRequest('POST', '/api/upload', formData);
+        const uploadData = await uploadResponse.json();
+
+        if (!uploadData.success) {
+          throw new Error(`Upload failed for ${file.name}`);
+        }
+
+        results.push(...uploadData.charts);
+      }
+
+      // Analyze the first uploaded chart
+      if (results.length > 0) {
+        const firstChart = results[0];
+        
+        // Generate depth map for first chart
+        await apiRequest('POST', '/api/depth', { chartId: firstChart.id });
+
+        // Analyze first chart using new RAG endpoint
+        const analysisResponse = await apiRequest('POST', `/api/analyze/${firstChart.id}`);
+        const analysisData = await analysisResponse.json();
+        
+        return {
+          ...analysisData,
+          uploadedCount: results.length,
+          uploadMessage: `Successfully uploaded ${results.length} chart(s) with individual timeframes`,
+          mainChartPath: `/uploads/${firstChart.filename}`
+        };
+      }
+
+      return {
+        uploadedCount: results.length,
+        uploadMessage: `Successfully uploaded ${results.length} chart(s) with individual timeframes`
+      };
+    },
+    onSuccess: (data) => {
+      setSelectedFiles([]);
+      setFileTimeframes({});
+      setAnalysisResults(data);
+      if (data.chartId) {
+        setCurrentChartId(data.chartId);
+      }
+      toast({
+        title: "Analysis Complete", 
+        description: data.uploadMessage || `${data.uploadedCount || 1} chart(s) uploaded and analyzed successfully.`,
+      });
+    },
+    onError: (error) => {
+      console.error('Analysis error:', error);
       toast({
         title: "Analysis Failed",
-        description: error.message,
+        description: error.message || "An error occurred during analysis.",
         variant: "destructive",
       });
     },
@@ -109,45 +251,51 @@ export default function UploadPage() {
   // Save charts only mutation (no analysis)
   const saveChartsOnlyMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      const formData = new FormData();
+      // Upload each chart individually with their specific timeframes
+      const results = [];
       
-      // Add all files to FormData with correct field name
-      files.forEach((file) => {
+      for (const file of files) {
+        const formData = new FormData();
         formData.append('charts', file);
-      });
-      
-      formData.append('timeframe', selectedTimeframe);
-      if (selectedInstrument && selectedInstrument !== "auto") {
-        formData.append('instrument', selectedInstrument);
-      }
-      if (selectedSession) {
-        formData.append('session', selectedSession);
-      }
+        
+        const fileTimeframe = fileTimeframes[file.name] || "5M";
+        formData.append('timeframe', fileTimeframe);
+        
+        if (selectedInstrument && selectedInstrument !== "auto") {
+          formData.append('instrument', selectedInstrument);
+        }
+        if (selectedSession) {
+          formData.append('session', selectedSession);
+        }
 
-      // Upload charts with automatic CLIP embedding and depth maps, but no GPT analysis
-      const uploadResponse = await apiRequest('POST', '/api/upload', formData);
-      const uploadData = await uploadResponse.json();
+        // Upload each chart individually
+        const uploadResponse = await apiRequest('POST', '/api/upload', formData);
+        const uploadData = await uploadResponse.json();
 
-      if (!uploadData.success) {
-        throw new Error('Upload failed');
-      }
+        if (!uploadData.success) {
+          throw new Error(`Upload failed for ${file.name}`);
+        }
 
-      // Generate depth maps for all uploaded charts but don't trigger analysis
-      for (const chart of uploadData.charts) {
-        await apiRequest('POST', '/api/depth', { chartId: chart.id });
+        results.push(...uploadData.charts);
+
+        // Generate depth maps for uploaded charts but don't trigger analysis
+        for (const chart of uploadData.charts) {
+          await apiRequest('POST', '/api/depth', { chartId: chart.id });
+        }
       }
       
       return {
-        uploadedCount: uploadData.charts.length,
-        uploadMessage: uploadData.message,
-        charts: uploadData.charts
+        uploadedCount: results.length,
+        uploadMessage: `Successfully uploaded ${results.length} chart(s) with individual timeframes`,
+        charts: results
       };
     },
     onSuccess: (data) => {
-      setSelectedFiles([]); // Clear selected files
+      setSelectedFiles([]);
+      setFileTimeframes({});
       toast({
         title: "Charts Saved Successfully", 
-        description: `${data.uploadedCount} chart(s) uploaded with ${selectedTimeframe} timeframe and saved to dashboard. Ready for analysis when needed.`,
+        description: `${data.uploadedCount} chart(s) uploaded with individual timeframes and saved to dashboard. Ready for analysis when needed.`,
       });
     },
     onError: (error) => {
@@ -187,68 +335,7 @@ export default function UploadPage() {
     regenerateAnalysisMutation.mutate();
   };
 
-  const handleFilesSelected = (files: FileList) => {
-    // Add files to selected files instead of immediately uploading
-    const newFiles = Array.from(files);
-    setSelectedFiles(prev => [...prev, ...newFiles]);
-  };
 
-  const handleRemoveFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmitBatch = () => {
-    if (selectedFiles.length === 0) {
-      toast({
-        title: "No files selected",
-        description: "Please select some chart images first.",
-        variant: "destructive",
-      });
-      return;
-    }
-    analyzeChartsMutation.mutate(selectedFiles);
-    setSelectedFiles([]); // Clear after submission
-  };
-
-  const handleSaveChartsOnly = () => {
-    if (selectedFiles.length === 0) {
-      toast({
-        title: "No files selected",
-        description: "Please select some chart images first.",
-        variant: "destructive",
-      });
-      return;
-    }
-    saveChartsOnlyMutation.mutate(selectedFiles);
-  };
-
-  const handleClearAll = () => {
-    setSelectedFiles([]);
-  };
-
-  const handleAnalyzeCharts = (files: FileList) => {
-    if (files.length === 0) {
-      toast({
-        title: "No Files Selected",
-        description: "Please select at least one chart image to analyze.",
-        variant: "destructive",
-      });
-      return;
-    }
-    analyzeChartsMutation.mutate(Array.from(files));
-  };
-
-  const handleQuickAnalysis = (files: FileList) => {
-    if (files.length === 0) {
-      toast({
-        title: "No Files Selected",
-        description: "Please select at least one chart image for quick analysis.",
-        variant: "destructive",
-      });
-      return;
-    }
-    quickAnalysisMutation.mutate(files);
-  };
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -304,15 +391,10 @@ export default function UploadPage() {
                 Upload Chart Set
               </h2>
               
-              <TimeframeSelector
-                selectedTimeframe={selectedTimeframe}
-                onTimeframeSelect={setSelectedTimeframe}
-              />
-              
-              {/* Timeframe Confirmation Display */}
+              {/* Individual Chart Timeframe Message */}
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Selected Timeframe:</strong> {selectedTimeframe} - All uploaded charts will be tagged with this timeframe
+                  <strong>Individual Timeframes:</strong> Each uploaded chart can have its own timeframe selected below
                 </p>
               </div>
 
@@ -324,11 +406,11 @@ export default function UploadPage() {
               />
 
               <DragDropZone
-                onFilesSelected={handleFilesSelected}
+                onFilesSelected={(files: FileList) => handleFilesSelected(Array.from(files))}
                 className="mb-6"
-                isLoading={analyzeChartsMutation.isPending}
+                isLoading={analyzeUploadedChartsMutation.isPending}
                 multiple={true}
-                placeholder="Drop multiple chart images here for the same instrument"
+                placeholder="Drop multiple chart images here for individual timeframes"
               />
 
               {/* Selected Files Preview */}
@@ -347,26 +429,46 @@ export default function UploadPage() {
                       Clear All
                     </Button>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {selectedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          <span className="text-sm text-gray-700 truncate max-w-[200px]">
-                            {file.name}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            ({(file.size / 1024).toFixed(1)} KB)
-                          </span>
+                      <div key={index} className="bg-white p-3 rounded border">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                              {file.name}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({(file.size / 1024).toFixed(1)} KB)
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveFile(index)}
+                            className="text-gray-400 hover:text-red-500 h-6 w-6 p-0"
+                          >
+                            ×
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveFile(index)}
-                          className="text-gray-400 hover:text-red-500 h-6 w-6 p-0"
-                        >
-                          ×
-                        </Button>
+                        
+                        {/* Individual Timeframe Selector */}
+                        <div className="flex items-center space-x-2 ml-4">
+                          <span className="text-xs text-gray-600">Timeframe:</span>
+                          <div className="flex space-x-1">
+                            {["5M", "15M", "1H", "4H", "Daily"].map((timeframe) => (
+                              <Button
+                                key={timeframe}
+                                size="sm"
+                                variant={fileTimeframes[file.name] === timeframe ? "default" : "outline"}
+                                onClick={() => updateFileTimeframe(file.name, timeframe as Timeframe)}
+                                className="h-6 text-xs px-2"
+                              >
+                                {timeframe}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -382,7 +484,7 @@ export default function UploadPage() {
                     input.multiple = true;
                     input.onchange = (e) => {
                       const files = (e.target as HTMLInputElement).files;
-                      if (files) handleFilesSelected(files);
+                      if (files) handleFilesSelected(Array.from(files));
                     };
                     input.click();
                   }}
@@ -414,9 +516,9 @@ export default function UploadPage() {
                 <Button 
                   onClick={handleSubmitBatch}
                   className="flex-1 bg-primary-500 hover:bg-primary-600"
-                  disabled={analyzeChartsMutation.isPending || selectedFiles.length === 0}
+                  disabled={analyzeUploadedChartsMutation.isPending || selectedFiles.length === 0}
                 >
-                  {analyzeChartsMutation.isPending ? (
+                  {analyzeUploadedChartsMutation.isPending ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       Analyzing...
