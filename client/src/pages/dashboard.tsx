@@ -154,6 +154,8 @@ export default function DashboardPage() {
   const charts = Array.isArray(chartsData?.charts) ? chartsData.charts : [];
   const bundles = bundlesData || [];
   const isLoading = showView === "charts" ? isLoadingCharts : isLoadingBundles;
+  
+  console.log('Dashboard render - selectedTimeframe:', selectedTimeframe, 'charts.length:', charts.length, 'charts:', charts);
 
   return (
     <div className="min-h-screen flex bg-slate-50">
