@@ -47,7 +47,7 @@ export default function AnalysisPanel({
 }: AnalysisPanelProps) {
   if (isLoading) {
     return (
-      <div className="w-80 bg-white border-l border-gray-200 p-6">
+      <div className="flex-1 bg-white border-l border-gray-200 p-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -67,7 +67,7 @@ export default function AnalysisPanel({
 
   if (!analysisData) {
     return (
-      <div className="w-80 bg-white border-l border-gray-200 p-6">
+      <div className="flex-1 bg-white border-l border-gray-200 p-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -106,7 +106,7 @@ export default function AnalysisPanel({
   };
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto">
+    <div className="flex-1 bg-white border-l border-gray-200 p-6 overflow-y-auto">
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
