@@ -279,67 +279,101 @@ export async function analyzeChartWithEnhancedContext(
     const imageBuffer = fs.readFileSync(chartImagePath);
     const base64Image = imageBuffer.toString('base64');
 
-    // Build enhanced context from similar charts and bundles
-    let contextSection = "";
-    if (enrichedSimilarCharts.length > 0) {
-      contextSection = "\n\nSimilar charts and patterns for context:\n";
+    // Build the comprehensive prompt with bundle-aware context
+    let systemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using image reasoning, depth map estimation, and historical chart context. Determine the likely market session (Asia, London, New York), and whether the setup is bullish, bearish, or unclear.
+
+Use the visual data, pattern similarity, and outcomes from the historical charts to inform your analysis. If a historical chart belongs to a bundle, treat the full bundle as a multi-timeframe view of that setup.
+
+Return a structured JSON with your session prediction, direction, confidence score, and brief rationale.
+
+To make your decision, you are provided with:
+1. The **new chart** (image + depth map)
+2. A list of **top 3 similar historical charts**, each of which may either:
+   - Stand alone as a single chart
+   - Be part of a **chart bundle** (multi-timeframe view of a trade setup)
+3. Known outcomes from past charts when available
+
+---
+
+🆕 New Chart for Analysis:
+- Image: Provided as image input
+- Instrument: Unknown (determine from visual analysis)
+- Timeframe: Unknown (determine from visual analysis)
+
+---`;
+
+    // Build similar charts context
+    enrichedSimilarCharts.forEach((item, index) => {
+      const chartNum = index + 1;
       
-      enrichedSimilarCharts.forEach((item, index) => {
-        if (item.type === 'bundle' && item.bundle && item.charts) {
-          contextSection += `\n${index + 1}. BUNDLE CONTEXT - ${item.bundle.instrument} (Similarity: ${(item.similarity * 100).toFixed(1)}%)\n`;
-          contextSection += `   Bundle ID: ${item.bundle.id}\n`;
-          contextSection += `   Session: ${item.bundle.session || 'Unknown'}\n`;
-          contextSection += `   Multi-timeframe analysis:\n`;
-          
-          item.charts.forEach((chart: any) => {
-            contextSection += `     - ${chart.timeframe}: ${chart.originalName}\n`;
-            if (chart.comment) {
-              contextSection += `       Previous outcome: ${chart.comment}\n`;
+      if (item.type === 'individual' && item.chart) {
+        const chart = item.chart;
+        systemPrompt += `\n📊 Similar Chart #${chartNum}:
+- Image URL: /uploads/${chart.filename}
+- Depth Map: ${chart.depthMapPath || 'Not available'}
+- Instrument: ${chart.instrument}
+- Timeframe: ${chart.timeframe}
+- Session: ${chart.session || 'Unknown'}
+- Similarity: ${(item.similarity * 100).toFixed(1)}%
+- Outcome: ${chart.comment || 'Not recorded'}
+
+---`;
+      } else if (item.type === 'bundle' && item.bundle && item.charts) {
+        const bundle = item.bundle;
+        const primaryChart = item.charts[0]; // Use first chart as primary
+        
+        systemPrompt += `\n📊 Similar Chart #${chartNum}:
+- Image URL: /uploads/${primaryChart.filename}
+- Depth Map: ${primaryChart.depthMapPath || 'Not available'}
+- Instrument: ${bundle.instrument}
+- Timeframe: ${primaryChart.timeframe}
+- Session: ${bundle.session || 'Unknown'}
+- Similarity: ${(item.similarity * 100).toFixed(1)}%
+- Outcome: ${primaryChart.comment || 'Not recorded'}
+
+📦 Bundle Context for Similar Chart #${chartNum}:`;
+        
+        item.charts.forEach((chart: any) => {
+          systemPrompt += `\n- Timeframe: ${chart.timeframe}
+- Image: /uploads/${chart.filename}
+- Depth Map: ${chart.depthMapPath || 'Not available'}`;
+        });
+        
+        // Add bundle analysis outcome if available
+        if (item.analysis) {
+          try {
+            const analysisData = JSON.parse(item.analysis.gptAnalysis);
+            if (analysisData.prediction) {
+              systemPrompt += `\nBundle Outcome: ${analysisData.prediction} (Confidence: ${analysisData.confidence})`;
             }
-          });
-          
-          if (item.analysis) {
-            try {
-              const analysisData = JSON.parse(item.analysis.gptAnalysis);
-              if (analysisData.prediction) {
-                contextSection += `   Previous prediction: ${analysisData.prediction}\n`;
-                contextSection += `   Previous confidence: ${analysisData.confidence}\n`;
-              }
-            } catch (e) {
-              // If analysis parsing fails, skip it
-            }
-          }
-          
-        } else if (item.type === 'individual' && item.chart) {
-          contextSection += `\n${index + 1}. Individual Chart - ${item.chart.instrument} ${item.chart.timeframe} (Similarity: ${(item.similarity * 100).toFixed(1)}%)\n`;
-          contextSection += `   Uploaded: ${new Date(item.chart.uploadedAt).toLocaleDateString()}\n`;
-          if (item.chart.comment) {
-            contextSection += `   Previous outcome: ${item.chart.comment}\n`;
+          } catch (e) {
+            // If analysis parsing fails, skip it
           }
         }
-      });
-    }
+        
+        systemPrompt += `\n\n---`;
+      }
+    });
 
-    const prompt = `You are an expert trading analyst with access to historical chart patterns and outcomes. Analyze this new trading chart with the context of similar patterns.
+    systemPrompt += `\n\n🧠 TASK:
+1. Compare the new chart to the similar charts and any bundle patterns.
+2. Based on breakout setups, EMA structure, session tagging, and depth cues, determine:
+   - Which **market session** is most likely to produce a move.
+   - Direction bias (up or down)
+   - Confidence (low, medium, high)
+   - One-paragraph rationale comparing similarities.
 
-ANALYSIS REQUIREMENTS:
-1. Current trend direction and strength
-2. Key support and resistance levels  
-3. Chart patterns (triangles, flags, head & shoulders, etc.)
-4. Volume analysis if visible
-5. Potential price targets and entry/exit points
-6. Risk assessment
+---
 
-CONTEXTUAL ANALYSIS:
-${contextSection}
-
-IMPORTANT: Use the similar chart patterns and bundle contexts to inform your analysis. Pay special attention to:
-- Multi-timeframe confirmation when bundle context is available
-- Historical outcomes from similar setups
-- Session-based timing patterns
-- Previous prediction accuracy
-
-Please provide your analysis in a structured format and rate your confidence level from 1-10.`;
+🎯 Output JSON format only:
+\`\`\`json
+{
+  "session": "London",
+  "direction": "up",
+  "confidence": "medium",
+  "rationale": "The EMA structure and breakout zone are most similar to Chart #2 (NY session), which had a strong rally. Bundle #2 shows aligned lower-timeframe confirmation across 15m, 1h, and 4h."
+}
+\`\`\``;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -349,7 +383,7 @@ Please provide your analysis in a structured format and rate your confidence lev
           content: [
             {
               type: "text",
-              text: prompt,
+              text: systemPrompt,
             },
             {
               type: "image_url",
@@ -360,22 +394,43 @@ Please provide your analysis in a structured format and rate your confidence lev
           ],
         },
       ],
-      max_tokens: 1500,
+      response_format: { type: "json_object" },
+      max_tokens: 1000,
     });
 
     const analysisText = response.choices[0].message.content || "";
     
-    // Parse the response to extract structured data
-    const confidence = extractConfidenceScore(analysisText);
-    const trends = extractTrends(analysisText);
-    const patterns = extractPatterns(analysisText);
+    try {
+      const parsedResult = JSON.parse(analysisText);
+      
+      // Validate the response format
+      if (!parsedResult.session || !parsedResult.direction || !parsedResult.confidence || !parsedResult.rationale) {
+        throw new Error("Invalid response format from GPT");
+      }
 
-    return {
-      analysis: analysisText,
-      confidence,
-      trends,
-      patterns,
-    };
+      // Map the structured response to AnalysisResult format
+      return {
+        analysis: `Session: ${parsedResult.session}\nDirection: ${parsedResult.direction}\nConfidence: ${parsedResult.confidence}\n\nRationale: ${parsedResult.rationale}`,
+        confidence: parsedResult.confidence === 'high' ? 0.9 : parsedResult.confidence === 'medium' ? 0.7 : 0.5,
+        trends: [parsedResult.direction === 'up' ? 'bullish' : parsedResult.direction === 'down' ? 'bearish' : 'sideways'],
+        patterns: [], // Will be extracted from analysis if needed
+      };
+    } catch (parseError) {
+      console.error("Failed to parse GPT response:", analysisText);
+      
+      // Fallback to legacy format parsing
+      const confidence = extractConfidenceScore(analysisText);
+      const trends = extractTrends(analysisText);
+      const patterns = extractPatterns(analysisText);
+
+      return {
+        analysis: analysisText,
+        confidence,
+        trends,
+        patterns,
+      };
+    }
+
   } catch (error) {
     console.error("Enhanced GPT analysis error:", error);
     throw new Error(`Enhanced chart analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
