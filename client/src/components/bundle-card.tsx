@@ -51,8 +51,8 @@ export default function BundleCard({ bundle, onAnalyze }: BundleCardProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/bundles'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/charts'] });
+      queryClient.invalidateQueries({ queryKey: ['bundles'] });
+      queryClient.invalidateQueries({ queryKey: ['charts'] });
       toast({
         title: "Bundle Deleted",
         description: "Chart bundle has been successfully deleted.",

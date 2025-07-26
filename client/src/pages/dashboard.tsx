@@ -42,6 +42,11 @@ export default function DashboardPage() {
 
   const { data: bundlesData, isLoading: isLoadingBundles } = useQuery({
     queryKey: ['bundles'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/bundles');
+      const data = await response.json();
+      return data;
+    },
     select: (data: any) => data.bundles as (ChartBundle & { parsedMetadata: BundleMetadata })[],
     staleTime: 0,
     gcTime: 1000 * 60 * 5,
@@ -106,8 +111,8 @@ export default function DashboardPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/charts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/bundles'] });
+      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      queryClient.invalidateQueries({ queryKey: ['bundles'] });
       setSelectedCharts(new Set());
       toast({
         title: "Bundle Created",
