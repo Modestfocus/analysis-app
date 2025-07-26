@@ -20,6 +20,8 @@ export default function UploadPage() {
   const [currentChartId, setCurrentChartId] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileTimeframes, setFileTimeframes] = useState<Record<string, Timeframe>>({});
+  const [quickAnalysisFiles, setQuickAnalysisFiles] = useState<File[]>([]);
+  const [quickAnalysisTimeframes, setQuickAnalysisTimeframes] = useState<Record<string, Timeframe>>({});
   const { toast } = useToast();
 
   // Helper functions for file timeframe management
@@ -87,16 +89,55 @@ export default function UploadPage() {
     analyzeUploadedChartsMutation.mutate(selectedFiles);
   };
 
-  const handleQuickAnalysis = (files: FileList) => {
-    if (files.length === 0) {
+  const handleQuickAnalysisFiles = (files: FileList) => {
+    // Add new files to quick analysis instead of replacing
+    setQuickAnalysisFiles(prev => {
+      const existingNames = prev.map(f => f.name);
+      const newFiles = Array.from(files).filter(file => !existingNames.includes(file.name));
+      return [...prev, ...newFiles];
+    });
+    
+    // Initialize timeframes for new files
+    const newTimeframes = { ...quickAnalysisTimeframes };
+    Array.from(files).forEach(file => {
+      if (!newTimeframes[file.name]) {
+        newTimeframes[file.name] = "5M";
+      }
+    });
+    setQuickAnalysisTimeframes(newTimeframes);
+  };
+
+  const updateQuickAnalysisTimeframe = (fileName: string, timeframe: Timeframe) => {
+    setQuickAnalysisTimeframes(prev => ({
+      ...prev,
+      [fileName]: timeframe
+    }));
+  };
+
+  const removeQuickAnalysisFile = (index: number) => {
+    const fileToRemove = quickAnalysisFiles[index];
+    setQuickAnalysisFiles(prev => prev.filter((_, i) => i !== index));
+    
+    const newTimeframes = { ...quickAnalysisTimeframes };
+    delete newTimeframes[fileToRemove.name];
+    setQuickAnalysisTimeframes(newTimeframes);
+  };
+
+  const clearQuickAnalysisFiles = () => {
+    setQuickAnalysisFiles([]);
+    setQuickAnalysisTimeframes({});
+  };
+
+  const runQuickAnalysis = () => {
+    if (quickAnalysisFiles.length === 0) {
       toast({
         title: "No Files Selected",
-        description: "Please select at least one chart image for quick analysis.",
+        description: "Please add at least one chart image for quick analysis.",
         variant: "destructive",
       });
       return;
     }
-    quickAnalysisMutation.mutate(files);
+    quickAnalysisMutation.mutate(quickAnalysisFiles);
   };
 
   const analyzeChartsMutation = useMutation({
@@ -235,19 +276,66 @@ export default function UploadPage() {
   });
 
   const quickAnalysisMutation = useMutation({
-    mutationFn: async (files: FileList) => {
+    mutationFn: async (files: File[]) => {
       const formData = new FormData();
-      formData.append('chart', files[0]);
-      formData.append('quickAnalysis', 'true');
+      
+      // Add all files to FormData
+      files.forEach((file) => {
+        formData.append('charts', file);
+      });
+      
+      // Add timeframe mapping as JSON string for quick analysis
+      const timeframeMapping: Record<string, string> = {};
+      files.forEach((file) => {
+        timeframeMapping[file.name] = quickAnalysisTimeframes[file.name] || "5M";
+      });
+      formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
+      
+      if (selectedInstrument && selectedInstrument !== "auto") {
+        formData.append('instrument', selectedInstrument);
+      }
+      if (selectedSession) {
+        formData.append('session', selectedSession);
+      }
 
-      const response = await apiRequest('POST', '/api/analyze', formData);
-      return response.json();
+      // Upload all charts with individual timeframes
+      const uploadResponse = await apiRequest('POST', '/api/upload', formData);
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadData.success) {
+        throw new Error('Upload failed for quick analysis');
+      }
+
+      const chartIds = uploadData.charts.map((chart: any) => chart.id);
+      const firstChart = uploadData.charts[0];
+      
+      // Generate depth map for the first chart
+      await apiRequest('POST', '/api/depth', { chartId: firstChart.id });
+
+      // Analyze the first chart using new RAG endpoint
+      const analysisResponse = await apiRequest('POST', `/api/analyze/${firstChart.id}`);
+      const analysisData = await analysisResponse.json();
+      
+      // Clean up all temporary charts
+      await Promise.all(chartIds.map((id: number) => 
+        apiRequest('DELETE', `/api/charts/${id}`)
+      ));
+      
+      return {
+        ...analysisData,
+        mainChartPath: `/uploads/${firstChart.filename}`,
+        isQuickAnalysis: true,
+        chartCount: uploadData.charts.length,
+        timeframes: Object.values(timeframeMapping)
+      };
     },
     onSuccess: (data) => {
       setAnalysisResults(data);
+      setQuickAnalysisFiles([]);
+      setQuickAnalysisTimeframes({});
       toast({
         title: "Quick Analysis Complete",
-        description: "Chart analysis completed (not saved).",
+        description: `Chart analysis completed for ${data.chartCount} file(s) (not saved).`,
       });
     },
     onError: (error) => {
@@ -596,27 +684,86 @@ export default function UploadPage() {
               </h2>
               
               <DragDropZone
-                onFilesSelected={handleQuickAnalysis}
+                onFilesSelected={handleQuickAnalysisFiles}
                 className="mb-6 hover:border-amber-400"
                 isLoading={quickAnalysisMutation.isPending}
-                placeholder="Paste or Drag & Drop chart image(s) here"
-                multiple={false}
+                placeholder="Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here"
+                multiple={true}
               />
 
+              {/* Quick Analysis Files Preview */}
+              {quickAnalysisFiles.length > 0 && (
+                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Quick Analysis Files ({quickAnalysisFiles.length})
+                    </h3>
+                    <Button 
+                      onClick={clearQuickAnalysisFiles}
+                      variant="outline" 
+                      size="sm" 
+                      className="text-amber-600 hover:text-amber-700 border-amber-300"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {quickAnalysisFiles.map((file, index) => {
+                      const imageUrl = URL.createObjectURL(file);
+                      return (
+                        <div key={index} className="bg-white dark:bg-gray-700 p-2 rounded border">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <div className="flex-shrink-0">
+                              <img 
+                                src={imageUrl} 
+                                alt={file.name}
+                                className="w-10 h-10 object-cover rounded border"
+                                onLoad={() => URL.revokeObjectURL(imageUrl)}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block">
+                                {file.name}
+                              </span>
+                            </div>
+                            <Button
+                              onClick={() => removeQuickAnalysisFile(index)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-400 hover:text-red-500 h-6 w-6 p-0 flex-shrink-0"
+                            >
+                              ×
+                            </Button>
+                          </div>
+                          
+                          {/* Individual Timeframe Selector */}
+                          <div className="flex items-center space-x-1 ml-13">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">Timeframe:</span>
+                            <div className="flex space-x-1">
+                              {["5M", "15M", "1H", "4H", "Daily"].map((timeframe) => (
+                                <Button
+                                  key={timeframe}
+                                  size="sm"
+                                  variant={quickAnalysisTimeframes[file.name] === timeframe ? "default" : "outline"}
+                                  onClick={() => updateQuickAnalysisTimeframe(file.name, timeframe as Timeframe)}
+                                  className="h-5 text-xs px-1"
+                                >
+                                  {timeframe}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <Button 
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = 'image/*';
-                  input.multiple = true;
-                  input.onchange = (e) => {
-                    const files = (e.target as HTMLInputElement).files;
-                    if (files) handleQuickAnalysis(files);
-                  };
-                  input.click();
-                }}
+                onClick={runQuickAnalysis}
                 className="w-full bg-amber-500 hover:bg-amber-600"
-                disabled={quickAnalysisMutation.isPending}
+                disabled={quickAnalysisMutation.isPending || quickAnalysisFiles.length === 0}
               >
                 {quickAnalysisMutation.isPending ? (
                   <>
@@ -626,7 +773,7 @@ export default function UploadPage() {
                 ) : (
                   <>
                     <Bolt className="mr-2 h-4 w-4" />
-                    Run Quick Analysis
+                    Run Quick Analysis {quickAnalysisFiles.length > 0 && `(${quickAnalysisFiles.length} files)`}
                   </>
                 )}
               </Button>

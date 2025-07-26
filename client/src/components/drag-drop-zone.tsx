@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { CloudUpload, ChartBar } from "lucide-react";
 
@@ -51,7 +51,44 @@ export default function DragDropZone({
       if (files) onFilesSelected(files);
     };
     input.click();
+  }, [isLoading, onFilesSelected, multiple]);
+
+  const handlePaste = useCallback(async (e: ClipboardEvent) => {
+    if (isLoading) return;
+    
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          // Create a new file with a proper name
+          const timestamp = Date.now();
+          const extension = file.type.split('/')[1] || 'png';
+          const newFile = new File([file], `pasted-chart-${timestamp}.${extension}`, {
+            type: file.type
+          });
+          files.push(newFile);
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      const fileList = new DataTransfer();
+      files.forEach(file => fileList.items.add(file));
+      onFilesSelected(fileList.files);
+    }
   }, [isLoading, onFilesSelected]);
+
+  // Add global paste event listener
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => handlePaste(e);
+    document.addEventListener('paste', handleGlobalPaste);
+    return () => document.removeEventListener('paste', handleGlobalPaste);
+  }, [handlePaste]);
 
   return (
     <div
@@ -80,7 +117,7 @@ export default function DragDropZone({
             {placeholder}
           </p>
           <p className="text-sm text-gray-500">
-            Supports PNG, JPG, GIF up to 10MB {multiple && "(Multiple files supported)"}
+            Supports PNG, JPG, GIF up to 10MB {multiple && "(Multiple files supported)"} • Press Ctrl/Cmd+V to paste
           </p>
         </>
       )}
