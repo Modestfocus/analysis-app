@@ -27,8 +27,10 @@ export default function DashboardPage() {
       const url = selectedTimeframe === "All" 
         ? '/api/charts'
         : `/api/charts?timeframe=${encodeURIComponent(selectedTimeframe)}`;
+      console.log('Dashboard API call:', url, 'selectedTimeframe:', selectedTimeframe);
       const response = await apiRequest('GET', url);
       const data = await response.json();
+      console.log('Dashboard API response:', data);
       return data;
     },
   });
