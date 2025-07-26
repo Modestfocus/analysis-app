@@ -7,7 +7,7 @@ import fs from "fs/promises";
 import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
-import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT } from "./services/openai";
+import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext } from "./services/openai";
 import { insertChartSchema, insertAnalysisSchema, type Chart } from "@shared/schema";
 
 // Ensure upload directories exist
@@ -349,6 +349,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3);
 
+      // ENHANCED: Check if any similar charts belong to bundles and include bundle context
+      const enrichedSimilarCharts: Array<{
+        type: 'individual' | 'bundle';
+        chart?: any;
+        bundle?: any;
+        charts?: any[];
+        similarity: number;
+        analysis?: any;
+      }> = [];
+      const processedBundles = new Set<string>();
+
+      for (const similarChart of similarCharts) {
+        if (similarChart.chart.bundleId && !processedBundles.has(similarChart.chart.bundleId)) {
+          // This chart belongs to a bundle - include the entire bundle
+          processedBundles.add(similarChart.chart.bundleId);
+          
+          const bundle = await storage.getBundle(similarChart.chart.bundleId);
+          const bundleCharts = await storage.getChartsByBundleId(similarChart.chart.bundleId);
+          
+          if (bundle && bundleCharts.length > 0) {
+            // Get analysis for this bundle if it exists
+            const bundleAnalysis = await storage.getAnalysisByBundleId(similarChart.chart.bundleId);
+            
+            enrichedSimilarCharts.push({
+              type: 'bundle' as const,
+              bundle,
+              charts: bundleCharts,
+              similarity: similarChart.similarity,
+              analysis: bundleAnalysis
+            });
+          }
+        } else if (!similarChart.chart.bundleId) {
+          // Individual chart not part of a bundle
+          enrichedSimilarCharts.push({
+            type: 'individual' as const,
+            chart: similarChart.chart,
+            similarity: similarChart.similarity
+          });
+        }
+      }
+
       // Convert image to base64 for GPT-4o
       const imageBuffer = await fs.readFile(chartImagePath);
       const chartImageBase64 = imageBuffer.toString('base64');
@@ -364,10 +405,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         depthMapBase64 = depthBuffer.toString('base64');
       }
 
-      // Analyze with GPT-4o
-      const analysis = await analyzeChartWithGPT(
+      // Analyze with enhanced GPT-4o (including bundle context)
+      const analysis = await analyzeChartWithEnhancedContext(
         chartImagePath,
-        similarCharts
+        enrichedSimilarCharts
       );
 
       // Save analysis if not quick mode
@@ -401,7 +442,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: sc.chart.originalName,
           timeframe: sc.chart.timeframe,
           similarity: Math.round(sc.similarity * 100)
-        }))
+        })),
+        enrichedContext: enrichedSimilarCharts.map(item => {
+          if (item.type === 'bundle' && item.bundle && item.charts) {
+            return {
+              type: 'bundle',
+              bundleId: item.bundle.id,
+              instrument: item.bundle.instrument,
+              session: item.bundle.session,
+              similarity: Math.round(item.similarity * 100),
+              chartsCount: item.charts.length,
+              timeframes: item.charts.map(c => c.timeframe),
+              hasAnalysis: !!item.analysis
+            };
+          } else if (item.type === 'individual' && item.chart) {
+            return {
+              type: 'individual',
+              chartId: item.chart.id,
+              name: item.chart.originalName,
+              timeframe: item.chart.timeframe,
+              similarity: Math.round(item.similarity * 100)
+            };
+          } else {
+            return {
+              type: 'unknown',
+              similarity: Math.round(item.similarity * 100)
+            };
+          }
+        })
       });
     } catch (error) {
       console.error('Analysis error:', error);

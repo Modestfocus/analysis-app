@@ -262,6 +262,126 @@ function extractPatterns(text: string): string[] {
   return patterns;
 }
 
+// Enhanced analysis function that handles both individual charts and bundle context
+export async function analyzeChartWithEnhancedContext(
+  chartImagePath: string,
+  enrichedSimilarCharts: Array<{
+    type: 'individual' | 'bundle';
+    chart?: any;
+    bundle?: any;
+    charts?: any[];
+    similarity: number;
+    analysis?: any;
+  }> = []
+): Promise<AnalysisResult> {
+  try {
+    // Read and encode the main chart image
+    const imageBuffer = fs.readFileSync(chartImagePath);
+    const base64Image = imageBuffer.toString('base64');
+
+    // Build enhanced context from similar charts and bundles
+    let contextSection = "";
+    if (enrichedSimilarCharts.length > 0) {
+      contextSection = "\n\nSimilar charts and patterns for context:\n";
+      
+      enrichedSimilarCharts.forEach((item, index) => {
+        if (item.type === 'bundle' && item.bundle && item.charts) {
+          contextSection += `\n${index + 1}. BUNDLE CONTEXT - ${item.bundle.instrument} (Similarity: ${(item.similarity * 100).toFixed(1)}%)\n`;
+          contextSection += `   Bundle ID: ${item.bundle.id}\n`;
+          contextSection += `   Session: ${item.bundle.session || 'Unknown'}\n`;
+          contextSection += `   Multi-timeframe analysis:\n`;
+          
+          item.charts.forEach((chart: any) => {
+            contextSection += `     - ${chart.timeframe}: ${chart.originalName}\n`;
+            if (chart.comment) {
+              contextSection += `       Previous outcome: ${chart.comment}\n`;
+            }
+          });
+          
+          if (item.analysis) {
+            try {
+              const analysisData = JSON.parse(item.analysis.gptAnalysis);
+              if (analysisData.prediction) {
+                contextSection += `   Previous prediction: ${analysisData.prediction}\n`;
+                contextSection += `   Previous confidence: ${analysisData.confidence}\n`;
+              }
+            } catch (e) {
+              // If analysis parsing fails, skip it
+            }
+          }
+          
+        } else if (item.type === 'individual' && item.chart) {
+          contextSection += `\n${index + 1}. Individual Chart - ${item.chart.instrument} ${item.chart.timeframe} (Similarity: ${(item.similarity * 100).toFixed(1)}%)\n`;
+          contextSection += `   Uploaded: ${new Date(item.chart.uploadedAt).toLocaleDateString()}\n`;
+          if (item.chart.comment) {
+            contextSection += `   Previous outcome: ${item.chart.comment}\n`;
+          }
+        }
+      });
+    }
+
+    const prompt = `You are an expert trading analyst with access to historical chart patterns and outcomes. Analyze this new trading chart with the context of similar patterns.
+
+ANALYSIS REQUIREMENTS:
+1. Current trend direction and strength
+2. Key support and resistance levels  
+3. Chart patterns (triangles, flags, head & shoulders, etc.)
+4. Volume analysis if visible
+5. Potential price targets and entry/exit points
+6. Risk assessment
+
+CONTEXTUAL ANALYSIS:
+${contextSection}
+
+IMPORTANT: Use the similar chart patterns and bundle contexts to inform your analysis. Pay special attention to:
+- Multi-timeframe confirmation when bundle context is available
+- Historical outcomes from similar setups
+- Session-based timing patterns
+- Previous prediction accuracy
+
+Please provide your analysis in a structured format and rate your confidence level from 1-10.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 1500,
+    });
+
+    const analysisText = response.choices[0].message.content || "";
+    
+    // Parse the response to extract structured data
+    const confidence = extractConfidenceScore(analysisText);
+    const trends = extractTrends(analysisText);
+    const patterns = extractPatterns(analysisText);
+
+    return {
+      analysis: analysisText,
+      confidence,
+      trends,
+      patterns,
+    };
+  } catch (error) {
+    console.error("Enhanced GPT analysis error:", error);
+    throw new Error(`Enhanced chart analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 // Multi-timeframe bundle analysis with structured prompt and RAG
 export async function analyzeBundleWithGPT(
   chartData: Array<{ chart: any; base64Image: string; depthMapBase64?: string }>,
