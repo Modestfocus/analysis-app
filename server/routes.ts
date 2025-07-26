@@ -9,22 +9,23 @@ import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext } from "./services/openai";
 import { insertChartSchema, insertAnalysisSchema, type Chart } from "@shared/schema";
+import debugRoutes from './debug-routes';
 
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
 const depthmapsDir = path.join(process.cwd(), "server", "depthmaps");
+const edgemapsDir = path.join(process.cwd(), "server", "edgemaps");
+const gradientmapsDir = path.join(process.cwd(), "server", "gradientmaps");
+const tempDir = path.join(process.cwd(), "server", "temp");
 
 async function ensureDirectories() {
-  try {
-    await fs.access(uploadsDir);
-  } catch {
-    await fs.mkdir(uploadsDir, { recursive: true });
-  }
-  
-  try {
-    await fs.access(depthmapsDir);
-  } catch {
-    await fs.mkdir(depthmapsDir, { recursive: true });
+  const dirs = [uploadsDir, depthmapsDir, edgemapsDir, gradientmapsDir, tempDir];
+  for (const dir of dirs) {
+    try {
+      await fs.access(dir);
+    } catch {
+      await fs.mkdir(dir, { recursive: true });
+    }
   }
 }
 
@@ -73,13 +74,19 @@ function extractInstrumentFromFilename(filename: string): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   await ensureDirectories();
 
-  // Serve uploaded files
+  // Register debug routes
+  app.use('/debug', debugRoutes);
+
+  // Serve uploaded files and generated maps
   app.use('/uploads', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     next();
   });
   app.use('/uploads', express.static(uploadsDir));
   app.use('/depthmaps', express.static(depthmapsDir));
+  app.use('/edgemaps', express.static(edgemapsDir));
+  app.use('/gradientmaps', express.static(gradientmapsDir));
+  app.use('/temp', express.static(tempDir));
 
   // Multi-file upload route with automatic CLIP embedding
   app.post('/api/upload', upload.array('charts', 10), async (req, res) => {

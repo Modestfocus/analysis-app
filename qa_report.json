@@ -1,0 +1,2154 @@
+{
+  "timestamp": "2025-07-26T22:55:10.213Z",
+  "totalCharts": 107,
+  "summary": {
+    "withClipEmbedding": 107,
+    "withDepthMap": 107,
+    "withEdgeMap": 107,
+    "withGradientMap": 107,
+    "completeProcessing": 107,
+    "grayscaleProcessingConfirmed": 107
+  },
+  "charts": [
+    {
+      "id": 152,
+      "originalName": "img94.jpg",
+      "timeframe": "5M",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554628648-722673903.png",
+      "edgeMapPath": "/edgemaps/chart_152_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_152_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 151,
+      "originalName": "img93.jpg",
+      "timeframe": "5M",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554618978-845677009.png",
+      "edgeMapPath": "/edgemaps/chart_151_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_151_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 150,
+      "originalName": "img90.jpg",
+      "timeframe": "Daily",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554610095-460233397.png",
+      "edgeMapPath": "/edgemaps/chart_150_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_150_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 149,
+      "originalName": "img89.jpg",
+      "timeframe": "5M",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554592602-254280722.png",
+      "edgeMapPath": "/edgemaps/chart_149_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_149_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 148,
+      "originalName": "img86.jpg",
+      "timeframe": "5M",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554578193-724723953.png",
+      "edgeMapPath": "/edgemaps/chart_148_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_148_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 147,
+      "originalName": "img85.jpg",
+      "timeframe": "5M",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554531198-702917485.png",
+      "edgeMapPath": "/edgemaps/chart_147_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_147_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 146,
+      "originalName": "img82.jpg",
+      "timeframe": "5M",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554516366-172609324.png",
+      "edgeMapPath": "/edgemaps/chart_146_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_146_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 145,
+      "originalName": "img81.jpg",
+      "timeframe": "Daily",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554508279-633535000.png",
+      "edgeMapPath": "/edgemaps/chart_145_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_145_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 144,
+      "originalName": "img78.jpg",
+      "timeframe": "Daily",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554500647-478624470.png",
+      "edgeMapPath": "/edgemaps/chart_144_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_144_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 143,
+      "originalName": "img75.jpg",
+      "timeframe": "5M",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554412499-812503058.png",
+      "edgeMapPath": "/edgemaps/chart_143_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_143_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 142,
+      "originalName": "img74.jpg",
+      "timeframe": "5M",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554411832-245922758.png",
+      "edgeMapPath": "/edgemaps/chart_142_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_142_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 141,
+      "originalName": "img71.jpg",
+      "timeframe": "1H",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554411272-284643695.png",
+      "edgeMapPath": "/edgemaps/chart_141_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_141_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 140,
+      "originalName": "img70.jpg",
+      "timeframe": "4H",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554410941-916449716.png",
+      "edgeMapPath": "/edgemaps/chart_140_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_140_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 139,
+      "originalName": "img67.jpg",
+      "timeframe": "Daily",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554410300-990368131.png",
+      "edgeMapPath": "/edgemaps/chart_139_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_139_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 138,
+      "originalName": "img63.jpg",
+      "timeframe": "5M",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554333810-481795796.png",
+      "edgeMapPath": "/edgemaps/chart_138_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_138_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 137,
+      "originalName": "img62.jpg",
+      "timeframe": "5M",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554333408-504383970.png",
+      "edgeMapPath": "/edgemaps/chart_137_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_137_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 136,
+      "originalName": "img59.jpg",
+      "timeframe": "1H",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554332744-909901048.png",
+      "edgeMapPath": "/edgemaps/chart_136_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_136_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 135,
+      "originalName": "img58.jpg",
+      "timeframe": "Daily",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554332195-57809550.png",
+      "edgeMapPath": "/edgemaps/chart_135_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_135_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 134,
+      "originalName": "img55.jpg",
+      "timeframe": "5M",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554274025-825777149.png",
+      "edgeMapPath": "/edgemaps/chart_134_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_134_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 133,
+      "originalName": "img54.jpg",
+      "timeframe": "1H",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554273964-481486781.png",
+      "edgeMapPath": "/edgemaps/chart_133_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_133_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 132,
+      "originalName": "img51.jpg",
+      "timeframe": "Daily",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554273918-394397796.png",
+      "edgeMapPath": "/edgemaps/chart_132_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_132_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 131,
+      "originalName": "img50.jpg",
+      "timeframe": "5M",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554205629-765245519.png",
+      "edgeMapPath": "/edgemaps/chart_131_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_131_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 130,
+      "originalName": "img47.jpg",
+      "timeframe": "1H",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554205606-147354564.png",
+      "edgeMapPath": "/edgemaps/chart_130_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_130_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 129,
+      "originalName": "img44.jpg",
+      "timeframe": "Daily",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554205605-296395938.png",
+      "edgeMapPath": "/edgemaps/chart_129_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_129_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 128,
+      "originalName": "img41.jpg",
+      "timeframe": "1H",
+      "instrument": "BTCUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554044566-772016862.png",
+      "edgeMapPath": "/edgemaps/chart_128_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_128_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 127,
+      "originalName": "img40.jpg",
+      "timeframe": "Daily",
+      "instrument": "BTCUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753554007819-856389187.png",
+      "edgeMapPath": "/edgemaps/chart_127_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_127_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 126,
+      "originalName": "img37.jpg",
+      "timeframe": "Daily",
+      "instrument": "EURJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553986969-803596335.png",
+      "edgeMapPath": "/edgemaps/chart_126_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_126_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 125,
+      "originalName": "img31.jpg",
+      "timeframe": "Daily",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553963699-223335980.png",
+      "edgeMapPath": "/edgemaps/chart_125_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_125_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 124,
+      "originalName": "img28.jpg",
+      "timeframe": "Daily",
+      "instrument": "USDJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553940468-315915084.png",
+      "edgeMapPath": "/edgemaps/chart_124_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_124_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 123,
+      "originalName": "img25.jpg",
+      "timeframe": "Daily",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553924584-584858443.png",
+      "edgeMapPath": "/edgemaps/chart_123_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_123_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 122,
+      "originalName": "img22.jpg",
+      "timeframe": "Daily",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553907169-37801649.png",
+      "edgeMapPath": "/edgemaps/chart_122_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_122_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 121,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-021.jpg",
+      "timeframe": "5M",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553766828-667588444.png",
+      "edgeMapPath": "/edgemaps/chart_121_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_121_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 120,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-020.jpg",
+      "timeframe": "5M",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553766782-584639737.png",
+      "edgeMapPath": "/edgemaps/chart_120_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_120_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 119,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-019.jpg",
+      "timeframe": "5M",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553766679-989366170.png",
+      "edgeMapPath": "/edgemaps/chart_119_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_119_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 118,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-018.jpg",
+      "timeframe": "5M",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553766655-978972202.png",
+      "edgeMapPath": "/edgemaps/chart_118_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_118_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 117,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-017.jpg",
+      "timeframe": "4H",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553766651-998428395.png",
+      "edgeMapPath": "/edgemaps/chart_117_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_117_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 116,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-016.jpg",
+      "timeframe": "Daily",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553766651-36522431.png",
+      "edgeMapPath": "/edgemaps/chart_116_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_116_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 115,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-014.jpg",
+      "timeframe": "1H",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553692299-610275958.png",
+      "edgeMapPath": "/edgemaps/chart_115_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_115_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 114,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-013.jpg",
+      "timeframe": "4H",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553679950-804993825.png",
+      "edgeMapPath": "/edgemaps/chart_114_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_114_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 113,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-012.jpg",
+      "timeframe": "5M",
+      "instrument": "US30",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553618481-604001435.png",
+      "edgeMapPath": "/edgemaps/chart_113_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_113_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 112,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-010.jpg",
+      "timeframe": "Daily",
+      "instrument": "XAGUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553596680-938559926.png",
+      "edgeMapPath": "/edgemaps/chart_112_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_112_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 111,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-009.jpg",
+      "timeframe": "5M",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553498594-182956861.png",
+      "edgeMapPath": "/edgemaps/chart_111_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_111_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 110,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-008.jpg",
+      "timeframe": "5M",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553498455-577755803.png",
+      "edgeMapPath": "/edgemaps/chart_110_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_110_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 109,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-007.jpg",
+      "timeframe": "5M",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553498281-874460690.png",
+      "edgeMapPath": "/edgemaps/chart_109_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_109_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 108,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-006.jpg",
+      "timeframe": "1H",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553498100-719346517.png",
+      "edgeMapPath": "/edgemaps/chart_108_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_108_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 107,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-005.jpg",
+      "timeframe": "4H",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553497960-588269409.png",
+      "edgeMapPath": "/edgemaps/chart_107_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_107_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 106,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-004.jpg",
+      "timeframe": "Daily",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553497786-860984579.png",
+      "edgeMapPath": "/edgemaps/chart_106_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_106_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 105,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-003.jpg",
+      "timeframe": "1H",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553428440-197437982.png",
+      "edgeMapPath": "/edgemaps/chart_105_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_105_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 104,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-002.jpg",
+      "timeframe": "1H",
+      "instrument": "US30",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553408624-808557912.png",
+      "edgeMapPath": "/edgemaps/chart_104_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_104_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 103,
+      "originalName": "ACB Trade Setups  Pt 4.pdf-image-001.jpg",
+      "timeframe": "1H",
+      "instrument": "US30",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553383418-161932428.png",
+      "edgeMapPath": "/edgemaps/chart_103_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_103_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 102,
+      "originalName": "Mastering the best setups.pdf-image-058.jpg",
+      "timeframe": "5M",
+      "instrument": "EURCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553247699-723419087.png",
+      "edgeMapPath": "/edgemaps/chart_102_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_102_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 101,
+      "originalName": "Mastering the best setups.pdf-image-057.jpg",
+      "timeframe": "5M",
+      "instrument": "EURCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553247576-228048677.png",
+      "edgeMapPath": "/edgemaps/chart_101_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_101_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 100,
+      "originalName": "Mastering the best setups.pdf-image-056.jpg",
+      "timeframe": "1H",
+      "instrument": "EURCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553247507-626962548.png",
+      "edgeMapPath": "/edgemaps/chart_100_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_100_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 99,
+      "originalName": "Mastering the best setups.pdf-image-055.jpg",
+      "timeframe": "4H",
+      "instrument": "EURCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553247220-410520374.png",
+      "edgeMapPath": "/edgemaps/chart_99_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_99_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 98,
+      "originalName": "Mastering the best setups.pdf-image-054.jpg",
+      "timeframe": "Daily",
+      "instrument": "EURCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553247087-759240344.png",
+      "edgeMapPath": "/edgemaps/chart_98_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_98_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 97,
+      "originalName": "Mastering the best setups.pdf-image-053.jpg",
+      "timeframe": "5M",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553096433-838460099.png",
+      "edgeMapPath": "/edgemaps/chart_97_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_97_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 96,
+      "originalName": "Mastering the best setups.pdf-image-052.jpg",
+      "timeframe": "5M",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553096366-705361904.png",
+      "edgeMapPath": "/edgemaps/chart_96_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_96_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 95,
+      "originalName": "Mastering the best setups.pdf-image-051.jpg",
+      "timeframe": "1H",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553096288-477843268.png",
+      "edgeMapPath": "/edgemaps/chart_95_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_95_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 94,
+      "originalName": "Mastering the best setups.pdf-image-050.jpg",
+      "timeframe": "4H",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553096125-298498843.png",
+      "edgeMapPath": "/edgemaps/chart_94_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_94_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 93,
+      "originalName": "Mastering the best setups.pdf-image-049.jpg",
+      "timeframe": "4H",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553095980-929435606.png",
+      "edgeMapPath": "/edgemaps/chart_93_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_93_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 92,
+      "originalName": "Mastering the best setups.pdf-image-048.jpg",
+      "timeframe": "Daily",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753553095827-413136468.png",
+      "edgeMapPath": "/edgemaps/chart_92_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_92_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 91,
+      "originalName": "Mastering the best setups.pdf-image-047.jpg",
+      "timeframe": "5M",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552935880-445498196.png",
+      "edgeMapPath": "/edgemaps/chart_91_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_91_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 90,
+      "originalName": "Mastering the best setups.pdf-image-046.jpg",
+      "timeframe": "5M",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552935711-977687866.png",
+      "edgeMapPath": "/edgemaps/chart_90_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_90_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 89,
+      "originalName": "Mastering the best setups.pdf-image-045.jpg",
+      "timeframe": "1H",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552935523-197731028.png",
+      "edgeMapPath": "/edgemaps/chart_89_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_89_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 88,
+      "originalName": "Mastering the best setups.pdf-image-044.jpg",
+      "timeframe": "4H",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552935383-537056302.png",
+      "edgeMapPath": "/edgemaps/chart_88_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_88_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 87,
+      "originalName": "Mastering the best setups.pdf-image-043.jpg",
+      "timeframe": "Daily",
+      "instrument": "GBPCAD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552935255-685860045.png",
+      "edgeMapPath": "/edgemaps/chart_87_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_87_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 86,
+      "originalName": "Mastering the best setups.pdf-image-042.jpg",
+      "timeframe": "5M",
+      "instrument": "DAX40",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552813117-922999052.png",
+      "edgeMapPath": "/edgemaps/chart_86_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_86_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 85,
+      "originalName": "Mastering the best setups.pdf-image-041.jpg",
+      "timeframe": "5M",
+      "instrument": "DAX40",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552813097-302368350.png",
+      "edgeMapPath": "/edgemaps/chart_85_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_85_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 84,
+      "originalName": "Mastering the best setups.pdf-image-040.jpg",
+      "timeframe": "1H",
+      "instrument": "DAX40",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552813023-606636910.png",
+      "edgeMapPath": "/edgemaps/chart_84_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_84_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 83,
+      "originalName": "Mastering the best setups.pdf-image-039.jpg",
+      "timeframe": "4H",
+      "instrument": "DAX40",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552813023-273591669.png",
+      "edgeMapPath": "/edgemaps/chart_83_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_83_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 82,
+      "originalName": "Mastering the best setups.pdf-image-038.jpg",
+      "timeframe": "Daily",
+      "instrument": "DAX40",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552812989-882761242.png",
+      "edgeMapPath": "/edgemaps/chart_82_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_82_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 81,
+      "originalName": "Mastering the best setups.pdf-image-037.jpg",
+      "timeframe": "5M",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552685977-893244329.png",
+      "edgeMapPath": "/edgemaps/chart_81_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_81_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 80,
+      "originalName": "Mastering the best setups.pdf-image-036.jpg",
+      "timeframe": "1H",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552685963-26353092.png",
+      "edgeMapPath": "/edgemaps/chart_80_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_80_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 79,
+      "originalName": "Mastering the best setups.pdf-image-035.jpg",
+      "timeframe": "4H",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552685693-652819964.png",
+      "edgeMapPath": "/edgemaps/chart_79_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_79_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 78,
+      "originalName": "Mastering the best setups.pdf-image-034.jpg",
+      "timeframe": "Daily",
+      "instrument": "XAUUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552685565-182470549.png",
+      "edgeMapPath": "/edgemaps/chart_78_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_78_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 77,
+      "originalName": "Mastering the best setups.pdf-image-033.jpg",
+      "timeframe": "Daily",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552630435-312294491.png",
+      "edgeMapPath": "/edgemaps/chart_77_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_77_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 76,
+      "originalName": "Mastering the best setups.pdf-image-032.jpg",
+      "timeframe": "Daily",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552610133-537134837.png",
+      "edgeMapPath": "/edgemaps/chart_76_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_76_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 75,
+      "originalName": "Mastering the best setups.pdf-image-031.jpg",
+      "timeframe": "Daily",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552597878-836156583.png",
+      "edgeMapPath": "/edgemaps/chart_75_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_75_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 74,
+      "originalName": "Mastering the best setups.pdf-image-030.jpg",
+      "timeframe": "5M",
+      "instrument": "WTI",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552476535-786713804.png",
+      "edgeMapPath": "/edgemaps/chart_74_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_74_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 73,
+      "originalName": "Mastering the best setups.pdf-image-028.jpg",
+      "timeframe": "5M",
+      "instrument": "WTI",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552476495-817449547.png",
+      "edgeMapPath": "/edgemaps/chart_73_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_73_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 72,
+      "originalName": "Mastering the best setups.pdf-image-027.jpg",
+      "timeframe": "1H",
+      "instrument": "WTI",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552476423-677739348.png",
+      "edgeMapPath": "/edgemaps/chart_72_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_72_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 71,
+      "originalName": "Mastering the best setups.pdf-image-026.jpg",
+      "timeframe": "4H",
+      "instrument": "WTI",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552476380-700783647.png",
+      "edgeMapPath": "/edgemaps/chart_71_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_71_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 70,
+      "originalName": "Mastering the best setups.pdf-image-025.jpg",
+      "timeframe": "Daily",
+      "instrument": "WTI",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552476363-662771126.png",
+      "edgeMapPath": "/edgemaps/chart_70_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_70_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 69,
+      "originalName": "Mastering the best setups.pdf-image-024.jpg",
+      "timeframe": "5M",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552294064-330044583.png",
+      "edgeMapPath": "/edgemaps/chart_69_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_69_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 68,
+      "originalName": "Mastering the best setups.pdf-image-023.jpg",
+      "timeframe": "5M",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552294063-836888221.png",
+      "edgeMapPath": "/edgemaps/chart_68_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_68_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 67,
+      "originalName": "Mastering the best setups.pdf-image-022.jpg",
+      "timeframe": "1H",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552293588-134686968.png",
+      "edgeMapPath": "/edgemaps/chart_67_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_67_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 66,
+      "originalName": "Mastering the best setups.pdf-image-021.jpg",
+      "timeframe": "4H",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552293439-804914749.png",
+      "edgeMapPath": "/edgemaps/chart_66_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_66_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 65,
+      "originalName": "Mastering the best setups.pdf-image-020.jpg",
+      "timeframe": "Daily",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552293176-755452701.png",
+      "edgeMapPath": "/edgemaps/chart_65_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_65_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 64,
+      "originalName": "Mastering the best setups.pdf-image-019.jpg",
+      "timeframe": "5M",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552147203-254264669.png",
+      "edgeMapPath": "/edgemaps/chart_64_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_64_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 63,
+      "originalName": "Mastering the best setups.pdf-image-018.jpg",
+      "timeframe": "5M",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552147149-72101379.png",
+      "edgeMapPath": "/edgemaps/chart_63_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_63_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 62,
+      "originalName": "Mastering the best setups.pdf-image-017.jpg",
+      "timeframe": "1H",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552146992-938242942.png",
+      "edgeMapPath": "/edgemaps/chart_62_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_62_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 61,
+      "originalName": "Mastering the best setups.pdf-image-016.jpg",
+      "timeframe": "4H",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552146857-837995682.png",
+      "edgeMapPath": "/edgemaps/chart_61_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_61_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 60,
+      "originalName": "Mastering the best setups.pdf-image-015.jpg",
+      "timeframe": "Daily",
+      "instrument": "EURUSD",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753552146597-401922457.png",
+      "edgeMapPath": "/edgemaps/chart_60_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_60_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 59,
+      "originalName": "Mastering the best setups.pdf-image-014.jpg",
+      "timeframe": "5M",
+      "instrument": "US30",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551974561-971188617.png",
+      "edgeMapPath": "/edgemaps/chart_59_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_59_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 58,
+      "originalName": "Mastering the best setups.pdf-image-013.jpg",
+      "timeframe": "5M",
+      "instrument": "US30",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551974492-441685568.png",
+      "edgeMapPath": "/edgemaps/chart_58_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_58_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 57,
+      "originalName": "Mastering the best setups.pdf-image-012.jpg",
+      "timeframe": "1H",
+      "instrument": "US30",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551974439-63079295.png",
+      "edgeMapPath": "/edgemaps/chart_57_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_57_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 56,
+      "originalName": "Mastering the best setups.pdf-image-011.jpg",
+      "timeframe": "4H",
+      "instrument": "US30",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551974423-467680559.png",
+      "edgeMapPath": "/edgemaps/chart_56_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_56_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 55,
+      "originalName": "Mastering the best setups.pdf-image-010.jpg",
+      "timeframe": "Daily",
+      "instrument": "US30",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551974422-117753021.png",
+      "edgeMapPath": "/edgemaps/chart_55_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_55_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 54,
+      "originalName": "Mastering the best setups.pdf-image-009.jpg",
+      "timeframe": "15M",
+      "instrument": "EURJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551800139-535807352.png",
+      "edgeMapPath": "/edgemaps/chart_54_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_54_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 53,
+      "originalName": "Mastering the best setups.pdf-image-008.jpg",
+      "timeframe": "1H",
+      "instrument": "EURJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551799912-402426776.png",
+      "edgeMapPath": "/edgemaps/chart_53_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_53_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 52,
+      "originalName": "Mastering the best setups.pdf-image-007 copy.jpg",
+      "timeframe": "4H",
+      "instrument": "EURJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551799718-234302742.png",
+      "edgeMapPath": "/edgemaps/chart_52_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_52_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 51,
+      "originalName": "Mastering the best setups.pdf-image-006.jpg",
+      "timeframe": "Daily",
+      "instrument": "EURJPY",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551799386-146986437.png",
+      "edgeMapPath": "/edgemaps/chart_51_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_51_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 50,
+      "originalName": "Mastering the best setups.pdf-image-005.jpg",
+      "timeframe": "5M",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551594130-769521694.png",
+      "edgeMapPath": "/edgemaps/chart_50_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_50_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 49,
+      "originalName": "Mastering the best setups.pdf-image-004.jpg",
+      "timeframe": "1H",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551594088-482512909.png",
+      "edgeMapPath": "/edgemaps/chart_49_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_49_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 48,
+      "originalName": "Mastering the best setups.pdf-image-003.jpg",
+      "timeframe": "1H",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551593942-413950532.png",
+      "edgeMapPath": "/edgemaps/chart_48_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_48_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 47,
+      "originalName": "Mastering the best setups.pdf-image-002.jpg",
+      "timeframe": "4H",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551593787-705476323.png",
+      "edgeMapPath": "/edgemaps/chart_47_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_47_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    },
+    {
+      "id": 46,
+      "originalName": "Mastering the best setups.pdf-image-001.jpg",
+      "timeframe": "Daily",
+      "instrument": "NAS100",
+      "clip": true,
+      "depth": true,
+      "edge": true,
+      "gradient": true,
+      "complete": true,
+      "depthMapPath": "/depthmaps/depth_charts-1753551593477-378364564.png",
+      "edgeMapPath": "/edgemaps/chart_46_edge.png",
+      "gradientMapPath": "/gradientmaps/chart_46_gradient.png",
+      "fileExists": {
+        "original": true,
+        "depth": true,
+        "edge": true,
+        "gradient": true
+      }
+    }
+  ]
+}
