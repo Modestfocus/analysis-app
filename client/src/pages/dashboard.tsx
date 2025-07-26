@@ -27,16 +27,9 @@ export default function DashboardPage() {
       const url = selectedTimeframe === "All" 
         ? '/api/charts'
         : `/api/charts?timeframe=${encodeURIComponent(selectedTimeframe)}`;
-      console.log('Fetching charts from URL:', url);
       const response = await apiRequest('GET', url);
       const data = await response.json();
-      console.log('Charts API response:', data);
       return data;
-    },
-    select: (data: any) => {
-      const charts = data.charts as Chart[];
-      console.log('Selected charts:', charts);
-      return charts;
     },
   });
 
@@ -156,7 +149,7 @@ export default function DashboardPage() {
     }
   };
 
-  const charts = chartsData || [];
+  const charts = Array.isArray(chartsData?.charts) ? chartsData.charts : [];
   const bundles = bundlesData || [];
   const isLoading = showView === "charts" ? isLoadingCharts : isLoadingBundles;
 
