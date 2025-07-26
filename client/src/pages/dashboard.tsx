@@ -27,10 +27,17 @@ export default function DashboardPage() {
       const url = selectedTimeframe === "All" 
         ? '/api/charts'
         : `/api/charts?timeframe=${encodeURIComponent(selectedTimeframe)}`;
+      console.log('Fetching charts from URL:', url);
       const response = await apiRequest('GET', url);
-      return response.json();
+      const data = await response.json();
+      console.log('Charts API response:', data);
+      return data;
     },
-    select: (data: any) => data.charts as Chart[],
+    select: (data: any) => {
+      const charts = data.charts as Chart[];
+      console.log('Selected charts:', charts);
+      return charts;
+    },
   });
 
   const { data: bundlesData, isLoading: isLoadingBundles } = useQuery({
