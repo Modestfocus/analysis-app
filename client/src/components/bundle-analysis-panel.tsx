@@ -108,7 +108,6 @@ ${analysisData.rationale}
           </div>
         </div>
       </CardHeader>
-
       <CardContent className="space-y-6">
         {/* Prediction Summary */}
         <div className="rounded-lg border p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
@@ -182,7 +181,7 @@ ${analysisData.rationale}
           </h4>
           <div className="prose prose-sm max-w-none">
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border">
-              <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-mono leading-relaxed">
+              <pre className="whitespace-pre-wrap text-sm dark:text-gray-300 font-mono leading-relaxed text-[#ffffff]">
                 {analysisData.rationale}
               </pre>
             </div>
