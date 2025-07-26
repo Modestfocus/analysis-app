@@ -262,57 +262,75 @@ function extractPatterns(text: string): string[] {
   return patterns;
 }
 
-// Multi-timeframe bundle analysis
+// Multi-timeframe bundle analysis with structured prompt and RAG
 export async function analyzeBundleWithGPT(
   chartData: Array<{ chart: any; base64Image: string; depthMapBase64?: string }>,
   bundleMetadata: any
-): Promise<AnalysisResult> {
+): Promise<AnalysisResult & { prediction?: string; session?: string; confidence_level?: string; rationale?: string }> {
   try {
-    const instrument = bundleMetadata.instrument;
-    const timeframes = bundleMetadata.timeframes;
+    const { instrument, chart_ids, timeframes, session } = bundleMetadata;
     
-    // Build multi-timeframe context
-    const timeframeContext = chartData.map((data, index) => 
-      `${timeframes[index]} timeframe: Chart ${data.chart.id} (${data.chart.originalName})`
-    ).join('\n');
+    // Sort chart data by timeframe priority (5M, 15M, 1H, 4H, Daily)
+    const timeframePriority: Record<string, number> = { '5M': 1, '15M': 2, '1H': 3, '4H': 4, 'Daily': 5 };
+    const sortedChartData = chartData.sort((a, b) => {
+      const priorityA = timeframePriority[a.chart.timeframe as string] || 99;
+      const priorityB = timeframePriority[b.chart.timeframe as string] || 99;
+      return priorityA - priorityB;
+    });
 
-    const prompt = `You are an expert multi-timeframe trading analyst. Analyze this bundle of ${instrument} charts across different timeframes to provide comprehensive technical analysis.
+    // Build structured chart descriptions
+    let chartDescriptions = "";
+    sortedChartData.forEach((data, index) => {
+      const { chart } = data;
+      chartDescriptions += `${index + 1}. ${chart.timeframe} Chart: ${chart.originalName}\n`;
+      if (data.depthMapBase64) {
+        chartDescriptions += `   Depth Map: depth_${chart.originalName}\n`;
+      }
+      chartDescriptions += "\n";
+    });
 
-Chart Bundle Information:
-- Instrument: ${instrument}
-- Timeframes: ${timeframes.join(', ')}
-- Charts: ${chartData.length}
+    const structuredPrompt = `You are a trading AI assistant analyzing a multi-timeframe setup for ${instrument}.
 
-${timeframeContext}
+Here are the charts provided for this trade setup:
 
-Provide a comprehensive multi-timeframe analysis focusing on:
-1. Overall trend direction across timeframes (higher timeframe bias)
-2. Key confluences between timeframes
-3. Multi-timeframe support/resistance levels
-4. Entry and exit strategies based on timeframe alignment
-5. Risk management considerations
-6. Probability assessment of potential setups
+${chartDescriptions}Please analyze how price action is evolving across these timeframes and answer:
 
-Structure your analysis to show how different timeframes confirm or contradict each other. Rate your confidence level from 1-10.`;
+- What is the most likely outcome?
+- In which session is the breakout or major move likely to happen?
+- Confidence level (Low, Medium, High)
+- Provide a brief rationale using EMA structure, depth shape, and any chart similarities
 
-    // Build messages with all chart images
+${session ? `Current trading session context: ${session}` : ''}
+
+Please provide your response in the following JSON format:
+{
+  "instrument": "${instrument}",
+  "prediction": "Brief prediction (e.g., 'Bullish breakout', 'Bearish continuation')",
+  "session": "Most likely session for the move (Asia/London/NY/Sydney)",
+  "confidence": "Low/Medium/High",
+  "rationale": "Detailed analysis of EMA structure, depth patterns, and multi-timeframe confluence"
+}`;
+
+    // Build messages with system prompt and structured user content
     const content: any[] = [
       {
         type: "text",
-        text: prompt,
+        text: structuredPrompt,
       }
     ];
 
-    // Add all chart images to the analysis
-    chartData.forEach((data, index) => {
+    // Add chart images in timeframe order with labels
+    sortedChartData.forEach((data, index) => {
+      const { chart } = data;
       content.push({
         type: "text",
-        text: `\n${timeframes[index]} Timeframe Chart:`,
+        text: `\n${chart.timeframe} Chart (${chart.originalName}):`,
       });
       content.push({
         type: "image_url",
         image_url: {
-          url: `data:image/jpeg;base64,${data.base64Image}`,
+          url: `data:image/png;base64,${data.base64Image}`,
+          detail: "high"
         },
       });
 
@@ -320,12 +338,13 @@ Structure your analysis to show how different timeframes confirm or contradict e
       if (data.depthMapBase64) {
         content.push({
           type: "text",
-          text: `${timeframes[index]} Depth Map:`,
+          text: `${chart.timeframe} Depth Map:`,
         });
         content.push({
           type: "image_url",
           image_url: {
-            url: `data:image/jpeg;base64,${data.depthMapBase64}`,
+            url: `data:image/png;base64,${data.depthMapBase64}`,
+            detail: "high"
           },
         });
       }
@@ -335,25 +354,52 @@ Structure your analysis to show how different timeframes confirm or contradict e
       model: "gpt-4o",
       messages: [
         {
+          role: "system",
+          content: "You are an expert trading analyst specializing in multi-timeframe analysis. Always respond with the requested JSON format followed by any additional analysis."
+        },
+        {
           role: "user",
           content,
         },
       ],
-      max_tokens: 1500, // Increased for multi-timeframe analysis
+      max_tokens: 2000,
+      temperature: 0.1,
     });
 
     const analysisText = response.choices[0].message.content || "";
     
-    // Parse the response to extract structured data
+    // Try to parse JSON response
+    let parsedResponse;
+    try {
+      // Extract JSON from the response if it's wrapped in markdown or other text
+      const jsonMatch = analysisText.match(/\{[\s\S]*?\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : analysisText;
+      parsedResponse = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.warn('Failed to parse JSON response, using raw analysis:', parseError);
+      parsedResponse = {
+        instrument,
+        prediction: "Multi-timeframe analysis complete",
+        session: session || "London",
+        confidence: "Medium",
+        rationale: analysisText.substring(0, 500) + "..."
+      };
+    }
+
+    // Extract traditional analysis data
     const confidence = extractConfidenceScore(analysisText);
     const trends = extractTrends(analysisText);
     const patterns = extractPatterns(analysisText);
-
+    
     return {
       analysis: analysisText,
       confidence,
       trends,
       patterns,
+      prediction: parsedResponse.prediction,
+      session: parsedResponse.session,
+      confidence_level: parsedResponse.confidence,
+      rationale: parsedResponse.rationale
     };
   } catch (error) {
     console.error("Bundle GPT analysis error:", error);

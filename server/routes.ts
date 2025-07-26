@@ -744,11 +744,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedAnalysisData = insertAnalysisSchema.parse(analysisData);
       await storage.createAnalysis(validatedAnalysisData);
 
+      // Return structured response with prediction data
       res.json({
         success: true,
         bundleId,
-        analysis,
-        charts: charts.length
+        instrument: bundleMetadata.instrument,
+        prediction: analysis.prediction || "Multi-timeframe analysis complete",
+        session: analysis.session || bundleMetadata.session || "London",
+        confidence: analysis.confidence_level || "Medium",
+        rationale: analysis.rationale || analysis.analysis,
+        analysis: analysis.analysis,
+        charts: charts.map(chart => ({
+          id: chart.id,
+          timeframe: chart.timeframe,
+          originalName: chart.originalName,
+          instrument: chart.instrument
+        })),
+        chartCount: charts.length
       });
     } catch (error) {
       console.error('Bundle analysis error:', error);

@@ -16,6 +16,9 @@ Preferred communication style: Simple, everyday language.
 ✓ **Session Tagging**: Added trading session support (Asia, London, NY, Sydney) for better chart organization
 ✓ **Database Schema Enhancement**: Extended charts table with instrument and session fields
 ✓ **Grouped Chart Display**: Added API endpoints for instrument-based chart grouping and filtering
+✓ **Multi-Timeframe Bundle System**: Complete implementation of chart bundling for comprehensive analysis
+✓ **Structured Bundle Analysis**: Enhanced GPT-4o prompts with structured multi-timeframe analysis returning prediction, session, and confidence data
+✓ **Bundle Analysis UI**: Created dedicated bundle analysis panel with prediction visualization and detailed insights display
 
 ## System Architecture
 
@@ -56,7 +59,8 @@ Preferred communication style: Simple, everyday language.
 2. **Embedding Generation**: OpenCLIP ViT-H/14 generates 1024-dimensional vector embeddings for enhanced similarity search
 3. **Depth Map Creation**: MiDaS model generates depth maps for pattern analysis
 4. **GPT Analysis**: OpenAI GPT-4o analyzes charts with technical trading insights
-5. **Similarity Search**: Cosine similarity search with 1024D vectors to find related charts
+5. **Bundle Analysis**: Multi-timeframe GPT-4o analysis with structured prompts for prediction, session timing, and confidence assessment
+6. **Similarity Search**: Cosine similarity search with 1024D vectors to find related charts
 
 ## Data Flow
 
