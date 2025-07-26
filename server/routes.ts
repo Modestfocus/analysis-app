@@ -609,11 +609,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const charts = await storage.getAllCharts(timeframe as string, instrument as string);
       console.log(`📊 Found ${charts.length} charts for filter`);
       
-      // Include both file path and depth map URL in response
+      // Include all map paths for comprehensive analysis
       const chartsWithPaths = charts.map(chart => ({
         ...chart,
         filePath: `/uploads/${chart.filename}`,
-        depthMapUrl: chart.depthMapPath // Include depth map URL for GPT prompts
+        depthMapUrl: chart.depthMapPath,
+        edgeMapUrl: chart.edgeMapPath,
+        gradientMapUrl: chart.gradientMapPath
       }));
       
       res.json({ charts: chartsWithPaths });
@@ -900,6 +902,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Delete bundle error:', error);
       res.status(500).json({ message: 'Failed to delete bundle: ' + (error as Error).message });
+    }
+  });
+
+  // Import the image processing service
+  const { processChartImage, processChartsInBatch } = await import('./services/opencv-processing');
+
+  // Static file serving for new image maps
+  app.use('/edgemaps', express.static(path.join(process.cwd(), 'server', 'edgemaps')));
+  app.use('/gradientmaps', express.static(path.join(process.cwd(), 'server', 'gradientmaps')));
+
+  // Process individual chart for edge/gradient maps
+  app.post('/api/process/:chartId', async (req, res) => {
+    try {
+      const chartId = parseInt(req.params.chartId);
+      
+      if (isNaN(chartId)) {
+        return res.status(400).json({ message: 'Invalid chart ID' });
+      }
+
+      const chart = await storage.getChart(chartId);
+      if (!chart) {
+        return res.status(404).json({ message: 'Chart not found' });
+      }
+
+      // Skip if already processed
+      if (chart.edgeMapPath && chart.gradientMapPath) {
+        return res.json({
+          success: true,
+          message: 'Chart already processed',
+          chartId,
+          edgeMapPath: chart.edgeMapPath,
+          gradientMapPath: chart.gradientMapPath
+        });
+      }
+
+      const inputPath = path.join(uploadsDir, chart.filename);
+      const result = await processChartImage(inputPath, chartId);
+
+      if (result.success && result.edgeMapPath && result.gradientMapPath) {
+        // Update chart with new map paths
+        await storage.updateChart(chartId, {
+          edgeMapPath: result.edgeMapPath,
+          gradientMapPath: result.gradientMapPath
+        });
+
+        res.json({
+          success: true,
+          chartId,
+          edgeMapPath: result.edgeMapPath,
+          gradientMapPath: result.gradientMapPath
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.error || 'Processing failed'
+        });
+      }
+    } catch (error) {
+      console.error('Chart processing error:', error);
+      res.status(500).json({ 
+        message: 'Processing failed: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
+    }
+  });
+
+  // Batch process all charts for edge/gradient maps
+  app.post('/api/process/batch', async (req, res) => {
+    try {
+      console.log('🚀 Starting batch processing of all charts for edge/gradient maps');
+      
+      // Get all charts that need processing
+      const allCharts = await storage.getAllCharts();
+      const chartsToProcess = allCharts.filter(chart => !chart.edgeMapPath || !chart.gradientMapPath);
+      
+      if (chartsToProcess.length === 0) {
+        return res.json({
+          success: true,
+          message: 'All charts already processed',
+          processed: 0,
+          total: allCharts.length
+        });
+      }
+
+      console.log(`📊 Found ${chartsToProcess.length} charts that need processing`);
+
+      // Process charts in batch
+      const results = await processChartsInBatch(chartsToProcess);
+      
+      // Update database with results
+      let successCount = 0;
+      for (const { chartId, result } of results) {
+        if (result.success && result.edgeMapPath && result.gradientMapPath) {
+          await storage.updateChart(chartId, {
+            edgeMapPath: result.edgeMapPath,
+            gradientMapPath: result.gradientMapPath
+          });
+          successCount++;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Batch processing complete: ${successCount}/${chartsToProcess.length} charts processed successfully`,
+        processed: successCount,
+        failed: chartsToProcess.length - successCount,
+        total: chartsToProcess.length
+      });
+
+    } catch (error) {
+      console.error('Batch processing error:', error);
+      res.status(500).json({ 
+        message: 'Batch processing failed: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
     }
   });
 

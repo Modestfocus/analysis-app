@@ -21,6 +21,9 @@ Preferred communication style: Simple, everyday language.
 ✓ **Bundle Analysis UI**: Created dedicated bundle analysis panel with prediction visualization and detailed insights display
 ✓ **Enhanced Quick Analysis Pipeline**: Upgraded similarity search to include bundle context when similar charts belong to bundles
 ✓ **Multi-Timeframe Context Integration**: GPT-4o now receives complete bundle information for better predictions when analyzing individual charts
+✓ **Advanced Image Processing Pipeline**: Implemented edge map and gradient map generation for all charts using Sharp image processing
+✓ **Automated Chart Enhancement**: Added batch processing system to generate edge detection and price slope analysis maps for existing charts
+✓ **Enhanced Database Schema**: Extended charts table with edgeMapPath and gradientMapPath fields for comprehensive chart analysis data
 
 ## System Architecture
 
@@ -45,9 +48,9 @@ Preferred communication style: Simple, everyday language.
 #### Data Storage
 - **Database**: PostgreSQL with three main tables:
   - `users`: User authentication data with username/password
-  - `charts`: Chart metadata, file paths, CLIP embeddings, instrument, session, and timeframe information
+  - `charts`: Chart metadata, file paths, CLIP embeddings, instrument, session, timeframe, and analysis map paths (depth, edge, gradient)
   - `analysis_results`: GPT analysis results and similar chart references with confidence scores
-- **File Storage**: Local filesystem storage for uploaded images and generated depth maps
+- **File Storage**: Local filesystem storage for uploaded images, depth maps, edge maps, and gradient maps
 - **ORM**: Drizzle ORM with Zod schema validation and automated timestamp handling
 - **Storage Interface**: IStorage interface ensures consistent data operations across memory and database implementations
 
@@ -59,8 +62,11 @@ Preferred communication style: Simple, everyday language.
 #### AI Integration Pipeline
 1. **Image Upload**: Charts uploaded via drag-and-drop or file selection
 2. **Embedding Generation**: OpenCLIP ViT-H/14 generates 1024-dimensional vector embeddings for enhanced similarity search
-3. **Depth Map Creation**: MiDaS model generates depth maps for pattern analysis
-4. **GPT Analysis**: OpenAI GPT-4o analyzes charts with technical trading insights
+3. **Advanced Image Processing**: Automatic generation of three analysis maps per chart:
+   - **Depth Maps**: MiDaS model generates depth maps for pattern analysis
+   - **Edge Maps**: Sharp-based Sobel edge detection for structure identification
+   - **Gradient Maps**: Price slope/momentum analysis using gradient magnitude calculation
+4. **GPT Analysis**: OpenAI GPT-4o analyzes charts with technical trading insights and comprehensive visual data
 5. **Bundle Analysis**: Multi-timeframe GPT-4o analysis with structured prompts for prediction, session timing, and confidence assessment
 6. **Similarity Search**: Cosine similarity search with 1024D vectors to find related charts
 

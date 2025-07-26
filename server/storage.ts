@@ -73,6 +73,8 @@ export class MemStorage implements IStorage {
       uploadedAt: new Date().toISOString(),
       comment: insertChart.comment || null,
       depthMapPath: insertChart.depthMapPath || null,
+      edgeMapPath: insertChart.edgeMapPath || null,
+      gradientMapPath: insertChart.gradientMapPath || null,
       embedding: insertChart.embedding || null,
       instrument: insertChart.instrument,
       session: insertChart.session || null,

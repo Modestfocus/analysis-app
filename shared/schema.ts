@@ -18,6 +18,8 @@ export const charts = pgTable("charts", {
   uploadedAt: text("uploaded_at").notNull(),
   comment: text("comment").default(""),
   depthMapPath: text("depth_map_path"),
+  edgeMapPath: text("edge_map_path"),
+  gradientMapPath: text("gradient_map_path"),
   embedding: real("embedding").array(),
   bundleId: text("bundle_id"), // Group related charts together
 });
