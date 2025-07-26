@@ -95,38 +95,40 @@ export default function UploadPage() {
 
   const analyzeChartsMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      // For individual file uploads, we'll upload one at a time with their specific timeframes
-      const results = [];
+      // Create batch upload with individual timeframe metadata
+      const formData = new FormData();
       
-      for (const file of files) {
-        const formData = new FormData();
+      // Add all files to FormData
+      files.forEach((file) => {
         formData.append('charts', file);
-        
-        const fileTimeframe = fileTimeframes[file.name] || "5M";
-        formData.append('timeframe', fileTimeframe);
-        
-        if (selectedInstrument && selectedInstrument !== "auto") {
-          formData.append('instrument', selectedInstrument);
-        }
-        if (selectedSession) {
-          formData.append('session', selectedSession);
-        }
+      });
+      
+      // Add timeframe mapping as JSON string
+      const timeframeMapping: Record<string, string> = {};
+      files.forEach((file) => {
+        timeframeMapping[file.name] = fileTimeframes[file.name] || "5M";
+      });
+      formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
+      
+      if (selectedInstrument && selectedInstrument !== "auto") {
+        formData.append('instrument', selectedInstrument);
+      }
+      if (selectedSession) {
+        formData.append('session', selectedSession);
+      }
 
-        // Upload each chart individually
-        const uploadResponse = await apiRequest('POST', '/api/upload', formData);
-        const uploadData = await uploadResponse.json();
+      // Upload all charts in batch with individual timeframes
+      const uploadResponse = await apiRequest('POST', '/api/upload', formData);
+      const uploadData = await uploadResponse.json();
 
-        if (!uploadData.success) {
-          throw new Error(`Upload failed for ${file.name}`);
-        }
-
-        results.push(...uploadData.charts);
+      if (!uploadData.success) {
+        throw new Error('Batch upload failed');
       }
 
       return {
-        uploadedCount: results.length,
-        charts: results,
-        uploadMessage: `Successfully uploaded ${results.length} chart(s) with individual timeframes`
+        uploadedCount: uploadData.charts.length,
+        charts: uploadData.charts,
+        uploadMessage: `Successfully uploaded ${uploadData.charts.length} chart(s) with individual timeframes`
       };
     },
     onSuccess: (data) => {
@@ -150,36 +152,39 @@ export default function UploadPage() {
   // Separate mutation for analyzing uploaded charts
   const analyzeUploadedChartsMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      // First upload all charts with individual timeframes
-      const results = [];
+      // Create batch upload with individual timeframe metadata
+      const formData = new FormData();
       
-      for (const file of files) {
-        const formData = new FormData();
+      // Add all files to FormData
+      files.forEach((file) => {
         formData.append('charts', file);
-        
-        const fileTimeframe = fileTimeframes[file.name] || "5M";
-        formData.append('timeframe', fileTimeframe);
-        
-        if (selectedInstrument && selectedInstrument !== "auto") {
-          formData.append('instrument', selectedInstrument);
-        }
-        if (selectedSession) {
-          formData.append('session', selectedSession);
-        }
+      });
+      
+      // Add timeframe mapping as JSON string
+      const timeframeMapping: Record<string, string> = {};
+      files.forEach((file) => {
+        timeframeMapping[file.name] = fileTimeframes[file.name] || "5M";
+      });
+      formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
+      
+      if (selectedInstrument && selectedInstrument !== "auto") {
+        formData.append('instrument', selectedInstrument);
+      }
+      if (selectedSession) {
+        formData.append('session', selectedSession);
+      }
 
-        const uploadResponse = await apiRequest('POST', '/api/upload', formData);
-        const uploadData = await uploadResponse.json();
+      // Upload all charts in batch with individual timeframes
+      const uploadResponse = await apiRequest('POST', '/api/upload', formData);
+      const uploadData = await uploadResponse.json();
 
-        if (!uploadData.success) {
-          throw new Error(`Upload failed for ${file.name}`);
-        }
-
-        results.push(...uploadData.charts);
+      if (!uploadData.success) {
+        throw new Error('Batch upload failed');
       }
 
       // Analyze the first uploaded chart
-      if (results.length > 0) {
-        const firstChart = results[0];
+      if (uploadData.charts.length > 0) {
+        const firstChart = uploadData.charts[0];
         
         // Generate depth map for first chart
         await apiRequest('POST', '/api/depth', { chartId: firstChart.id });
@@ -190,15 +195,15 @@ export default function UploadPage() {
         
         return {
           ...analysisData,
-          uploadedCount: results.length,
-          uploadMessage: `Successfully uploaded ${results.length} chart(s) with individual timeframes`,
+          uploadedCount: uploadData.charts.length,
+          uploadMessage: uploadData.message,
           mainChartPath: `/uploads/${firstChart.filename}`
         };
       }
 
       return {
-        uploadedCount: results.length,
-        uploadMessage: `Successfully uploaded ${results.length} chart(s) with individual timeframes`
+        uploadedCount: uploadData.charts.length,
+        uploadMessage: uploadData.message
       };
     },
     onSuccess: (data) => {
@@ -251,43 +256,45 @@ export default function UploadPage() {
   // Save charts only mutation (no analysis)
   const saveChartsOnlyMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      // Upload each chart individually with their specific timeframes
-      const results = [];
+      // Create batch upload with individual timeframe metadata
+      const formData = new FormData();
       
-      for (const file of files) {
-        const formData = new FormData();
+      // Add all files to FormData
+      files.forEach((file) => {
         formData.append('charts', file);
-        
-        const fileTimeframe = fileTimeframes[file.name] || "5M";
-        formData.append('timeframe', fileTimeframe);
-        
-        if (selectedInstrument && selectedInstrument !== "auto") {
-          formData.append('instrument', selectedInstrument);
-        }
-        if (selectedSession) {
-          formData.append('session', selectedSession);
-        }
+      });
+      
+      // Add timeframe mapping as JSON string
+      const timeframeMapping: Record<string, string> = {};
+      files.forEach((file) => {
+        timeframeMapping[file.name] = fileTimeframes[file.name] || "5M";
+      });
+      formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
+      
+      if (selectedInstrument && selectedInstrument !== "auto") {
+        formData.append('instrument', selectedInstrument);
+      }
+      if (selectedSession) {
+        formData.append('session', selectedSession);
+      }
 
-        // Upload each chart individually
-        const uploadResponse = await apiRequest('POST', '/api/upload', formData);
-        const uploadData = await uploadResponse.json();
+      // Upload all charts in batch with individual timeframes
+      const uploadResponse = await apiRequest('POST', '/api/upload', formData);
+      const uploadData = await uploadResponse.json();
 
-        if (!uploadData.success) {
-          throw new Error(`Upload failed for ${file.name}`);
-        }
+      if (!uploadData.success) {
+        throw new Error('Batch upload failed');
+      }
 
-        results.push(...uploadData.charts);
-
-        // Generate depth maps for uploaded charts but don't trigger analysis
-        for (const chart of uploadData.charts) {
-          await apiRequest('POST', '/api/depth', { chartId: chart.id });
-        }
+      // Generate depth maps for uploaded charts but don't trigger analysis
+      for (const chart of uploadData.charts) {
+        await apiRequest('POST', '/api/depth', { chartId: chart.id });
       }
       
       return {
-        uploadedCount: results.length,
-        uploadMessage: `Successfully uploaded ${results.length} chart(s) with individual timeframes`,
-        charts: results
+        uploadedCount: uploadData.charts.length,
+        uploadMessage: `Successfully uploaded ${uploadData.charts.length} chart(s) with individual timeframes`,
+        charts: uploadData.charts
       };
     },
     onSuccess: (data) => {

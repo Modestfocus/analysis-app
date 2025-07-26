@@ -92,19 +92,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'No files uploaded' });
       }
 
-      const { timeframe, instrument: manualInstrument, session } = req.body;
-      console.log(`📝 Upload request - Timeframe: "${timeframe}", Manual Instrument: "${manualInstrument}", Session: "${session}"`);
+      const { timeframe, timeframeMapping, instrument: manualInstrument, session } = req.body;
+      console.log(`📝 Upload request - Timeframe: "${timeframe}", TimeframeMapping: "${timeframeMapping}", Manual Instrument: "${manualInstrument}", Session: "${session}"`);
       
-      if (!timeframe) {
-        return res.status(400).json({ message: 'Timeframe is required' });
-      }
-
-      // Validate timeframe value
-      const validTimeframes = ["5M", "15M", "1H", "4H", "Daily"];
-      if (!validTimeframes.includes(timeframe)) {
-        return res.status(400).json({ 
-          message: `Invalid timeframe "${timeframe}". Valid timeframes are: ${validTimeframes.join(', ')}` 
-        });
+      let parsedTimeframeMapping: Record<string, string> = {};
+      
+      // Handle individual timeframe mapping (new method)
+      if (timeframeMapping) {
+        try {
+          parsedTimeframeMapping = JSON.parse(timeframeMapping);
+          console.log(`📋 Individual timeframe mapping:`, parsedTimeframeMapping);
+        } catch (error) {
+          return res.status(400).json({ message: 'Invalid timeframeMapping JSON format' });
+        }
+      } else if (timeframe) {
+        // Fallback to single timeframe for all files (old method)
+        const validTimeframes = ["5M", "15M", "1H", "4H", "Daily"];
+        if (!validTimeframes.includes(timeframe)) {
+          return res.status(400).json({ 
+            message: `Invalid timeframe "${timeframe}". Valid timeframes are: ${validTimeframes.join(', ')}` 
+          });
+        }
+      } else {
+        return res.status(400).json({ message: 'Either timeframe or timeframeMapping is required' });
       }
 
       const uploadedCharts = [];
@@ -114,10 +124,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const detectedInstrument = extractInstrumentFromFilename(file.originalname);
         const finalInstrument = manualInstrument || detectedInstrument;
 
+        // Get timeframe for this specific file (individual mapping) or use global timeframe
+        const fileTimeframe = parsedTimeframeMapping[file.originalname] || timeframe;
+        
+        // Validate individual timeframe
+        const validTimeframes = ["5M", "15M", "1H", "4H", "Daily"];
+        if (!validTimeframes.includes(fileTimeframe)) {
+          return res.status(400).json({ 
+            message: `Invalid timeframe "${fileTimeframe}" for file "${file.originalname}". Valid timeframes are: ${validTimeframes.join(', ')}` 
+          });
+        }
+
         const chartData = {
           filename: file.filename,
           originalName: file.originalname,
-          timeframe,
+          timeframe: fileTimeframe,
           instrument: finalInstrument,
           session: session || null,
           comment: "",
@@ -169,12 +190,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Create summary of timeframes used
+      const timeframeSummary = Object.values(parsedTimeframeMapping).length > 0 
+        ? `individual timeframes (${Object.values(parsedTimeframeMapping).join(', ')})`
+        : `${timeframe} timeframe`;
+
       res.json({
         success: true,
         charts: uploadedCharts,
-        message: `Successfully uploaded ${uploadedCharts.length} chart(s) with ${timeframe} timeframe and 1024D CLIP embeddings`,
+        message: `Successfully uploaded ${uploadedCharts.length} chart(s) with ${timeframeSummary} and 1024D CLIP embeddings`,
         metadata: {
-          timeframe,
+          timeframes: Object.values(parsedTimeframeMapping).length > 0 ? parsedTimeframeMapping : { all: timeframe },
           instrument: uploadedCharts[0]?.instrument,
           session,
           count: uploadedCharts.length
