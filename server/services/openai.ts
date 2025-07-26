@@ -278,29 +278,53 @@ export async function analyzeChartWithEnhancedContext(
     // Read and encode the main chart image
     const imageBuffer = fs.readFileSync(chartImagePath);
     const base64Image = imageBuffer.toString('base64');
+    
+    // Try to read additional visual layers if available
+    const chartId = chartImagePath.match(/chart[s]?[-_]?(\d+)/)?.[1] || chartImagePath.match(/(\d+)/)?.[1];
+    let base64EdgeMap = null;
+    let base64GradientMap = null;
+    let base64DepthMap = null;
+    
+    if (chartId) {
+      // Try to read edge map
+      const edgeMapPath = path.join(process.cwd(), 'server', 'edgemaps', `chart_${chartId}_edge.png`);
+      if (fs.existsSync(edgeMapPath)) {
+        const edgeBuffer = fs.readFileSync(edgeMapPath);
+        base64EdgeMap = edgeBuffer.toString('base64');
+      }
+      
+      // Try to read gradient map
+      const gradientMapPath = path.join(process.cwd(), 'server', 'gradientmaps', `chart_${chartId}_gradient.png`);
+      if (fs.existsSync(gradientMapPath)) {
+        const gradientBuffer = fs.readFileSync(gradientMapPath);
+        base64GradientMap = gradientBuffer.toString('base64');
+      }
+    }
 
-    // Build the comprehensive prompt with bundle-aware context
-    let systemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using image reasoning, depth map estimation, and historical chart context. Determine the likely market session (Asia, London, New York), and whether the setup is bullish, bearish, or unclear.
+    // Build the comprehensive prompt with full visual stack
+    let systemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
 
-Use the visual data, pattern similarity, and outcomes from the historical charts to inform your analysis. If a historical chart belongs to a bundle, treat the full bundle as a multi-timeframe view of that setup.
+- 🧠 CLIP Embeddings: High-level semantic pattern matching
+- 🌀 Depth Map: Structural geometry and layer analysis
+- 🔲 Edge Map: Entry zone outline, price compression coils, structure tracing
+- 📉 Gradient Map: Slope intensity, price momentum, pre-breakout trajectory
 
-Return a structured JSON with your session prediction, direction, confidence score, and brief rationale.
-
-To make your decision, you are provided with:
-1. The **new chart** (image + depth map)
-2. A list of **top 3 similar historical charts**, each of which may either:
-   - Stand alone as a single chart
-   - Be part of a **chart bundle** (multi-timeframe view of a trade setup)
-3. Known outcomes from past charts when available
+You will also be provided with a dynamically retrieved list of the top 3 most visually similar historical charts from the database, which may either be standalone charts or part of multi-timeframe bundles.
 
 ---
 
-🆕 New Chart for Analysis:
-- Image: Provided as image input
-- Instrument: Unknown (determine from visual analysis)
-- Timeframe: Unknown (determine from visual analysis)
+🆕 **New Chart for Analysis:**
+- Chart Image: [base64 input]
+- Depth Map: [base64 input]
+- Edge Map: [base64 input]
+- Gradient Map: [base64 input]
+- Instrument: Unknown (infer visually if possible)
+- Timeframe: Unknown (infer visually if possible)
 
----`;
+---
+
+📚 **Historical Chart Context:**
+For each similar chart, you will be provided:`;
 
     // Build similar charts context
     enrichedSimilarCharts.forEach((item, index) => {
@@ -308,13 +332,16 @@ To make your decision, you are provided with:
       
       if (item.type === 'individual' && item.chart) {
         const chart = item.chart;
-        systemPrompt += `\n📊 Similar Chart #${chartNum}:
-- Image URL: /uploads/${chart.filename}
+        systemPrompt += `
+📊 Similar Chart #${chartNum}:
+- Image: /uploads/${chart.filename}
 - Depth Map: ${chart.depthMapPath || 'Not available'}
+- Edge Map: ${chart.edgeMapPath || 'Not available'}
+- Gradient Map: ${chart.gradientMapPath || 'Not available'}
 - Instrument: ${chart.instrument}
 - Timeframe: ${chart.timeframe}
 - Session: ${chart.session || 'Unknown'}
-- Similarity: ${(item.similarity * 100).toFixed(1)}%
+- CLIP Similarity: ${(item.similarity * 100).toFixed(1)}%
 - Outcome: ${chart.comment || 'Not recorded'}
 
 ---`;
@@ -322,76 +349,123 @@ To make your decision, you are provided with:
         const bundle = item.bundle;
         const primaryChart = item.charts[0]; // Use first chart as primary
         
-        systemPrompt += `\n📊 Similar Chart #${chartNum}:
-- Image URL: /uploads/${primaryChart.filename}
-- Depth Map: ${primaryChart.depthMapPath || 'Not available'}
+        systemPrompt += `
+📦 Bundle for Chart #${chartNum}:
+- Charts across: [${item.charts.map((c: any) => c.timeframe).join(', ')}]
+- Each image includes Depth, Edge, and Gradient maps
 - Instrument: ${bundle.instrument}
-- Timeframe: ${primaryChart.timeframe}
 - Session: ${bundle.session || 'Unknown'}
-- Similarity: ${(item.similarity * 100).toFixed(1)}%
-- Outcome: ${primaryChart.comment || 'Not recorded'}
-
-📦 Bundle Context for Similar Chart #${chartNum}:`;
-        
-        item.charts.forEach((chart: any) => {
-          systemPrompt += `\n- Timeframe: ${chart.timeframe}
-- Image: /uploads/${chart.filename}
-- Depth Map: ${chart.depthMapPath || 'Not available'}`;
-        });
+- CLIP Similarity: ${(item.similarity * 100).toFixed(1)}%`;
         
         // Add bundle analysis outcome if available
         if (item.analysis) {
           try {
             const analysisData = JSON.parse(item.analysis.gptAnalysis);
             if (analysisData.prediction) {
-              systemPrompt += `\nBundle Outcome: ${analysisData.prediction} (Confidence: ${analysisData.confidence})`;
+              systemPrompt += `
+- Outcome Summary: ${analysisData.prediction} (Confidence: ${analysisData.confidence})`;
             }
           } catch (e) {
-            // If analysis parsing fails, skip it
+            systemPrompt += `
+- Outcome Summary: Not recorded`;
           }
+        } else {
+          systemPrompt += `
+- Outcome Summary: Not recorded`;
         }
         
-        systemPrompt += `\n\n---`;
+        systemPrompt += `
+
+---`;
       }
     });
 
-    systemPrompt += `\n\n🧠 TASK:
-1. Compare the new chart to the similar charts and any bundle patterns.
-2. Based on breakout setups, EMA structure, session tagging, and depth cues, determine:
-   - Which **market session** is most likely to produce a move.
-   - Direction bias (up or down)
-   - Confidence (low, medium, high)
-   - One-paragraph rationale comparing similarities.
+    systemPrompt += `
+
+🎯 **YOUR TASK**:
+1. Determine which market session (Asia, London, New York) is most likely to lead the move.
+2. Predict the direction bias (up, down, or unclear).
+3. Assign confidence level: low / medium / high
+4. In the rationale, compare the visual features (EMA layout, price compression, depth structure, edge clarity, gradient slopes) between the new chart and historical patterns.
 
 ---
 
-🎯 Output JSON format only:
+🧠 **Focus Your Reasoning On:**
+- EMA structures across edge + gradient maps
+- Coil or breakout zones from edge detection
+- Compression → expansion signatures
+- Gradient slope direction + strength
+- Similar patterns and outcomes in historical/bundled charts
+- Session impact patterns (e.g., NY breakouts after London coil)
+
+---
+
+🧾 **OUTPUT FORMAT:**
+Respond ONLY in this exact JSON format:
 \`\`\`json
 {
   "session": "London",
   "direction": "up",
-  "confidence": "medium",
-  "rationale": "The EMA structure and breakout zone are most similar to Chart #2 (NY session), which had a strong rally. Bundle #2 shows aligned lower-timeframe confirmation across 15m, 1h, and 4h."
+  "confidence": "high",
+  "rationale": "The depth map and edge contours show a clear consolidation zone with slope buildup in the gradient map. This mirrors Bundle #2 (NAS100, 15m/1h/4h) where a similar EMA coil broke upwards during the London session."
 }
 \`\`\``;
+
+    // Build message content with all available visual layers
+    const messageContent: any[] = [
+      {
+        type: "text",
+        text: systemPrompt,
+      },
+      {
+        type: "text",
+        text: "\n📊 **Original Chart Image:**",
+      },
+      {
+        type: "image_url",
+        image_url: {
+          url: `data:image/jpeg;base64,${base64Image}`,
+        },
+      }
+    ];
+
+    // Add edge map if available
+    if (base64EdgeMap) {
+      messageContent.push({
+        type: "text",
+        text: "\n🔲 **Edge Detection Map:**",
+      });
+      messageContent.push({
+        type: "image_url",
+        image_url: {
+          url: `data:image/png;base64,${base64EdgeMap}`,
+        },
+      });
+    }
+
+    // Add gradient map if available
+    if (base64GradientMap) {
+      messageContent.push({
+        type: "text",
+        text: "\n📉 **Gradient/Momentum Map:**",
+      });
+      messageContent.push({
+        type: "image_url",
+        image_url: {
+          url: `data:image/png;base64,${base64GradientMap}`,
+        },
+      });
+    }
+
+    // Add depth map if available (to be implemented when we have chart record)
+    // This could be added later when we pass the chart record to this function
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: systemPrompt,
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`,
-              },
-            },
-          ],
+          content: messageContent,
         },
       ],
       response_format: { type: "json_object" },
