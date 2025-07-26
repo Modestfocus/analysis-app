@@ -69,7 +69,7 @@ export default function UploadPage() {
       setCurrentChartId(data.chartId);
       toast({
         title: "Analysis Complete", 
-        description: data.uploadMessage || `${data.uploadedCount || 1} chart(s) uploaded and analyzed successfully.`,
+        description: data.uploadMessage || `${data.uploadedCount || 1} chart(s) uploaded with ${selectedTimeframe} timeframe and analyzed successfully.`,
       });
     },
     onError: (error) => {
@@ -147,7 +147,7 @@ export default function UploadPage() {
       setSelectedFiles([]); // Clear selected files
       toast({
         title: "Charts Saved Successfully", 
-        description: `${data.uploadedCount} chart(s) uploaded and saved to dashboard. Ready for analysis when needed.`,
+        description: `${data.uploadedCount} chart(s) uploaded with ${selectedTimeframe} timeframe and saved to dashboard. Ready for analysis when needed.`,
       });
     },
     onError: (error) => {
@@ -308,6 +308,13 @@ export default function UploadPage() {
                 selectedTimeframe={selectedTimeframe}
                 onTimeframeSelect={setSelectedTimeframe}
               />
+              
+              {/* Timeframe Confirmation Display */}
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Selected Timeframe:</strong> {selectedTimeframe} - All uploaded charts will be tagged with this timeframe
+                </p>
+              </div>
 
               <InstrumentSelector
                 selectedInstrument={selectedInstrument}

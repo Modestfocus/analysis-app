@@ -93,8 +93,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { timeframe, instrument: manualInstrument, session } = req.body;
+      console.log(`📝 Upload request - Timeframe: "${timeframe}", Manual Instrument: "${manualInstrument}", Session: "${session}"`);
+      
       if (!timeframe) {
         return res.status(400).json({ message: 'Timeframe is required' });
+      }
+
+      // Validate timeframe value
+      const validTimeframes = ["5M", "15M", "1H", "4H", "Daily"];
+      if (!validTimeframes.includes(timeframe)) {
+        return res.status(400).json({ 
+          message: `Invalid timeframe "${timeframe}". Valid timeframes are: ${validTimeframes.join(', ')}` 
+        });
       }
 
       const uploadedCharts = [];
@@ -117,6 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const validatedData = insertChartSchema.parse(chartData);
         const chart = await storage.createChart(validatedData);
+        console.log(`📊 Created chart ${chart.id}: ${chart.originalName} - Timeframe: "${chart.timeframe}", Instrument: "${chart.instrument}"`);
 
         // Automatically generate CLIP embedding after upload
         try {
@@ -161,7 +172,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         charts: uploadedCharts,
-        message: `Successfully uploaded ${uploadedCharts.length} chart(s) with 1024D CLIP embeddings`
+        message: `Successfully uploaded ${uploadedCharts.length} chart(s) with ${timeframe} timeframe and 1024D CLIP embeddings`,
+        metadata: {
+          timeframe,
+          instrument: uploadedCharts[0]?.instrument,
+          session,
+          count: uploadedCharts.length
+        }
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -557,7 +574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/charts', async (req, res) => {
     try {
       const { timeframe, instrument } = req.query;
+      console.log(`🔍 Filter request - Timeframe: "${timeframe}", Instrument: "${instrument}"`);
       const charts = await storage.getAllCharts(timeframe as string, instrument as string);
+      console.log(`📊 Found ${charts.length} charts for filter`);
       
       // Include both file path and depth map URL in response
       const chartsWithPaths = charts.map(chart => ({

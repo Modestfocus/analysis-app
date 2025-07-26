@@ -220,7 +220,9 @@ export default function DashboardPage() {
                       ) : (
                         selectedTimeframe === "All" 
                           ? `Showing all ${charts.length} charts`
-                          : `Showing ${charts.length} charts for ${selectedTimeframe} timeframe`
+                          : charts.length === 0
+                          ? `No charts found for ${selectedTimeframe} timeframe`
+                          : `Showing ${charts.length} charts filtered by ${selectedTimeframe} timeframe`
                       )}
                     </p>
                   )}
