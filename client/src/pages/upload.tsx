@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar } from "lucide-react";
+import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar, Save } from "lucide-react";
 import TimeframeSelector from "@/components/timeframe-selector";
 import DragDropZone from "@/components/drag-drop-zone";
 import InstrumentSelector from "@/components/instrument-selector";
@@ -106,6 +106,59 @@ export default function UploadPage() {
     },
   });
 
+  // Save charts only mutation (no analysis)
+  const saveChartsOnlyMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      const formData = new FormData();
+      
+      // Add all files to FormData with correct field name
+      files.forEach((file) => {
+        formData.append('charts', file);
+      });
+      
+      formData.append('timeframe', selectedTimeframe);
+      if (selectedInstrument && selectedInstrument !== "auto") {
+        formData.append('instrument', selectedInstrument);
+      }
+      if (selectedSession) {
+        formData.append('session', selectedSession);
+      }
+
+      // Upload charts with automatic CLIP embedding and depth maps, but no GPT analysis
+      const uploadResponse = await apiRequest('POST', '/api/upload', formData);
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadData.success) {
+        throw new Error('Upload failed');
+      }
+
+      // Generate depth maps for all uploaded charts but don't trigger analysis
+      for (const chart of uploadData.charts) {
+        await apiRequest('POST', '/api/depth', { chartId: chart.id });
+      }
+      
+      return {
+        uploadedCount: uploadData.charts.length,
+        uploadMessage: uploadData.message,
+        charts: uploadData.charts
+      };
+    },
+    onSuccess: (data) => {
+      setSelectedFiles([]); // Clear selected files
+      toast({
+        title: "Charts Saved Successfully", 
+        description: `${data.uploadedCount} chart(s) uploaded and saved to dashboard. Ready for analysis when needed.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Save Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Regenerate analysis mutation
   const regenerateAnalysisMutation = useMutation({
     mutationFn: async () => {
@@ -155,6 +208,18 @@ export default function UploadPage() {
     }
     analyzeChartsMutation.mutate(selectedFiles);
     setSelectedFiles([]); // Clear after submission
+  };
+
+  const handleSaveChartsOnly = () => {
+    if (selectedFiles.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please select some chart images first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveChartsOnlyMutation.mutate(selectedFiles);
   };
 
   const handleClearAll = () => {
@@ -319,6 +384,24 @@ export default function UploadPage() {
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Select Files
+                </Button>
+
+                <Button 
+                  onClick={handleSaveChartsOnly}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
+                  disabled={saveChartsOnlyMutation.isPending || selectedFiles.length === 0}
+                >
+                  {saveChartsOnlyMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Charts Only
+                    </>
+                  )}
                 </Button>
 
                 <Button 
