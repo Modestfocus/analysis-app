@@ -31,7 +31,13 @@ export default function UploadPage() {
   };
 
   const handleFilesSelected = (files: File[]) => {
-    setSelectedFiles(files);
+    // Add new files to existing files instead of replacing
+    setSelectedFiles(prev => {
+      const existingNames = prev.map(f => f.name);
+      const newFiles = files.filter(file => !existingNames.includes(file.name));
+      return [...prev, ...newFiles];
+    });
+    
     // Initialize timeframes for new files with default value
     const newTimeframes = { ...fileTimeframes };
     files.forEach(file => {
@@ -412,13 +418,55 @@ export default function UploadPage() {
                 onSessionChange={setSelectedSession}
               />
 
-              <DragDropZone
-                onFilesSelected={(files: FileList) => handleFilesSelected(Array.from(files))}
-                className="mb-6"
-                isLoading={analyzeUploadedChartsMutation.isPending}
-                multiple={true}
-                placeholder="Drop multiple chart images here for individual timeframes"
-              />
+              <div className="mb-6">
+                <DragDropZone
+                  onFilesSelected={(files: FileList) => handleFilesSelected(Array.from(files))}
+                  className="mb-4"
+                  isLoading={analyzeUploadedChartsMutation.isPending}
+                  multiple={true}
+                  placeholder="Drop chart images here or click 'Add Charts' button"
+                />
+                
+                <div className="flex space-x-3">
+                  <Button 
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.multiple = true;
+                      input.onchange = (e) => {
+                        const files = (e.target as HTMLInputElement).files;
+                        if (files) handleFilesSelected(Array.from(files));
+                      };
+                      input.click();
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Add Charts
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.multiple = false;
+                      input.onchange = (e) => {
+                        const files = (e.target as HTMLInputElement).files;
+                        if (files) handleFilesSelected(Array.from(files));
+                      };
+                      input.click();
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Add Single Chart
+                  </Button>
+                </div>
+              </div>
 
               {/* Selected Files Preview */}
               {selectedFiles.length > 0 && (
@@ -437,71 +485,69 @@ export default function UploadPage() {
                     </Button>
                   </div>
                   <div className="space-y-3">
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="bg-white p-3 rounded border">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <span className="text-sm text-gray-700 truncate max-w-[200px]">
-                              {file.name}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              ({(file.size / 1024).toFixed(1)} KB)
-                            </span>
+                    {selectedFiles.map((file, index) => {
+                      const imageUrl = URL.createObjectURL(file);
+                      return (
+                        <div key={index} className="bg-white dark:bg-gray-700 p-3 rounded border">
+                          <div className="flex items-center space-x-3 mb-3">
+                            {/* Chart Preview Thumbnail */}
+                            <div className="flex-shrink-0">
+                              <img 
+                                src={imageUrl} 
+                                alt={file.name}
+                                className="w-12 h-12 object-cover rounded border"
+                                onLoad={() => URL.revokeObjectURL(imageUrl)}
+                              />
+                            </div>
+                            
+                            {/* File Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                  {file.name}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  ({(file.size / 1024).toFixed(1)} KB)
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Remove Button */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveFile(index)}
+                              className="text-gray-400 hover:text-red-500 h-6 w-6 p-0 flex-shrink-0"
+                            >
+                              ×
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveFile(index)}
-                            className="text-gray-400 hover:text-red-500 h-6 w-6 p-0"
-                          >
-                            ×
-                          </Button>
-                        </div>
-                        
-                        {/* Individual Timeframe Selector */}
-                        <div className="flex items-center space-x-2 ml-4">
-                          <span className="text-xs text-gray-600">Timeframe:</span>
-                          <div className="flex space-x-1">
-                            {["5M", "15M", "1H", "4H", "Daily"].map((timeframe) => (
-                              <Button
-                                key={timeframe}
-                                size="sm"
-                                variant={fileTimeframes[file.name] === timeframe ? "default" : "outline"}
-                                onClick={() => updateFileTimeframe(file.name, timeframe as Timeframe)}
-                                className="h-6 text-xs px-2"
-                              >
-                                {timeframe}
-                              </Button>
-                            ))}
+                          
+                          {/* Individual Timeframe Selector */}
+                          <div className="flex items-center space-x-2 ml-15">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">Timeframe:</span>
+                            <div className="flex space-x-1">
+                              {["5M", "15M", "1H", "4H", "Daily"].map((timeframe) => (
+                                <Button
+                                  key={timeframe}
+                                  size="sm"
+                                  variant={fileTimeframes[file.name] === timeframe ? "default" : "outline"}
+                                  onClick={() => updateFileTimeframe(file.name, timeframe as Timeframe)}
+                                  className="h-6 text-xs px-2"
+                                >
+                                  {timeframe}
+                                </Button>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               <div className="flex space-x-3">
-                <Button 
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.multiple = true;
-                    input.onchange = (e) => {
-                      const files = (e.target as HTMLInputElement).files;
-                      if (files) handleFilesSelected(Array.from(files));
-                    };
-                    input.click();
-                  }}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Select Files
-                </Button>
-
                 <Button 
                   onClick={handleSaveChartsOnly}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
