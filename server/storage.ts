@@ -233,17 +233,62 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
   }
 
-  async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {
-    const chartsWithEmbeddings = Array.from(this.charts.values()).filter(chart => chart.embedding);
+  async findSimilarCharts(embedding: number[], limit: number, debugLogs: boolean = false): Promise<Array<{ chart: Chart; similarity: number }>> {
+    const fs = require('fs');
+    const path = require('path');
     
-    const similarities = chartsWithEmbeddings.map(chart => {
+    const allCharts = Array.from(this.charts.values());
+    
+    if (debugLogs) {
+      console.log(`🔍 SIMILARITY DEBUG (Memory): Searching ${allCharts.length} total charts in memory`);
+    }
+    
+    // Filter charts with valid embeddings and check file existence
+    const validCharts = [];
+    for (const chart of allCharts) {
+      if (!chart.embedding || chart.embedding.length === 0) {
+        if (debugLogs) {
+          console.log(`❌ Chart ${chart.id} (${chart.filename}): No embedding`);
+        }
+        continue;
+      }
+      
+      // Check if main chart file exists
+      const chartPath = path.join(process.cwd(), 'server', 'uploads', chart.filename);
+      if (!fs.existsSync(chartPath)) {
+        if (debugLogs) {
+          console.log(`❌ Chart ${chart.id} (${chart.filename}): File missing at ${chartPath}`);
+        }
+        continue;
+      }
+      
+      validCharts.push(chart);
+      if (debugLogs) {
+        console.log(`✅ Chart ${chart.id} (${chart.filename}): Valid for similarity search`);
+      }
+    }
+    
+    if (debugLogs) {
+      console.log(`🎯 SIMILARITY DEBUG (Memory): ${validCharts.length} charts with valid embeddings and existing files`);
+    }
+    
+    const similarities = validCharts.map(chart => {
       const similarity = this.calculateCosineSimilarity(embedding, chart.embedding!);
       return { chart, similarity };
     });
 
-    return similarities
+    const results = similarities
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, limit);
+      
+    if (debugLogs) {
+      console.log(`📊 SIMILARITY RESULTS (Memory):`);
+      results.forEach((result, index) => {
+        console.log(`  ${index + 1}. Chart ${result.chart.id} (${result.chart.filename}): ${(result.similarity * 100).toFixed(2)}% similarity`);
+      });
+    }
+
+    return results;
   }
 
   private calculateCosineSimilarity(a: number[], b: number[]): number {
@@ -423,21 +468,64 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(charts.uploadedAt));
   }
 
-  async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {
+  async findSimilarCharts(embedding: number[], limit: number, debugLogs: boolean = false): Promise<Array<{ chart: Chart; similarity: number }>> {
+    const fs = require('fs');
+    const path = require('path');
+    
     // Get all charts with embeddings (note: the WHERE clause needs to be corrected for checking non-null)
     const allCharts = await db.select().from(charts);
     
-    // Calculate similarities in memory (for now - could be optimized with vector DB extensions)
-    const similarities = allCharts
-      .filter(chart => chart.embedding && chart.embedding.length > 0)
-      .map(chart => {
-        const similarity = this.calculateCosineSimilarity(embedding, chart.embedding!);
-        return { chart, similarity };
-      });
+    if (debugLogs) {
+      console.log(`🔍 SIMILARITY DEBUG: Searching ${allCharts.length} total charts in database`);
+    }
+    
+    // Filter charts with valid embeddings and check file existence
+    const validCharts = [];
+    for (const chart of allCharts) {
+      if (!chart.embedding || chart.embedding.length === 0) {
+        if (debugLogs) {
+          console.log(`❌ Chart ${chart.id} (${chart.filename}): No embedding`);
+        }
+        continue;
+      }
+      
+      // Check if main chart file exists
+      const chartPath = path.join(process.cwd(), 'server', 'uploads', chart.filename);
+      if (!fs.existsSync(chartPath)) {
+        if (debugLogs) {
+          console.log(`❌ Chart ${chart.id} (${chart.filename}): File missing at ${chartPath}`);
+        }
+        continue;
+      }
+      
+      validCharts.push(chart);
+      if (debugLogs) {
+        console.log(`✅ Chart ${chart.id} (${chart.filename}): Valid for similarity search`);
+      }
+    }
+    
+    if (debugLogs) {
+      console.log(`🎯 SIMILARITY DEBUG: ${validCharts.length} charts with valid embeddings and existing files`);
+    }
+    
+    // Calculate similarities for valid charts only
+    const similarities = validCharts.map(chart => {
+      const similarity = this.calculateCosineSimilarity(embedding, chart.embedding!);
+      return { chart, similarity };
+    });
 
-    return similarities
+    const results = similarities
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, limit);
+      
+    if (debugLogs) {
+      console.log(`📊 SIMILARITY RESULTS:`);
+      results.forEach((result, index) => {
+        console.log(`  ${index + 1}. Chart ${result.chart.id} (${result.chart.filename}): ${(result.similarity * 100).toFixed(2)}% similarity`);
+      });
+    }
+
+    return results;
   }
 
   private calculateCosineSimilarity(a: number[], b: number[]): number {

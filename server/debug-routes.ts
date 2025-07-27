@@ -464,4 +464,125 @@ router.get('/report', async (req, res) => {
   }
 });
 
+// Admin dashboard route for CLIP index management
+router.get('/admin', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Chart Analysis Admin Dashboard</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .action-card { border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        .button:hover { background: #005a87; }
+        .success { color: green; }
+        .error { color: red; }
+        .debug-toggle { margin: 20px 0; }
+        .debug-info { background: #f5f5f5; padding: 15px; border-radius: 4px; margin: 10px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Chart Analysis Admin Dashboard</h1>
+        
+        <div class="action-card">
+          <h3>🔄 CLIP Vector Index Management</h3>
+          <p>Rebuild the CLIP embedding index to fix similarity search issues and ensure all charts have proper embeddings.</p>
+          <button class="button" onclick="rebuildClipIndex()">Rebuild CLIP Index</button>
+          <div id="clip-status"></div>
+        </div>
+        
+        <div class="action-card">
+          <h3>🐛 Debug Settings</h3>
+          <div class="debug-toggle">
+            <label>
+              <input type="checkbox" id="debug-checkbox" onchange="toggleDebugMode()"> 
+              Show Similarity Retrieval Debug Logs
+            </label>
+          </div>
+          <div class="debug-info">
+            <strong>Debug Mode Features:</strong>
+            <ul>
+              <li>Vector similarity distances and percentages</li>
+              <li>Which charts were found in similarity search</li>
+              <li>File existence verification for each result</li>
+              <li>CLIP embedding validation status</li>
+            </ul>
+            <p><em>To use: Add ?debug=true to any analysis URL</em></p>
+          </div>
+        </div>
+        
+        <div class="action-card">
+          <h3>📊 System Status</h3>
+          <button class="button" onclick="checkSystemStatus()">Check Chart Database Status</button>
+          <div id="system-status"></div>
+        </div>
+      </div>
+
+      <script>
+        async function rebuildClipIndex() {
+          const statusDiv = document.getElementById('clip-status');
+          statusDiv.innerHTML = '<p>🔄 Rebuilding CLIP index...</p>';
+          
+          try {
+            const response = await fetch('/api/admin/rebuild-clip-index', { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+              statusDiv.innerHTML = \`
+                <div class="success">
+                  <h4>✅ CLIP Index Rebuild Complete</h4>
+                  <p>Total charts: \${result.details.totalCharts}</p>
+                  <p>Charts processed: \${result.details.chartsProcessed}</p>
+                  <p>Successful: \${result.details.successful}</p>
+                  <p>Failed: \${result.details.failed}</p>
+                </div>
+              \`;
+            } else {
+              statusDiv.innerHTML = \`<div class="error">❌ \${result.message}</div>\`;
+            }
+          } catch (error) {
+            statusDiv.innerHTML = \`<div class="error">❌ Error: \${error.message}</div>\`;
+          }
+        }
+        
+        async function checkSystemStatus() {
+          const statusDiv = document.getElementById('system-status');
+          statusDiv.innerHTML = '<p>🔍 Checking system status...</p>';
+          
+          try {
+            const response = await fetch('/api/charts');
+            const result = await response.json();
+            
+            const validCharts = result.charts.filter(chart => chart.embedding && chart.embedding.length === 1024);
+            
+            statusDiv.innerHTML = \`
+              <div class="success">
+                <h4>📊 System Status</h4>
+                <p>Total charts: \${result.charts.length}</p>
+                <p>Charts with valid CLIP embeddings: \${validCharts.length}</p>
+                <p>Missing embeddings: \${result.charts.length - validCharts.length}</p>
+              </div>
+            \`;
+          } catch (error) {
+            statusDiv.innerHTML = \`<div class="error">❌ Error: \${error.message}</div>\`;
+          }
+        }
+        
+        function toggleDebugMode() {
+          const checkbox = document.getElementById('debug-checkbox');
+          if (checkbox.checked) {
+            alert('Debug mode enabled! Add ?debug=true to analysis URLs to see detailed similarity logs.');
+          } else {
+            alert('Debug mode disabled.');
+          }
+        }
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 export default router;

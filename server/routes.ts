@@ -402,7 +402,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!embeddingResult.embedding || embeddingResult.embedding.length !== 1024) {
         return res.status(500).json({ message: 'Failed to generate embedding for similarity search' });
       }
-      const similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3);
+      const debugLogs = req.query.debug === 'true';
+      const similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3, debugLogs);
 
       // ENHANCED: Check if any similar charts belong to bundles and include bundle context
       const enrichedSimilarCharts: Array<{
@@ -551,8 +552,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 2. RAG Retrieval: Get similar charts using vector embeddings
       let similarCharts: Array<{ chart: any; similarity: number }> = [];
+      const debugLogs = req.query.debug === 'true';
+      
       if (chart.embedding && chart.embedding.length === 1024) {
-        similarCharts = await storage.findSimilarCharts(chart.embedding, 3);
+        similarCharts = await storage.findSimilarCharts(chart.embedding, 3, debugLogs);
         console.log(`Found ${similarCharts.length} similar charts for RAG context`);
       } else {
         console.log('No embedding available for similarity search');
@@ -1021,6 +1024,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Batch processing error:', error);
       res.status(500).json({ 
         message: 'Batch processing failed: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
+    }
+  });
+
+  // Rebuild CLIP vector index endpoint
+  app.post('/api/admin/rebuild-clip-index', async (req, res) => {
+    try {
+      console.log('🔄 Starting CLIP index rebuild...');
+      
+      // Get all charts that don't have embeddings or have invalid embeddings
+      const allCharts = await storage.getAllCharts();
+      const chartsNeedingEmbedding = allCharts.filter(chart => 
+        !chart.embedding || chart.embedding.length !== 1024
+      );
+      
+      console.log(`📊 Found ${chartsNeedingEmbedding.length} charts needing CLIP embeddings out of ${allCharts.length} total`);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const chart of chartsNeedingEmbedding) {
+        try {
+          const chartPath = path.join(uploadsDir, chart.filename);
+          
+          // Check if file exists before processing
+          if (!require('fs').existsSync(chartPath)) {
+            console.log(`❌ Skipping chart ${chart.id}: File ${chart.filename} not found`);
+            errorCount++;
+            continue;
+          }
+          
+          // Generate CLIP embedding
+          const embeddingResult = await generateCLIPEmbedding(chartPath);
+          
+          if (embeddingResult.embedding && embeddingResult.embedding.length === 1024) {
+            // Update chart with new embedding
+            await storage.updateChart(chart.id, { embedding: embeddingResult.embedding });
+            console.log(`✅ Updated CLIP embedding for chart ${chart.id} (${chart.filename})`);
+            successCount++;
+          } else {
+            console.log(`❌ Failed to generate valid embedding for chart ${chart.id} (${chart.filename})`);
+            errorCount++;
+          }
+        } catch (error) {
+          console.log(`❌ Error processing chart ${chart.id}: ${error}`);
+          errorCount++;
+        }
+      }
+      
+      console.log(`🎯 CLIP index rebuild complete: ${successCount} successful, ${errorCount} failed`);
+      
+      res.json({
+        success: true,
+        message: `CLIP index rebuild complete`,
+        details: {
+          totalCharts: allCharts.length,
+          chartsProcessed: chartsNeedingEmbedding.length,
+          successful: successCount,
+          failed: errorCount
+        }
+      });
+    } catch (error) {
+      console.error('CLIP index rebuild error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'CLIP index rebuild failed: ' + (error as Error).message 
       });
     }
   });
