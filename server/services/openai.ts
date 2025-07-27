@@ -61,29 +61,61 @@ export async function analyzeChartWithRAG(
       });
     }
 
-    const prompt = `You are a trading AI assistant specializing in pattern recognition and market prediction.
+    // Build the comprehensive prompt with full visual stack
+    let systemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
 
-ANALYSIS TASK:
-Analyze this new chart image${base64DepthMap ? ' and its depth map' : ''} to predict the most likely market behavior.
+- 🧠 CLIP Embeddings: High-level semantic pattern matching
+- 🌀 Depth Map: Structural geometry and layer analysis
+- 🔲 Edge Map: Entry zone outline, price compression coils, structure tracing
+- 📉 Gradient Map: Slope intensity, price momentum, pre-breakout trajectory
 
+You will also be provided with a dynamically retrieved list of the top 3 most visually similar historical charts from the database, which may either be standalone charts or part of multi-timeframe bundles.
+
+---
+
+🆕 **New Chart for Analysis:**
+- Chart Image: [base64 input]
+- Depth Map: ${base64DepthMap ? '[base64 input]' : 'Not available'}
+- Edge Map: [base64 input]
+- Gradient Map: [base64 input]
+- Instrument: Unknown (infer visually if possible)
+- Timeframe: Unknown (infer visually if possible)
+
+---
+
+📚 **Historical Chart Context:**
 ${ragContext}
 
-ANALYSIS REQUIREMENTS:
-Based on the visual similarity and depth patterns compared to historical charts:
+🎯 **YOUR TASK**:
+1. Determine which market session (Asia, London, New York) is most likely to lead the move.
+2. Predict the direction bias (up, down, or unclear).
+3. Assign confidence level: low / medium / high
+4. In the rationale, compare the visual features (EMA layout, price compression, depth structure, edge clarity, gradient slopes) between the new chart and historical patterns.
 
-1. What is the most likely market behavior next? (Bullish breakout, Bearish reversal, Rangebound consolidation, etc.)
-2. In which trading session is the move likely to happen? (Asia, London, NY, Sydney)
-3. Rate your confidence level (Low, Medium, High)
-4. Explain the reasoning based on visual patterns${base64DepthMap ? ', depth map structure,' : ''} and historical similarity
+---
 
-RESPONSE FORMAT:
-Respond with a JSON object in this exact format:
+🧠 **Focus Your Reasoning On:**
+- EMA structures across edge + gradient maps
+- Coil or breakout zones from edge detection
+- Compression → expansion signatures
+- Gradient slope direction + strength
+- Similar patterns and outcomes in historical/bundled charts
+- Session impact patterns (e.g., NY breakouts after London coil)
+
+---
+
+🧾 **OUTPUT FORMAT:**
+Respond ONLY in this exact JSON format:
+\`\`\`json
 {
   "prediction": "Your market behavior prediction",
   "session": "Most likely session",
   "confidence": "Low/Medium/High",
   "reasoning": "Detailed explanation of your analysis including pattern recognition and historical context"
-}`;
+}
+\`\`\``;
+
+    const prompt = systemPrompt;
 
     const messageContent: any[] = [
       {
@@ -169,19 +201,60 @@ export async function analyzeChartWithGPT(
       });
     }
 
-    const prompt = `You are an expert trading analyst. Analyze this trading chart and provide detailed technical analysis.
+    // Build the comprehensive prompt with full visual stack
+    let systemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
 
-Focus on:
-1. Current trend direction and strength
-2. Key support and resistance levels
-3. Chart patterns (triangles, flags, head & shoulders, etc.)
-4. Volume analysis if visible
-5. Potential price targets and entry/exit points
-6. Risk assessment
+- 🧠 CLIP Embeddings: High-level semantic pattern matching
+- 🌀 Depth Map: Structural geometry and layer analysis
+- 🔲 Edge Map: Entry zone outline, price compression coils, structure tracing
+- 📉 Gradient Map: Slope intensity, price momentum, pre-breakout trajectory
 
+You will also be provided with a dynamically retrieved list of the top 3 most visually similar historical charts from the database, which may either be standalone charts or part of multi-timeframe bundles.
+
+---
+
+🆕 **New Chart for Analysis:**
+- Chart Image: [base64 input]
+- Depth Map: Not available
+- Edge Map: [base64 input]
+- Gradient Map: [base64 input]
+- Instrument: Unknown (infer visually if possible)
+- Timeframe: Unknown (infer visually if possible)
+
+---
+
+📚 **Historical Chart Context:**
 ${similarChartsContext}
 
-Please provide your analysis in a structured format and rate your confidence level from 1-10.`;
+🎯 **YOUR TASK**:
+1. Determine which market session (Asia, London, New York) is most likely to lead the move.
+2. Predict the direction bias (up, down, or unclear).
+3. Assign confidence level: low / medium / high
+4. In the rationale, compare the visual features (EMA layout, price compression, depth structure, edge clarity, gradient slopes) between the new chart and historical patterns.
+
+---
+
+🧠 **Focus Your Reasoning On:**
+- EMA structures across edge + gradient maps
+- Coil or breakout zones from edge detection
+- Compression → expansion signatures
+- Gradient slope direction + strength
+- Similar patterns and outcomes in historical/bundled charts
+- Session impact patterns (e.g., NY breakouts after London coil)
+
+---
+
+🧾 **OUTPUT FORMAT:**
+Provide your analysis with detailed technical analysis including:
+- Current trend direction and strength
+- Key support and resistance levels
+- Chart patterns (triangles, flags, head & shoulders, etc.)
+- Volume analysis if visible
+- Potential price targets and entry/exit points
+- Risk assessment
+- Session prediction and confidence level`;
+
+    const prompt = systemPrompt;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -538,27 +611,63 @@ export async function analyzeBundleWithGPT(
       chartDescriptions += "\n";
     });
 
-    const structuredPrompt = `You are a trading AI assistant analyzing a multi-timeframe setup for ${instrument}.
+    // Build the comprehensive prompt with full visual stack
+    let systemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
 
-Here are the charts provided for this trade setup:
+- 🧠 CLIP Embeddings: High-level semantic pattern matching
+- 🌀 Depth Map: Structural geometry and layer analysis
+- 🔲 Edge Map: Entry zone outline, price compression coils, structure tracing
+- 📉 Gradient Map: Slope intensity, price momentum, pre-breakout trajectory
 
-${chartDescriptions}Please analyze how price action is evolving across these timeframes and answer:
+You will also be provided with a dynamically retrieved list of the top 3 most visually similar historical charts from the database, which may either be standalone charts or part of multi-timeframe bundles.
 
-- What is the most likely outcome?
-- In which session is the breakout or major move likely to happen?
-- Confidence level (Low, Medium, High)
-- Provide a brief rationale using EMA structure, depth shape, and any chart similarities
+---
 
-${session ? `Current trading session context: ${session}` : ''}
+🆕 **Multi-Timeframe Bundle for Analysis:**
+- Instrument: ${instrument}
+- Charts: ${timeframes.join(', ')}
+${session ? `- Session Context: ${session}` : ''}
 
-Please provide your response in the following JSON format:
+${chartDescriptions}
+
+---
+
+📚 **Historical Chart Context:**
+For each similar chart, you will be provided context from historical patterns and outcomes.
+
+---
+
+🎯 **YOUR TASK**:
+1. Determine which market session (Asia, London, New York) is most likely to lead the move.
+2. Predict the direction bias (up, down, or unclear).
+3. Assign confidence level: low / medium / high
+4. In the rationale, compare the visual features (EMA layout, price compression, depth structure, edge clarity, gradient slopes) across multiple timeframes.
+
+---
+
+🧠 **Focus Your Reasoning On:**
+- EMA structures across edge + gradient maps
+- Coil or breakout zones from edge detection
+- Compression → expansion signatures
+- Gradient slope direction + strength
+- Multi-timeframe confluence and alignment
+- Session impact patterns (e.g., NY breakouts after London coil)
+
+---
+
+🧾 **OUTPUT FORMAT:**
+Respond ONLY in this exact JSON format:
+\`\`\`json
 {
   "instrument": "${instrument}",
   "prediction": "Brief prediction (e.g., 'Bullish breakout', 'Bearish continuation')",
   "session": "Most likely session for the move (Asia/London/NY/Sydney)",
   "confidence": "Low/Medium/High",
   "rationale": "Detailed analysis of EMA structure, depth patterns, and multi-timeframe confluence"
-}`;
+}
+\`\`\``;
+
+    const structuredPrompt = systemPrompt;
 
     // Build messages with system prompt and structured user content
     const content: any[] = [
