@@ -20,6 +20,198 @@ export interface ChartPrediction {
   reasoning: string;
 }
 
+export interface MultiChartData {
+  original: string; // base64
+  depth?: string; // base64
+  edge?: string; // base64  
+  gradient?: string; // base64
+  metadata: {
+    id: number;
+    filename: string;
+    originalName: string;
+    timeframe: string;
+    instrument: string;
+    session?: string;
+  };
+}
+
+export async function analyzeMultipleChartsWithAllMaps(
+  charts: MultiChartData[],
+  similarCharts: Array<{ 
+    chart: any; 
+    similarity: number;
+  }> = []
+): Promise<ChartPrediction> {
+  try {
+    console.log(`🔍 Starting multi-chart analysis for ${charts.length} charts`);
+    
+    // Build comprehensive RAG context
+    let ragContext = "";
+    if (similarCharts.length > 0) {
+      ragContext = "\nHistorical similar patterns found:\n\n";
+      similarCharts.slice(0, 3).forEach((item, index) => {
+        const chart = item.chart;
+        ragContext += `${index + 1}. ${chart.originalName} (${chart.instrument}, ${chart.timeframe})\n`;
+        ragContext += `   - Similarity: ${(item.similarity * 100).toFixed(1)}%\n`;
+        ragContext += `   - Session: ${chart.session || 'Unknown'}\n\n`;
+      });
+    }
+
+    // Build comprehensive multi-chart prompt
+    const systemPrompt = `You are a professional forex and trading chart analyst with expertise in multi-timeframe analysis. 
+
+You will receive multiple trading charts with their complete visual processing pipeline:
+- Original chart images (price action, candlesticks, indicators)
+- Depth maps (3D depth perception for pattern recognition) 
+- Edge maps (structural boundaries and trend lines)
+- Gradient maps (price momentum and slope analysis)
+
+ANALYZE ALL CHARTS TOGETHER as a unified multi-timeframe view to provide one comprehensive trading prediction.
+
+Key Analysis Points:
+1. **Multi-Timeframe Coherence**: How do the different timeframes align or conflict?
+2. **Cross-Timeframe Patterns**: Identify patterns visible across multiple charts
+3. **Volume/Momentum**: Analyze gradient maps for momentum shifts
+4. **Structure Analysis**: Use edge maps for key support/resistance levels
+5. **Depth Perception**: Use depth maps for pattern strength assessment
+6. **Session Timing**: Consider optimal trading session for the setup
+
+${ragContext}
+
+Respond with a JSON object containing:
+{
+  "prediction": "Up/Down/Sideways",
+  "session": "Asia/London/NY/Sydney", 
+  "confidence": "Low/Medium/High",
+  "reasoning": "Detailed analysis explaining your prediction based on ALL visual data from ALL charts"
+}`;
+
+    // Prepare content array with all visual data
+    const content: any[] = [
+      {
+        type: "text",
+        text: systemPrompt
+      }
+    ];
+
+    // Add all chart visual data
+    charts.forEach((chart, index) => {
+      content.push({
+        type: "text", 
+        text: `\n--- CHART ${index + 1}: ${chart.metadata.originalName} (${chart.metadata.timeframe}) ---`
+      });
+      
+      // Original chart
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: `data:image/jpeg;base64,${chart.original}`,
+          detail: "high"
+        }
+      });
+
+      // Depth map
+      if (chart.depth) {
+        content.push({
+          type: "text",
+          text: `Depth Map for ${chart.metadata.originalName}:`
+        });
+        content.push({
+          type: "image_url", 
+          image_url: {
+            url: `data:image/png;base64,${chart.depth}`,
+            detail: "high"
+          }
+        });
+      }
+
+      // Edge map  
+      if (chart.edge) {
+        content.push({
+          type: "text",
+          text: `Edge Map for ${chart.metadata.originalName}:`
+        });
+        content.push({
+          type: "image_url",
+          image_url: {
+            url: `data:image/png;base64,${chart.edge}`, 
+            detail: "high"
+          }
+        });
+      }
+
+      // Gradient map
+      if (chart.gradient) {
+        content.push({
+          type: "text",
+          text: `Gradient Map for ${chart.metadata.originalName}:`
+        });
+        content.push({
+          type: "image_url",
+          image_url: {
+            url: `data:image/png;base64,${chart.gradient}`,
+            detail: "high"
+          }
+        });
+      }
+    });
+
+    console.log("📡 Making OpenAI API call with", content.length, "content parts...");
+    console.log("📄 Prompt length:", systemPrompt.length, "characters");
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: content
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.3,
+    });
+
+    console.log("✅ Received OpenAI response");
+    const rawResponse = response.choices[0].message.content;
+    console.log("📄 Response length:", rawResponse?.length, "characters");
+
+    if (!rawResponse) {
+      throw new Error("No response from OpenAI");
+    }
+
+    // Parse JSON response
+    console.log("🔍 DEBUG - Raw GPT Response:", rawResponse);
+    const cleanedResponse = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    let parsedResponse: ChartPrediction;
+    try {
+      parsedResponse = JSON.parse(cleanedResponse);
+      console.log("✅ Successfully parsed GPT response");
+    } catch (parseError) {
+      console.error("❌ JSON parse error:", parseError);
+      console.log("🔍 Attempting to extract prediction from text...");
+      
+      // Fallback parsing
+      parsedResponse = {
+        prediction: rawResponse.toLowerCase().includes('up') ? 'Up' : 
+                   rawResponse.toLowerCase().includes('down') ? 'Down' : 'Sideways',
+        session: rawResponse.toLowerCase().includes('london') ? 'London' :
+                rawResponse.toLowerCase().includes('new york') ? 'NY' :
+                rawResponse.toLowerCase().includes('asia') ? 'Asia' : 'Sydney',
+        confidence: rawResponse.toLowerCase().includes('high') ? 'High' :
+                   rawResponse.toLowerCase().includes('low') ? 'Low' : 'Medium',
+        reasoning: rawResponse.slice(0, 500) + "..."
+      };
+    }
+
+    return parsedResponse;
+
+  } catch (error) {
+    console.error("❌ Error in multi-chart analysis:", error);
+    throw error;
+  }
+}
+
 export async function analyzeChartWithRAG(
   chartImagePath: string,
   depthMapPath: string | null,

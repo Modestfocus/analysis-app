@@ -7,7 +7,7 @@ import fs from "fs/promises";
 import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
-import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext } from "./services/openai";
+import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
 import { insertChartSchema, insertAnalysisSchema, type Chart } from "@shared/schema";
 import debugRoutes from './debug-routes';
 
@@ -530,6 +530,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Analysis error:', error);
       res.status(500).json({ message: 'Analysis failed: ' + (error as Error).message });
+    }
+  });
+
+  // NEW: Multi-chart analysis with all visual processing maps
+  app.post('/api/analyze/multi-chart', async (req, res) => {
+    try {
+      const { chartIds } = req.body;
+      
+      if (!chartIds || !Array.isArray(chartIds) || chartIds.length === 0) {
+        return res.status(400).json({ message: 'Chart IDs array is required' });
+      }
+
+      console.log(`📊 Starting multi-chart analysis for ${chartIds.length} charts`);
+      
+      // 1. Get all charts and process them
+      const multiChartData: MultiChartData[] = [];
+      
+      for (const chartId of chartIds) {
+        const chart = await storage.getChart(parseInt(chartId));
+        if (!chart) {
+          console.warn(`⚠️ Chart ${chartId} not found, skipping`);
+          continue;
+        }
+
+        const chartImagePath = path.join(uploadsDir, chart.filename);
+        
+        // Read original chart
+        const originalBuffer = await fs.readFile(chartImagePath);
+        const originalBase64 = originalBuffer.toString('base64');
+
+        // Read depth map if available
+        let depthBase64: string | undefined;
+        if (chart.depthMapPath) {
+          try {
+            const depthPath = path.join(process.cwd(), 'server', chart.depthMapPath);
+            const depthBuffer = await fs.readFile(depthPath);
+            depthBase64 = depthBuffer.toString('base64');
+          } catch (err) {
+            console.warn(`⚠️ Could not read depth map for chart ${chartId}`);
+          }
+        }
+
+        // Read edge map if available
+        let edgeBase64: string | undefined;
+        if (chart.edgeMapPath) {
+          try {
+            const edgePath = path.join(process.cwd(), 'server', chart.edgeMapPath);
+            const edgeBuffer = await fs.readFile(edgePath);
+            edgeBase64 = edgeBuffer.toString('base64');
+          } catch (err) {
+            console.warn(`⚠️ Could not read edge map for chart ${chartId}`);
+          }
+        }
+
+        // Read gradient map if available
+        let gradientBase64: string | undefined;
+        if (chart.gradientMapPath) {
+          try {
+            const gradientPath = path.join(process.cwd(), 'server', chart.gradientMapPath);
+            const gradientBuffer = await fs.readFile(gradientPath);
+            gradientBase64 = gradientBuffer.toString('base64');
+          } catch (err) {
+            console.warn(`⚠️ Could not read gradient map for chart ${chartId}`);
+          }
+        }
+
+        multiChartData.push({
+          original: originalBase64,
+          depth: depthBase64,
+          edge: edgeBase64,
+          gradient: gradientBase64,
+          metadata: {
+            id: chart.id,
+            filename: chart.filename,
+            originalName: chart.originalName,
+            timeframe: chart.timeframe,
+            instrument: chart.instrument,
+            session: chart.session || undefined
+          }
+        });
+      }
+
+      if (multiChartData.length === 0) {
+        return res.status(404).json({ message: 'No valid charts found' });
+      }
+
+      // 2. Get similar charts from the first chart's embedding for RAG context
+      let similarCharts: Array<{ chart: any; similarity: number }> = [];
+      const firstChart = await storage.getChart(parseInt(chartIds[0]));
+      if (firstChart?.embedding && firstChart.embedding.length === 1024) {
+        similarCharts = await storage.findSimilarCharts(firstChart.embedding, 3);
+        console.log(`🔍 Found ${similarCharts.length} similar charts for RAG context`);
+      }
+
+      // 3. Analyze all charts together with GPT-4o
+      const prediction = await analyzeMultipleChartsWithAllMaps(multiChartData, similarCharts);
+
+      // 4. Save analysis result for the first chart (representing the multi-chart analysis)
+      const analysisData = {
+        chartId: parseInt(chartIds[0]),
+        gptAnalysis: JSON.stringify(prediction),
+        similarCharts: JSON.stringify(similarCharts.slice(0, 3).map(sc => ({
+          id: sc.chart.id,
+          filename: sc.chart.originalName,
+          timeframe: sc.chart.timeframe,
+          similarity: sc.similarity
+        }))),
+        confidence: prediction.confidence === 'High' ? 0.9 : prediction.confidence === 'Medium' ? 0.7 : 0.5,
+      };
+
+      const validatedAnalysisData = insertAnalysisSchema.parse(analysisData);
+      const analysisResult = await storage.createAnalysis(validatedAnalysisData);
+
+      res.json({
+        success: true,
+        chartId: parseInt(chartIds[0]),
+        prediction,
+        similarCharts: similarCharts.slice(0, 3).map(sc => ({
+          id: sc.chart.id,
+          filename: sc.chart.originalName,
+          timeframe: sc.chart.timeframe,
+          similarity: sc.similarity
+        })),
+        analysisId: analysisResult.id,
+        chartsProcessed: multiChartData.length,
+        visualMapsIncluded: {
+          depth: multiChartData.filter(c => c.depth).length,
+          edge: multiChartData.filter(c => c.edge).length,
+          gradient: multiChartData.filter(c => c.gradient).length
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Multi-chart analysis error:', error);
+      res.status(500).json({ 
+        message: 'Multi-chart analysis failed', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   });
 

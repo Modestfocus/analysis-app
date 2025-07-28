@@ -308,35 +308,46 @@ export default function UploadPage() {
       }
 
       const chartIds = uploadData.charts.map((chart: any) => chart.id);
-      const analysisResults = [];
       
-      // Process all charts: generate depth maps and analyze each one
+      // Process all charts: generate all visual processing maps
+      console.log(`📊 Processing ${uploadData.charts.length} charts for comprehensive analysis`);
+      
       for (const chart of uploadData.charts) {
-        // Generate depth map for each chart
-        await apiRequest('POST', '/api/depth', { chartId: chart.id });
-
-        // Analyze each chart using new RAG endpoint
-        const analysisResponse = await apiRequest('POST', `/api/analyze/${chart.id}`);
-        const analysisData = await analysisResponse.json();
+        console.log(`🔄 Processing chart ${chart.id}: ${chart.originalName} (${chart.timeframe})`);
         
-        analysisResults.push({
-          ...analysisData,
-          chartPath: `/uploads/${chart.filename}`,
-          chartName: chart.originalName,
-          timeframe: chart.timeframe
-        });
+        // 1. Generate depth map
+        await apiRequest('POST', '/api/depth', { chartId: chart.id });
+        
+        // 2. Generate edge and gradient maps via processing endpoint
+        await apiRequest('POST', `/api/process/${chart.id}`);
       }
       
-      // Return combined results for all charts
+      // Use the new multi-chart analysis endpoint
+      const multiAnalysisResponse = await apiRequest('POST', '/api/analyze/multi-chart', {
+        chartIds: chartIds
+      });
+      const multiAnalysisData = await multiAnalysisResponse.json();
+      
+      // Return comprehensive multi-chart analysis
       return {
         isQuickAnalysis: true,
         chartCount: uploadData.charts.length,
         timeframes: Object.values(timeframeMapping),
         savedToDatabase: true,
-        analysisResults: analysisResults,
+        multiChartAnalysis: true,
+        chartsProcessed: multiAnalysisData.chartsProcessed,
+        visualMapsIncluded: multiAnalysisData.visualMapsIncluded,
         mainChartPath: `/uploads/${uploadData.charts[0].filename}`,
-        // Include first chart's analysis for backward compatibility
-        ...analysisResults[0]
+        // Include analysis results for UI display
+        ...multiAnalysisData,
+        // Add chart metadata for display
+        processedCharts: uploadData.charts.map((chart: any, index: number) => ({
+          id: chart.id,
+          originalName: chart.originalName,
+          timeframe: chart.timeframe,
+          instrument: chart.instrument,
+          filePath: `/uploads/${chart.filename}`
+        }))
       };
     },
     onSuccess: (data) => {
@@ -348,13 +359,21 @@ export default function UploadPage() {
       queryClient.invalidateQueries({ queryKey: ['analyses'] });
       queryClient.invalidateQueries({ queryKey: ['charts'] });
       
-      const timeframesList = data.analysisResults ? 
-        data.analysisResults.map((r: any) => `${r.chartName} (${r.timeframe})`).join(', ') :
-        `${data.chartCount} file(s)`;
+      let description = `${data.chartCount} chart(s) analyzed and saved to dashboard`;
+      
+      if (data.multiChartAnalysis && data.processedCharts) {
+        const chartsList = data.processedCharts.map((c: any) => `${c.originalName} (${c.timeframe})`).join(', ');
+        description = `Multi-chart analysis completed: ${chartsList}`;
+      }
+      
+      if (data.visualMapsIncluded) {
+        const { depth, edge, gradient } = data.visualMapsIncluded;
+        description += `. Visual maps: ${depth} depth, ${edge} edge, ${gradient} gradient`;
+      }
       
       toast({
         title: "Quick Analysis Complete",
-        description: `Charts analyzed and saved: ${timeframesList}`,
+        description: description,
       });
     },
     onError: (error) => {
