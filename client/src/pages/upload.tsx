@@ -308,23 +308,35 @@ export default function UploadPage() {
       }
 
       const chartIds = uploadData.charts.map((chart: any) => chart.id);
-      const firstChart = uploadData.charts[0];
+      const analysisResults = [];
       
-      // Generate depth map for the first chart
-      await apiRequest('POST', '/api/depth', { chartId: firstChart.id });
+      // Process all charts: generate depth maps and analyze each one
+      for (const chart of uploadData.charts) {
+        // Generate depth map for each chart
+        await apiRequest('POST', '/api/depth', { chartId: chart.id });
 
-      // Analyze the first chart using new RAG endpoint
-      const analysisResponse = await apiRequest('POST', `/api/analyze/${firstChart.id}`);
-      const analysisData = await analysisResponse.json();
+        // Analyze each chart using new RAG endpoint
+        const analysisResponse = await apiRequest('POST', `/api/analyze/${chart.id}`);
+        const analysisData = await analysisResponse.json();
+        
+        analysisResults.push({
+          ...analysisData,
+          chartPath: `/uploads/${chart.filename}`,
+          chartName: chart.originalName,
+          timeframe: chart.timeframe
+        });
+      }
       
-      // Save results permanently instead of deleting charts
+      // Return combined results for all charts
       return {
-        ...analysisData,
-        mainChartPath: `/uploads/${firstChart.filename}`,
         isQuickAnalysis: true,
         chartCount: uploadData.charts.length,
         timeframes: Object.values(timeframeMapping),
-        savedToDatabase: true
+        savedToDatabase: true,
+        analysisResults: analysisResults,
+        mainChartPath: `/uploads/${uploadData.charts[0].filename}`,
+        // Include first chart's analysis for backward compatibility
+        ...analysisResults[0]
       };
     },
     onSuccess: (data) => {
@@ -336,9 +348,13 @@ export default function UploadPage() {
       queryClient.invalidateQueries({ queryKey: ['analyses'] });
       queryClient.invalidateQueries({ queryKey: ['charts'] });
       
+      const timeframesList = data.analysisResults ? 
+        data.analysisResults.map((r: any) => `${r.chartName} (${r.timeframe})`).join(', ') :
+        `${data.chartCount} file(s)`;
+      
       toast({
         title: "Quick Analysis Complete",
-        description: `Chart analysis completed and saved to dashboard for ${data.chartCount} file(s).`,
+        description: `Charts analyzed and saved: ${timeframesList}`,
       });
     },
     onError: (error) => {

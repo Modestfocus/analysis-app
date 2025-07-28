@@ -21,6 +21,7 @@ Preferred communication style: Simple, everyday language.
 ✓ **Bundle Analysis UI**: Created dedicated bundle analysis panel with prediction visualization and detailed insights display
 ✓ **Enhanced Quick Analysis Pipeline**: Upgraded similarity search to include bundle context when similar charts belong to bundles
 ✓ **Multi-Timeframe Context Integration**: GPT-4o now receives complete bundle information for better predictions when analyzing individual charts
+✓ **Multi-Chart Quick Analysis Fix**: Updated Quick Analysis to process and analyze ALL uploaded charts instead of only the first chart, with individual depth map generation and GPT-4o analysis for each chart
 ✓ **Advanced Image Processing Pipeline**: Implemented edge map and gradient map generation for all charts using Sharp image processing
 ✓ **Automated Chart Enhancement**: Added batch processing system to generate edge detection and price slope analysis maps for existing charts
 ✓ **Enhanced Database Schema**: Extended charts table with edgeMapPath and gradientMapPath fields for comprehensive chart analysis data
