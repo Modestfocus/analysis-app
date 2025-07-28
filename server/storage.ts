@@ -1,6 +1,8 @@
 import { users, charts, analysisResults, chartBundles, type User, type InsertUser, type Chart, type InsertChart, type AnalysisResult, type InsertAnalysis, type ChartBundle, type InsertBundle, type BundleMetadata } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
+import { existsSync } from "fs";
+import { join } from "path";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -234,8 +236,7 @@ export class MemStorage implements IStorage {
   }
 
   async findSimilarCharts(embedding: number[], limit: number, debugLogs: boolean = false): Promise<Array<{ chart: Chart; similarity: number }>> {
-    const fs = require('fs');
-    const path = require('path');
+    // fs and path modules are now imported at top level
     
     const allCharts = Array.from(this.charts.values());
     
@@ -254,8 +255,8 @@ export class MemStorage implements IStorage {
       }
       
       // Check if main chart file exists
-      const chartPath = path.join(process.cwd(), 'server', 'uploads', chart.filename);
-      if (!fs.existsSync(chartPath)) {
+      const chartPath = join(process.cwd(), 'server', 'uploads', chart.filename);
+      if (!existsSync(chartPath)) {
         if (debugLogs) {
           console.log(`❌ Chart ${chart.id} (${chart.filename}): File missing at ${chartPath}`);
         }
@@ -469,8 +470,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async findSimilarCharts(embedding: number[], limit: number, debugLogs: boolean = false): Promise<Array<{ chart: Chart; similarity: number }>> {
-    const fs = require('fs');
-    const path = require('path');
+    // fs and path modules are now imported at top level
     
     // Get all charts with embeddings (note: the WHERE clause needs to be corrected for checking non-null)
     const allCharts = await db.select().from(charts);
@@ -490,8 +490,8 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Check if main chart file exists
-      const chartPath = path.join(process.cwd(), 'server', 'uploads', chart.filename);
-      if (!fs.existsSync(chartPath)) {
+      const chartPath = join(process.cwd(), 'server', 'uploads', chart.filename);
+      if (!existsSync(chartPath)) {
         if (debugLogs) {
           console.log(`❌ Chart ${chart.id} (${chart.filename}): File missing at ${chartPath}`);
         }

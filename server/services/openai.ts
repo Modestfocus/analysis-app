@@ -30,9 +30,11 @@ export async function analyzeChartWithRAG(
   }> = []
 ): Promise<ChartPrediction> {
   try {
+    console.log("🔍 Starting analyzeChartWithRAG function");
     // Read and encode the main chart image
     const imageBuffer = fs.readFileSync(chartImagePath);
     const base64Image = imageBuffer.toString('base64');
+    console.log("📸 Main image size:", Math.round(imageBuffer.length / 1024), "KB, Base64 length:", base64Image.length);
 
     // Read depth map if available
     let base64DepthMap = null;
@@ -105,15 +107,13 @@ ${ragContext}
 ---
 
 🧾 **OUTPUT FORMAT:**
-Respond ONLY in this exact JSON format:
-\`\`\`json
+Respond with a JSON object containing these exact fields:
 {
   "prediction": "Your market behavior prediction",
-  "session": "Most likely session",
+  "session": "Most likely session", 
   "confidence": "Low/Medium/High",
   "reasoning": "Detailed explanation of your analysis including pattern recognition and historical context"
-}
-\`\`\``;
+}`;
 
     const prompt = systemPrompt;
 
@@ -140,6 +140,9 @@ Respond ONLY in this exact JSON format:
       });
     }
 
+    console.log("📡 Making OpenAI API call with", messageContent.length, "content parts...");
+    console.log("📄 Prompt length:", prompt.length, "characters");
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
@@ -152,29 +155,40 @@ Respond ONLY in this exact JSON format:
       max_tokens: 1000,
     });
 
+    console.log("✅ Received OpenAI response");
     const analysisText = response.choices[0].message.content || "";
+    console.log("📄 Response length:", analysisText.length, "characters");
     
     try {
+      console.log("🔍 DEBUG - Raw GPT Response:", analysisText);      
       const parsedResult = JSON.parse(analysisText) as ChartPrediction;
       
       // Validate the response format
       if (!parsedResult.prediction || !parsedResult.session || !parsedResult.confidence || !parsedResult.reasoning) {
+        console.error("❌ Missing required fields in GPT response:", parsedResult);
         throw new Error("Invalid response format from GPT");
       }
 
       // Ensure confidence is one of the expected values
       if (!["Low", "Medium", "High"].includes(parsedResult.confidence)) {
+        console.log("⚠️ Invalid confidence level, defaulting to Medium:", parsedResult.confidence);
         parsedResult.confidence = "Medium";
       }
 
+      console.log("✅ Successfully parsed GPT response");
       return parsedResult;
     } catch (parseError) {
-      console.error("Failed to parse GPT response:", analysisText);
+      console.error("❌ Failed to parse GPT response:", analysisText);
+      console.error("❌ Parse error:", parseError);
       throw new Error("Invalid JSON response from GPT analysis");
     }
 
   } catch (error) {
-    console.error("GPT RAG analysis error:", error);
+    console.error("❌ GPT RAG analysis error:", error);
+    if (error instanceof Error) {
+      console.error("❌ Error message:", error.message);
+      console.error("❌ Error stack:", error.stack);
+    }
     throw new Error(`Chart analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
