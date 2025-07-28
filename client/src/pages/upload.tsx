@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar, Save } from "lucide-react";
@@ -23,6 +23,7 @@ export default function UploadPage() {
   const [quickAnalysisFiles, setQuickAnalysisFiles] = useState<File[]>([]);
   const [quickAnalysisTimeframes, setQuickAnalysisTimeframes] = useState<Record<string, Timeframe>>({});
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Helper functions for file timeframe management
   const updateFileTimeframe = (fileName: string, timeframe: Timeframe) => {
@@ -316,26 +317,28 @@ export default function UploadPage() {
       const analysisResponse = await apiRequest('POST', `/api/analyze/${firstChart.id}`);
       const analysisData = await analysisResponse.json();
       
-      // Clean up all temporary charts
-      await Promise.all(chartIds.map((id: number) => 
-        apiRequest('DELETE', `/api/charts/${id}`)
-      ));
-      
+      // Save results permanently instead of deleting charts
       return {
         ...analysisData,
         mainChartPath: `/uploads/${firstChart.filename}`,
         isQuickAnalysis: true,
         chartCount: uploadData.charts.length,
-        timeframes: Object.values(timeframeMapping)
+        timeframes: Object.values(timeframeMapping),
+        savedToDatabase: true
       };
     },
     onSuccess: (data) => {
       setAnalysisResults(data);
       setQuickAnalysisFiles([]);
       setQuickAnalysisTimeframes({});
+      
+      // Invalidate queries to refresh dashboard
+      queryClient.invalidateQueries({ queryKey: ['analyses'] });
+      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      
       toast({
         title: "Quick Analysis Complete",
-        description: `Chart analysis completed for ${data.chartCount} file(s) (not saved).`,
+        description: `Chart analysis completed and saved to dashboard for ${data.chartCount} file(s).`,
       });
     },
     onError: (error) => {
@@ -680,7 +683,7 @@ export default function UploadPage() {
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Bolt className="text-amber-500 mr-2 h-5 w-5" />
-                Quick Chart Analysis (Not Saved)
+                Quick Chart Analysis
               </h2>
               
               <DragDropZone

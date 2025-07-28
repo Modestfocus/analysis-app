@@ -20,6 +20,7 @@ export interface IStorage {
   createAnalysis(analysis: InsertAnalysis): Promise<AnalysisResult>;
   getAnalysisByChartId(chartId: number): Promise<AnalysisResult | undefined>;
   getAnalysisByBundleId(bundleId: string): Promise<AnalysisResult | undefined>;
+  getAllAnalyses(): Promise<AnalysisResult[]>;
   
   createBundle(bundle: InsertBundle): Promise<ChartBundle>;
   getBundle(id: string): Promise<ChartBundle | undefined>;
@@ -174,6 +175,11 @@ export class MemStorage implements IStorage {
     return Array.from(this.analyses.values()).find(
       (analysis) => analysis.bundleId === bundleId,
     );
+  }
+
+  async getAllAnalyses(): Promise<AnalysisResult[]> {
+    return Array.from(this.analyses.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async createBundle(insertBundle: InsertBundle): Promise<ChartBundle> {
@@ -414,6 +420,10 @@ export class DatabaseStorage implements IStorage {
   async getAnalysisByBundleId(bundleId: string): Promise<AnalysisResult | undefined> {
     const [analysis] = await db.select().from(analysisResults).where(eq(analysisResults.bundleId, bundleId));
     return analysis || undefined;
+  }
+
+  async getAllAnalyses(): Promise<AnalysisResult[]> {
+    return await db.select().from(analysisResults).orderBy(desc(analysisResults.createdAt));
   }
 
   async createBundle(insertBundle: InsertBundle): Promise<ChartBundle> {

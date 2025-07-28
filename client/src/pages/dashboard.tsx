@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>("All");
   const [selectedCharts, setSelectedCharts] = useState<Set<number>>(new Set());
   const [analysisResults, setAnalysisResults] = useState(null);
-  const [showView, setShowView] = useState<"charts" | "bundles">("charts");
+  const [showView, setShowView] = useState<"charts" | "bundles" | "analyses">("charts");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -48,6 +48,17 @@ export default function DashboardPage() {
       return data;
     },
     select: (data: any) => data.bundles as (ChartBundle & { parsedMetadata: BundleMetadata })[],
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5,
+  });
+
+  const { data: analysesData, isLoading: isLoadingAnalyses } = useQuery({
+    queryKey: ['analyses'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/analyses');
+      const data = await response.json();
+      return data.analyses || [];
+    },
     staleTime: 0,
     gcTime: 1000 * 60 * 5,
   });
@@ -165,7 +176,8 @@ export default function DashboardPage() {
 
   const charts = Array.isArray(chartsData?.charts) ? chartsData.charts : [];
   const bundles = bundlesData || [];
-  const isLoading = showView === "charts" ? isLoadingCharts : isLoadingBundles;
+  const analyses = analysesData || [];
+  const isLoading = showView === "charts" ? isLoadingCharts : showView === "bundles" ? isLoadingBundles : isLoadingAnalyses;
   
   console.log('Dashboard render - selectedTimeframe:', selectedTimeframe, 'charts.length:', charts.length, 'charts:', charts);
 
@@ -216,7 +228,7 @@ export default function DashboardPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                     <ChartBar className="text-primary-500 mr-2 h-5 w-5" />
-                    {showView === "charts" ? "Charts Dashboard" : "Chart Bundles Dashboard"}
+                    {showView === "charts" ? "Charts Dashboard" : showView === "bundles" ? "Chart Bundles Dashboard" : "Quick Analysis Results"}
                   </h2>
                   {showView === "charts" && (
                     <p className="text-sm text-gray-600 mt-1">
@@ -246,6 +258,13 @@ export default function DashboardPage() {
                     onClick={() => setShowView("bundles")}
                   >
                     Chart Bundles
+                  </Button>
+                  <Button
+                    variant={showView === "analyses" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowView("analyses")}
+                  >
+                    Quick Analysis
                   </Button>
                 </div>
               </div>
@@ -372,7 +391,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             )
-          ) : (
+          ) : showView === "bundles" ? (
             bundles.length === 0 ? (
               <Card>
                 <CardContent className="p-12 text-center">
@@ -397,6 +416,115 @@ export default function DashboardPage() {
                     bundle={bundle}
                     onAnalyze={(results) => setAnalysisResults(results)}
                   />
+                ))}
+              </div>
+            )
+          ) : (
+            analyses.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <ChartBar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Quick Analysis Results</h3>
+                  <p className="text-gray-500 mb-4">
+                    You haven't run any Quick Analysis yet. Upload a chart and run analysis to see results here.
+                  </p>
+                  <Button asChild>
+                    <Link href="/upload">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload & Analyze Charts
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {analyses.map((analysis: any) => (
+                  <Card key={analysis.id} className="p-6">
+                    <div className="flex items-start space-x-4">
+                      {analysis.chart && (
+                        <div className="flex-shrink-0">
+                          <img 
+                            src={analysis.chart.filePath} 
+                            alt={analysis.chart.originalName}
+                            className="w-32 h-24 object-cover rounded-lg border"
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {analysis.chart?.originalName || `Analysis #${analysis.id}`}
+                          </h3>
+                          <div className="flex items-center space-x-2">
+                            {analysis.chart && (
+                              <>
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                  {analysis.chart.timeframe}
+                                </span>
+                                <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded">
+                                  {analysis.chart.instrument}
+                                </span>
+                                {analysis.chart.session && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                                    {analysis.chart.session}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {analysis.prediction && (
+                          <div className="mb-4">
+                            <div className="grid grid-cols-3 gap-4 mb-3">
+                              <div>
+                                <span className="text-sm font-medium text-gray-600">Prediction:</span>
+                                <p className={`text-lg font-bold ${analysis.prediction.prediction?.toLowerCase() === 'up' ? 'text-green-600' : analysis.prediction.prediction?.toLowerCase() === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
+                                  {analysis.prediction.prediction}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-600">Session:</span>
+                                <p className="text-lg font-semibold text-gray-900">{analysis.prediction.session}</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-600">Confidence:</span>
+                                <p className={`text-lg font-semibold ${analysis.prediction.confidence === 'High' ? 'text-green-600' : analysis.prediction.confidence === 'Medium' ? 'text-yellow-600' : 'text-red-600'}`}>
+                                  {analysis.prediction.confidence}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="mb-3">
+                              <span className="text-sm font-medium text-gray-600">Analysis:</span>
+                              <p className="text-sm text-gray-700 leading-relaxed mt-1">
+                                {analysis.prediction.reasoning}
+                              </p>
+                            </div>
+                            
+                            {analysis.similarCharts && analysis.similarCharts.length > 0 && (
+                              <div>
+                                <span className="text-sm font-medium text-gray-600">
+                                  Similar Charts ({analysis.similarCharts.length}):
+                                </span>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {analysis.similarCharts.map((similar: any, idx: number) => (
+                                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                                      {similar.filename} ({(similar.similarity * 100).toFixed(1)}%)
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className="text-xs text-gray-500">
+                          Created: {new Date(analysis.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
                 ))}
               </div>
             )

@@ -611,6 +611,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all saved Quick Analysis results for dashboard
+  app.get('/api/analyses', async (req, res) => {
+    try {
+      const analyses = await storage.getAllAnalyses();
+      
+      // Enrich analyses with chart data
+      const enrichedAnalyses = await Promise.all(analyses.map(async (analysis) => {
+        let chart = null;
+        if (analysis.chartId) {
+          chart = await storage.getChart(analysis.chartId);
+        }
+        
+        let prediction = null;
+        try {
+          prediction = JSON.parse(analysis.gptAnalysis);
+        } catch (e) {
+          console.error('Failed to parse GPT analysis:', e);
+        }
+        
+        let similarCharts = [];
+        try {
+          similarCharts = JSON.parse(analysis.similarCharts);
+        } catch (e) {
+          console.error('Failed to parse similar charts:', e);
+        }
+        
+        return {
+          id: analysis.id,
+          chartId: analysis.chartId,
+          bundleId: analysis.bundleId,
+          prediction,
+          similarCharts,
+          confidence: analysis.confidence,
+          createdAt: analysis.createdAt,
+          chart: chart ? {
+            id: chart.id,
+            filename: chart.filename,
+            originalName: chart.originalName,
+            timeframe: chart.timeframe,
+            instrument: chart.instrument,
+            session: chart.session,
+            filePath: `/uploads/${chart.filename}`,
+            depthMapUrl: chart.depthMapPath,
+            comment: chart.comment
+          } : null
+        };
+      }));
+      
+      res.json({
+        success: true,
+        analyses: enrichedAnalyses
+      });
+    } catch (error) {
+      console.error('Error fetching analyses:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch analyses' 
+      });
+    }
+  });
+
   // Get all charts with filtering
   app.get('/api/charts', async (req, res) => {
     try {
