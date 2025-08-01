@@ -21,6 +21,7 @@ export default function ChartsPage() {
   const [isDrawingSettingsOpen, setIsDrawingSettingsOpen] = useState(false);
   const [drawings, setDrawings] = useState<any[]>([]);
   const [showTradingPanel, setShowTradingPanel] = useState(true);
+  const [isTradingPanelMinimized, setIsTradingPanelMinimized] = useState(false);
 
   // Convert our symbol format to TradingView format
   const formatSymbolForTradingView = (symbol: string) => {
@@ -248,6 +249,10 @@ export default function ChartsPage() {
     alert(`Demo Order Placed: ${order.type.toUpperCase()} ${order.size} ${order.symbol}`);
   }, []);
 
+  const handleToggleTradingPanelMinimize = useCallback(() => {
+    setIsTradingPanelMinimized(!isTradingPanelMinimized);
+  }, [isTradingPanelMinimized]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Navigation Header */}
@@ -270,7 +275,7 @@ export default function ChartsPage() {
         </div>
       </nav>
 
-      <div className="flex h-[calc(100vh-80px)] pb-64">
+      <div className={`flex h-[calc(100vh-80px)] ${isTradingPanelMinimized ? 'pb-12' : 'pb-64'}`}>
         {/* Main Chart Area */}
         <div className="flex-1 p-4">
           <Card className="h-full">
@@ -334,6 +339,8 @@ export default function ChartsPage() {
           <TradingPanel 
             currentSymbol={currentSymbol}
             onPlaceOrder={handlePlaceOrder}
+            isMinimized={isTradingPanelMinimized}
+            onToggleMinimize={handleToggleTradingPanelMinimize}
           />
         )}
       </div>

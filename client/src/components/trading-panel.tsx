@@ -15,7 +15,10 @@ import {
   Target,
   BarChart3,
   PieChart,
-  Activity
+  Activity,
+  ChevronUp,
+  ChevronDown,
+  Minimize2
 } from 'lucide-react';
 
 interface Position {
@@ -44,6 +47,8 @@ interface Order {
 interface TradingPanelProps {
   currentSymbol: string;
   onPlaceOrder: (order: any) => void;
+  isMinimized: boolean;
+  onToggleMinimize: () => void;
 }
 
 // Mock data for demonstration
@@ -85,7 +90,7 @@ const mockOrders: Order[] = [
   }
 ];
 
-export default function TradingPanel({ currentSymbol, onPlaceOrder }: TradingPanelProps) {
+export default function TradingPanel({ currentSymbol, onPlaceOrder, isMinimized, onToggleMinimize }: TradingPanelProps) {
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [size, setSize] = useState('0.1');
@@ -116,13 +121,34 @@ export default function TradingPanel({ currentSymbol, onPlaceOrder }: TradingPan
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
       <div className="container mx-auto px-4">
-        <Tabs defaultValue="trading" className="w-full">
-          <TabsList className="grid grid-cols-4 w-full max-w-md">
-            <TabsTrigger value="trading">Trading</TabsTrigger>
-            <TabsTrigger value="positions">Positions</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
-          </TabsList>
+        {/* Header with toggle button */}
+        <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="text-sm font-medium">Trading Panel</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleMinimize}
+            className="h-6 w-6 p-0"
+          >
+            {isMinimized ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+
+        {!isMinimized && (
+          <Tabs defaultValue="trading" className="w-full">
+            <TabsList className="grid grid-cols-4 w-full max-w-md mt-2">
+              <TabsTrigger value="trading">Trading</TabsTrigger>
+              <TabsTrigger value="positions">Positions</TabsTrigger>
+              <TabsTrigger value="orders">Orders</TabsTrigger>
+              <TabsTrigger value="account">Account</TabsTrigger>
+            </TabsList>
 
           <div className="py-4">
             {/* Trading Tab */}
@@ -449,6 +475,7 @@ export default function TradingPanel({ currentSymbol, onPlaceOrder }: TradingPan
             </TabsContent>
           </div>
         </Tabs>
+        )}
       </div>
     </div>
   );
