@@ -32,6 +32,8 @@ Preferred communication style: Simple, everyday language.
 ✓ **CLIP Index Rebuild System**: Added admin endpoint for rebuilding vector embeddings and fixing missing/broken similarity data
 ✓ **Debug Logging Framework**: Implemented comprehensive debug mode with file existence checking, vector distance logging, and similarity verification
 ✓ **Admin Dashboard Interface**: Created /debug/admin panel for CLIP index management, debug toggling, and system status monitoring
+✓ **Live Charts Integration**: Added TradingView integration with new /charts route displaying NASDAQ US100 live market data with full interactivity
+✓ **Enhanced Navigation**: Integrated Charts button across all pages (Upload, Dashboard) with active state highlighting for seamless user experience
 
 ## System Architecture
 

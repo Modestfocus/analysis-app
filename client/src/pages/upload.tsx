@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar, Save } from "lucide-react";
+import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar, Save, TrendingUp } from "lucide-react";
 import TimeframeSelector from "@/components/timeframe-selector";
 import DragDropZone from "@/components/drag-drop-zone";
 import InstrumentSelector from "@/components/instrument-selector";
@@ -469,6 +469,16 @@ export default function UploadPage() {
                   <Link href="/dashboard">
                     <ChartBar className="mr-2 h-4 w-4" />
                     Dashboard
+                  </Link>
+                </Button>
+                <Button 
+                  variant={location === "/charts" ? "default" : "secondary"}
+                  size="sm"
+                  asChild
+                >
+                  <Link href="/charts">
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Charts
                   </Link>
                 </Button>
               </div>

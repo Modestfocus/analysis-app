@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import UploadPage from "@/pages/upload";
 import DashboardPage from "@/pages/dashboard";
+import ChartsPage from "@/pages/charts";
 
 function Router() {
   return (
@@ -12,6 +13,7 @@ function Router() {
       <Route path="/" component={UploadPage} />
       <Route path="/upload" component={UploadPage} />
       <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/charts" component={ChartsPage} />
       <Route>404 - Page Not Found</Route>
     </Switch>
   );

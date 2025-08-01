@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ChartLine, Upload, ChartBar, Filter, Trash2 } from "lucide-react";
+import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp } from "lucide-react";
 import ChartCard from "@/components/chart-card";
 import BundleCard from "@/components/bundle-card";
 import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
@@ -212,6 +212,16 @@ export default function DashboardPage() {
                   <Link href="/dashboard">
                     <ChartBar className="mr-2 h-4 w-4" />
                     Dashboard
+                  </Link>
+                </Button>
+                <Button 
+                  variant={location === "/charts" ? "default" : "secondary"}
+                  size="sm"
+                  asChild
+                >
+                  <Link href="/charts">
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Charts
                   </Link>
                 </Button>
               </div>
