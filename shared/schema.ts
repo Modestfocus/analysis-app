@@ -32,6 +32,7 @@ export const chartLayouts = pgTable("chart_layouts", {
 
 export const charts = pgTable("charts", {
   id: serial("id").primaryKey(),
+  userId: uuid("user_id").references(() => users.id), // Allow null for existing charts
   filename: text("filename").notNull(),
   originalName: text("original_name").notNull(),
   timeframe: text("timeframe").notNull(),
