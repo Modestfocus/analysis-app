@@ -299,55 +299,21 @@ export default function UploadPage() {
         formData.append('session', selectedSession);
       }
 
-      // Upload all charts with individual timeframes
-      const uploadResponse = await apiRequest('POST', '/api/upload', formData);
-      const uploadData = await uploadResponse.json();
-
-      if (!uploadData.success) {
-        throw new Error('Upload failed for quick analysis');
-      }
-
-      const chartIds = uploadData.charts.map((chart: any) => chart.id);
+      // Use Quick Analysis endpoint - processes temporarily without saving to dashboard
+      const quickAnalysisResponse = await apiRequest('POST', '/api/analyze/quick', formData);
+      const quickAnalysisData = await quickAnalysisResponse.json();
       
-      // Process all charts: generate all visual processing maps
-      console.log(`📊 Processing ${uploadData.charts.length} charts for comprehensive analysis`);
-      
-      for (const chart of uploadData.charts) {
-        console.log(`🔄 Processing chart ${chart.id}: ${chart.originalName} (${chart.timeframe})`);
-        
-        // 1. Generate depth map
-        await apiRequest('POST', '/api/depth', { chartId: chart.id });
-        
-        // 2. Generate edge and gradient maps via processing endpoint
-        await apiRequest('POST', `/api/process/${chart.id}`);
-      }
-      
-      // Use the new multi-chart analysis endpoint
-      const multiAnalysisResponse = await apiRequest('POST', '/api/analyze/multi-chart', {
-        chartIds: chartIds
-      });
-      const multiAnalysisData = await multiAnalysisResponse.json();
-      
-      // Return comprehensive multi-chart analysis
+      // Return comprehensive quick analysis (no database save)
       return {
         isQuickAnalysis: true,
-        chartCount: uploadData.charts.length,
+        chartCount: quickAnalysisData.chartCount,
         timeframes: Object.values(timeframeMapping),
-        savedToDatabase: true,
+        savedToDatabase: false, // Quick Analysis does NOT save to database
         multiChartAnalysis: true,
-        chartsProcessed: multiAnalysisData.chartsProcessed,
-        visualMapsIncluded: multiAnalysisData.visualMapsIncluded,
-        mainChartPath: `/uploads/${uploadData.charts[0].filename}`,
+        chartsProcessed: quickAnalysisData.chartCount,
+        visualMapsIncluded: quickAnalysisData.visualMapsIncluded,
         // Include analysis results for UI display
-        ...multiAnalysisData,
-        // Add chart metadata for display
-        processedCharts: uploadData.charts.map((chart: any, index: number) => ({
-          id: chart.id,
-          originalName: chart.originalName,
-          timeframe: chart.timeframe,
-          instrument: chart.instrument,
-          filePath: `/uploads/${chart.filename}`
-        }))
+        ...quickAnalysisData
       };
     },
     onSuccess: (data) => {
@@ -355,15 +321,11 @@ export default function UploadPage() {
       setQuickAnalysisFiles([]);
       setQuickAnalysisTimeframes({});
       
-      // Invalidate queries to refresh dashboard
-      queryClient.invalidateQueries({ queryKey: ['analyses'] });
-      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      // Quick Analysis doesn't save to dashboard, so no need to invalidate queries
+      let description = `${data.chartCount} chart(s) analyzed temporarily (not saved to dashboard)`;
       
-      let description = `${data.chartCount} chart(s) analyzed and saved to dashboard`;
-      
-      if (data.multiChartAnalysis && data.processedCharts) {
-        const chartsList = data.processedCharts.map((c: any) => `${c.originalName} (${c.timeframe})`).join(', ');
-        description = `Multi-chart analysis completed: ${chartsList}`;
+      if (data.multiChartAnalysis && data.message) {
+        description = data.message;
       }
       
       if (data.visualMapsIncluded) {

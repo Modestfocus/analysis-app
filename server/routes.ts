@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
+import sharp from "sharp";
 import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
@@ -671,6 +672,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Multi-chart analysis error:', error);
       res.status(500).json({ 
         message: 'Multi-chart analysis failed', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
+  // NEW: Quick Analysis Endpoint - Temporary processing without database storage
+  app.post('/api/analyze/quick', upload.array('charts'), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: 'No files uploaded' });
+      }
+
+      const timeframeMapping = req.body.timeframeMapping ? JSON.parse(req.body.timeframeMapping) : {};
+      const instrument = req.body.instrument || 'UNKNOWN';
+      const session = req.body.session;
+
+      console.log(`🚀 Quick Analysis: Processing ${files.length} charts temporarily (no database save)`);
+
+      const tempChartData: MultiChartData[] = [];
+
+      // Process each file temporarily
+      for (const file of files) {
+        const timeframe = timeframeMapping[file.originalname] || '5M';
+        console.log(`🔄 Processing ${file.originalname} (${timeframe}) - Temporary processing`);
+
+        // Read original image
+        const originalBuffer = await fs.readFile(file.path);
+        const originalBase64 = originalBuffer.toString('base64');
+
+        // Generate temporary depth map using fallback method (no database save)
+        let depthBase64: string | undefined;
+        try {
+          const tempDepthPath = path.join(process.cwd(), 'server', 'temp', `quick_depth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
+          await fs.mkdir(path.dirname(tempDepthPath), { recursive: true });
+          
+          // Generate grayscale + blur depth map
+          await sharp(file.path)
+            .grayscale()
+            .blur(2)
+            .png()
+            .toFile(tempDepthPath);
+          
+          const depthBuffer = await fs.readFile(tempDepthPath);
+          depthBase64 = depthBuffer.toString('base64');
+          
+          // Clean up temp depth file
+          await fs.unlink(tempDepthPath).catch(() => {});
+        } catch (err) {
+          console.warn(`⚠️ Failed to generate temp depth map for ${file.originalname}`);
+        }
+
+        // Generate temporary edge map
+        let edgeBase64: string | undefined;
+        try {
+          const tempEdgePath = path.join(process.cwd(), 'server', 'temp', `quick_edge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
+          
+          await sharp(file.path)
+            .grayscale()
+            .convolve({
+              width: 3,
+              height: 3,
+              kernel: [-1, -1, -1, -1, 8, -1, -1, -1, -1]
+            })
+            .png()
+            .toFile(tempEdgePath);
+          
+          const edgeBuffer = await fs.readFile(tempEdgePath);
+          edgeBase64 = edgeBuffer.toString('base64');
+          
+          // Clean up temp edge file
+          await fs.unlink(tempEdgePath).catch(() => {});
+        } catch (err) {
+          console.warn(`⚠️ Failed to generate temp edge map for ${file.originalname}`);
+        }
+
+        // Generate temporary gradient map
+        let gradientBase64: string | undefined;
+        try {
+          const tempGradientPath = path.join(process.cwd(), 'server', 'temp', `quick_gradient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
+          
+          await sharp(file.path)
+            .grayscale()
+            .convolve({
+              width: 3,
+              height: 3,
+              kernel: [-1, 0, 1, -2, 0, 2, -1, 0, 1]
+            })
+            .png()
+            .toFile(tempGradientPath);
+          
+          const gradientBuffer = await fs.readFile(tempGradientPath);
+          gradientBase64 = gradientBuffer.toString('base64');
+          
+          // Clean up temp gradient file
+          await fs.unlink(tempGradientPath).catch(() => {});
+        } catch (err) {
+          console.warn(`⚠️ Failed to generate temp gradient map for ${file.originalname}`);
+        }
+
+        tempChartData.push({
+          original: originalBase64,
+          depth: depthBase64,
+          edge: edgeBase64,
+          gradient: gradientBase64,
+          metadata: {
+            id: 0, // Temporary ID for quick analysis
+            filename: file.filename,
+            originalName: file.originalname,
+            timeframe,
+            instrument,
+            session
+          }
+        });
+
+        // Clean up uploaded file
+        await fs.unlink(file.path).catch(() => {});
+      }
+
+      // Get similar charts for RAG context (use first chart's embedding if available)
+      let similarCharts: Array<{ chart: any; similarity: number }> = [];
+      if (tempChartData.length > 0) {
+        // For quick analysis, we'll get some random charts for context since we don't have embeddings
+        const randomCharts = await storage.getAllCharts();
+        const limitedCharts = randomCharts.slice(0, 3);
+        similarCharts = limitedCharts.map((chart: any) => ({
+          chart,
+          similarity: 0.8 // Default similarity for context
+        }));
+        console.log(`🔍 Using ${similarCharts.length} random charts for RAG context in quick analysis`);
+      }
+
+      // Analyze all charts together with GPT-4o
+      console.log(`🔍 Starting quick analysis for ${tempChartData.length} charts (temporary processing)`);
+      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, similarCharts);
+
+      // Return analysis without saving to database
+      res.json({
+        success: true,
+        isQuickAnalysis: true,
+        chartCount: tempChartData.length,
+        prediction,
+        similarCharts: similarCharts.slice(0, 3).map(sc => ({
+          chartId: sc.chart.id,
+          filename: sc.chart.originalName,
+          timeframe: sc.chart.timeframe,
+          instrument: sc.chart.instrument,
+          session: sc.chart.session,
+          similarity: sc.similarity,
+          filePath: `/uploads/${sc.chart.filename}`,
+          depthMapUrl: sc.chart.depthMapPath,
+          comment: sc.chart.comment
+        })),
+        message: `Quick analysis complete for ${tempChartData.length} chart(s) - processed temporarily without saving to dashboard`,
+        visualMapsIncluded: {
+          depth: tempChartData.filter(c => c.depth).length,
+          edge: tempChartData.filter(c => c.edge).length,
+          gradient: tempChartData.filter(c => c.gradient).length
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Quick analysis error:', error);
+      res.status(500).json({ 
+        message: 'Quick analysis failed', 
         error: error instanceof Error ? error.message : 'Unknown error' 
       });
     }
