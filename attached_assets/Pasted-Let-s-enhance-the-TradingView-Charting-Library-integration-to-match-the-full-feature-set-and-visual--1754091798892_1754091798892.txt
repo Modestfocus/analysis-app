@@ -1,0 +1,47 @@
+Let’s enhance the TradingView Charting Library integration to match the full feature set and visual layout of the native TradingView platform. Here’s what we need to implement next:
+
+1. Left-Hand Tooling Sidebar (Drawing Panel)
+	•	Add the full Drawing Toolbar (like TradingView’s left vertical panel).
+	•	Should include:
+	•	Trend Line, Horizontal Line, Ray, Parallel Channel
+	•	Brush, Rectangle, Ellipse, Text, Arrow, etc.
+	•	Ability to click on these tools and draw directly on the chart.
+	•	Provide style options (color picker, thickness, line style) after selecting the drawn element.
+	•	Ensure this toolbar is always visible and collapsible.
+
+2. Right-Hand Symbol & Details Panel (Like TradingView’s Watchlist Pane)
+	•	Keep the current Watchlist Panel but add:
+	•	Symbol Info (like ticker details, % change)
+	•	Ability to search and add symbols to watchlist.
+	•	Option to display symbol details / price box similar to TradingView’s top left price section.
+
+3. Drawing & Annotation Settings
+	•	After drawing a line or shape, a context menu or side panel should appear allowing:
+	•	Change color
+	•	Adjust line thickness and style (solid, dashed, dotted)
+	•	Lock or hide elements.
+	•	Delete individual drawings.
+	•	Default drawing settings should be saved to the user’s profile.
+
+4. Chart Layout Save/Load Enhancement
+	•	Ensure that when a user:
+	•	Applies indicators
+	•	Draws lines/annotations
+	•	Adjusts colors/styles
+	•	Zooms/pans the chart
+	•	All these settings are saved as a layout profile tied to their account and auto-loaded when they return.
+
+5. Optional: Trading Panel (Bottom)
+	•	If possible, add a Trading Panel at the bottom, even if it’s mock data for now.
+	•	Could show simulated Positions, Orders, PnL, just for practice visualization.
+	•	We can later integrate live data.
+
+⸻
+
+Let’s prioritize Tooling Panel (Drawing Sidebar) and Drawing Customization first.
+
+Once we get the Tooling Panel working, we can move on to Watchlist enhancements and Layout Save/Load polish.
+
+⸻
+
+Do you need me to send you the TradingView Charting Library feature documentation for reference?”

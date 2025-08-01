@@ -5,6 +5,9 @@ import { Link } from "wouter";
 import { useEffect, useRef, useState, useCallback } from "react";
 import WatchlistManager from "@/components/watchlist-manager";
 import ChartLayoutManager from "@/components/chart-layout-manager";
+import DrawingToolbar from "@/components/drawing-toolbar";
+import DrawingSettingsPanel from "@/components/drawing-settings-panel";
+import TradingPanel from "@/components/trading-panel";
 
 export default function ChartsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -12,6 +15,12 @@ export default function ChartsPage() {
   const initializingRef = useRef<boolean>(false);
   const [currentSymbol, setCurrentSymbol] = useState("NAS100");
   const [isChartReady, setIsChartReady] = useState(false);
+  const [selectedDrawingTool, setSelectedDrawingTool] = useState("cursor");
+  const [isDrawingToolbarCollapsed, setIsDrawingToolbarCollapsed] = useState(false);
+  const [selectedDrawing, setSelectedDrawing] = useState<any>(null);
+  const [isDrawingSettingsOpen, setIsDrawingSettingsOpen] = useState(false);
+  const [drawings, setDrawings] = useState<any[]>([]);
+  const [showTradingPanel, setShowTradingPanel] = useState(true);
 
   // Convert our symbol format to TradingView format
   const formatSymbolForTradingView = (symbol: string) => {
@@ -177,6 +186,68 @@ export default function ChartsPage() {
     }
   }, [currentSymbol, initializeChart]);
 
+  // Drawing tool handlers
+  const handleDrawingToolSelect = useCallback((toolId: string) => {
+    setSelectedDrawingTool(toolId);
+    console.log("Selected drawing tool:", toolId);
+    // In a real implementation, this would communicate with TradingView widget
+    // widget.chart().createStudy("drawing", false, false, { toolId });
+  }, []);
+
+  const handleToggleDrawingToolbar = useCallback(() => {
+    setIsDrawingToolbarCollapsed(!isDrawingToolbarCollapsed);
+  }, [isDrawingToolbarCollapsed]);
+
+  // Drawing settings handlers
+  const handleUpdateDrawing = useCallback((settings: any) => {
+    if (selectedDrawing) {
+      const updatedDrawings = drawings.map(drawing => 
+        drawing.id === selectedDrawing.id ? { ...drawing, ...settings } : drawing
+      );
+      setDrawings(updatedDrawings);
+      setSelectedDrawing({ ...selectedDrawing, ...settings });
+    }
+  }, [selectedDrawing, drawings]);
+
+  const handleDeleteDrawing = useCallback(() => {
+    if (selectedDrawing) {
+      const updatedDrawings = drawings.filter(drawing => drawing.id !== selectedDrawing.id);
+      setDrawings(updatedDrawings);
+      setSelectedDrawing(null);
+      setIsDrawingSettingsOpen(false);
+    }
+  }, [selectedDrawing, drawings]);
+
+  const handleDuplicateDrawing = useCallback(() => {
+    if (selectedDrawing) {
+      const newDrawing = { 
+        ...selectedDrawing, 
+        id: `${selectedDrawing.id}_copy_${Date.now()}` 
+      };
+      setDrawings([...drawings, newDrawing]);
+    }
+  }, [selectedDrawing, drawings]);
+
+  const handleLockDrawing = useCallback((locked: boolean) => {
+    if (selectedDrawing) {
+      handleUpdateDrawing({ locked });
+    }
+  }, [selectedDrawing, handleUpdateDrawing]);
+
+  const handleToggleDrawingVisibility = useCallback((visible: boolean) => {
+    if (selectedDrawing) {
+      handleUpdateDrawing({ visible });
+    }
+  }, [selectedDrawing, handleUpdateDrawing]);
+
+  // Trading handlers
+  const handlePlaceOrder = useCallback((order: any) => {
+    console.log('Order placed:', order);
+    // In a real implementation, this would send the order to a trading API
+    // For now, we'll just log it as a demo
+    alert(`Demo Order Placed: ${order.type.toUpperCase()} ${order.size} ${order.symbol}`);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Navigation Header */}
@@ -199,7 +270,7 @@ export default function ChartsPage() {
         </div>
       </nav>
 
-      <div className="flex h-[calc(100vh-80px)]">
+      <div className="flex h-[calc(100vh-80px)] pb-64">
         {/* Main Chart Area */}
         <div className="flex-1 p-4">
           <Card className="h-full">
@@ -237,6 +308,34 @@ export default function ChartsPage() {
             onSaveLayout={handleSaveLayout}
           />
         </div>
+
+        {/* Drawing Toolbar - Fixed position on left */}
+        <DrawingToolbar 
+          onToolSelect={handleDrawingToolSelect}
+          selectedTool={selectedDrawingTool}
+          isCollapsed={isDrawingToolbarCollapsed}
+          onToggleCollapse={handleToggleDrawingToolbar}
+        />
+
+        {/* Drawing Settings Panel - Shows when drawing is selected */}
+        <DrawingSettingsPanel
+          isOpen={isDrawingSettingsOpen}
+          onClose={() => setIsDrawingSettingsOpen(false)}
+          selectedDrawing={selectedDrawing}
+          onUpdateDrawing={handleUpdateDrawing}
+          onDeleteDrawing={handleDeleteDrawing}
+          onDuplicateDrawing={handleDuplicateDrawing}
+          onLockDrawing={handleLockDrawing}
+          onToggleVisibility={handleToggleDrawingVisibility}
+        />
+
+        {/* Trading Panel - Fixed at bottom */}
+        {showTradingPanel && (
+          <TradingPanel 
+            currentSymbol={currentSymbol}
+            onPlaceOrder={handlePlaceOrder}
+          />
+        )}
       </div>
     </div>
   );
