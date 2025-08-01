@@ -632,7 +632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         chartId: parseInt(chartIds[0]),
         gptAnalysis: JSON.stringify(prediction),
         similarCharts: JSON.stringify(similarCharts.slice(0, 3).map(sc => ({
-          id: sc.chart.id,
+          chartId: sc.chart.id,
           filename: sc.chart.originalName,
           timeframe: sc.chart.timeframe,
           similarity: sc.similarity
@@ -648,10 +648,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         chartId: parseInt(chartIds[0]),
         prediction,
         similarCharts: similarCharts.slice(0, 3).map(sc => ({
-          id: sc.chart.id,
+          chartId: sc.chart.id,
           filename: sc.chart.originalName,
           timeframe: sc.chart.timeframe,
-          similarity: sc.similarity
+          instrument: sc.chart.instrument,
+          session: sc.chart.session,
+          similarity: sc.similarity,
+          filePath: `/uploads/${sc.chart.filename}`,
+          depthMapUrl: sc.chart.depthMapPath,
+          comment: sc.chart.comment
         })),
         analysisId: analysisResult.id,
         chartsProcessed: multiChartData.length,

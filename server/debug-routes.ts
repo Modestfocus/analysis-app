@@ -10,10 +10,33 @@ const router = express.Router();
 router.get('/chart/:id/preview', async (req, res) => {
   try {
     const chartId = parseInt(req.params.id);
+    
+    if (isNaN(chartId)) {
+      return res.status(400).send(`
+        <html>
+          <head><title>Invalid Chart ID</title></head>
+          <body style="font-family: Arial; padding: 40px; text-align: center;">
+            <h1>Invalid Chart ID</h1>
+            <p>Chart ID must be a valid number. Received: ${req.params.id}</p>
+            <p><a href="/debug/admin">← Back to Admin Dashboard</a></p>
+          </body>
+        </html>
+      `);
+    }
+    
     const chart = await storage.getChart(chartId);
     
     if (!chart) {
-      return res.status(404).json({ error: 'Chart not found' });
+      return res.status(404).send(`
+        <html>
+          <head><title>Chart Not Found</title></head>
+          <body style="font-family: Arial; padding: 40px; text-align: center;">
+            <h1>Chart Not Found</h1>
+            <p>Chart with ID ${chartId} does not exist.</p>
+            <p><a href="/debug/admin">← Back to Admin Dashboard</a></p>
+          </body>
+        </html>
+      `);
     }
 
     // Generate grayscale version for debug display
