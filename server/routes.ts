@@ -75,6 +75,107 @@ function extractInstrumentFromFilename(filename: string): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   await ensureDirectories();
 
+  // Authentication routes
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password required" });
+      }
+
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.passwordHash !== password) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      res.json({ success: true, user: { id: user.id, username: user.username, email: user.email } });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, password, email } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+
+      if (email) {
+        const existingEmail = await storage.getUserByEmail(email);
+        if (existingEmail) {
+          return res.status(400).json({ error: "Email already exists" });
+        }
+      }
+
+      const user = await storage.createUser({
+        username,
+        passwordHash: password, // In production, hash this password
+        email: email || null
+      });
+
+      res.json({ success: true, user: { id: user.id, username: user.username, email: user.email } });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/wallet-login", async (req, res) => {
+    try {
+      const { walletAddress, walletType } = req.body;
+      
+      if (!walletAddress || !walletType) {
+        return res.status(400).json({ error: "Wallet address and type required" });
+      }
+
+      let user = await storage.getUserByWalletAddress(walletAddress);
+      
+      if (!user) {
+        // Create new user for this wallet
+        user = await storage.createUser({
+          walletAddress,
+          walletType,
+          username: `wallet_${walletAddress.slice(0, 8)}`
+        });
+      }
+
+      res.json({ success: true, user: { id: user.id, username: user.username, walletAddress: user.walletAddress } });
+    } catch (error) {
+      console.error("Wallet login error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/link-wallet", async (req, res) => {
+    try {
+      const { userId, walletAddress, walletType } = req.body;
+      
+      if (!userId || !walletAddress || !walletType) {
+        return res.status(400).json({ error: "User ID, wallet address and type required" });
+      }
+
+      const user = await storage.linkWalletToUser(userId, walletAddress, walletType);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ success: true, user: { id: user.id, username: user.username, walletAddress: user.walletAddress } });
+    } catch (error) {
+      console.error("Link wallet error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Register debug routes
   app.use('/debug', debugRoutes);
 

@@ -28,7 +28,9 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  linkWalletToUser(userId: string, walletAddress: string, walletType: string): Promise<User | undefined>;
   
   // Chart operations
   createChart(chart: InsertChart): Promise<Chart>;
@@ -103,15 +105,33 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.walletAddress === walletAddress,
+    );
+  }
+
+  async linkWalletToUser(userId: string, walletAddress: string, walletType: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    const updatedUser = { ...user, walletAddress, walletType };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const user: User = { 
       ...insertUser, 
       id,
+      email: insertUser.email || null,
+      passwordHash: insertUser.passwordHash || null,
       username: insertUser.username || null,
       firstName: insertUser.firstName || null,
       lastName: insertUser.lastName || null,
       profileImageUrl: insertUser.profileImageUrl || null,
+      walletAddress: insertUser.walletAddress || null,
+      walletType: insertUser.walletType || null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -331,6 +351,20 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.walletAddress, walletAddress));
+    return user || undefined;
+  }
+
+  async linkWalletToUser(userId: string, walletAddress: string, walletType: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ walletAddress, walletType })
+      .where(eq(users.id, userId))
+      .returning();
     return user || undefined;
   }
 

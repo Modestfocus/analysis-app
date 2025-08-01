@@ -38,6 +38,9 @@ Preferred communication style: Simple, everyday language.
 ✓ **Watchlist API Implementation**: Added complete CRUD operations for user watchlists (/api/watchlist endpoints) supporting symbol management
 ✓ **Chart Layout Persistence**: Implemented chart layout save/load functionality (/api/chart-layout endpoints) for TradingView configuration storage
 ✓ **React Warning Fixes**: Resolved missing key prop warnings in ChartComparison component for cleaner console output
+✓ **Dual Authentication System**: Created homepage with traditional username/password login and Web3 wallet authentication (Phantom/MetaMask)
+✓ **Wallet Integration**: Added wallet_address and wallet_type fields to users table with authentication API endpoints
+✓ **Admin Wallet Linking**: Connected admin account to Solana Phantom wallet address ELuTjBHcoPxDKGk4sW9iKEvq3BgXPdMGgZVK9DoaoAHX
 
 ## System Architecture
 

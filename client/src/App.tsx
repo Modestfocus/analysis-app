@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import HomeAuthPage from "@/pages/home-auth-page";
 import UploadPage from "@/pages/upload";
 import DashboardPage from "@/pages/dashboard";
 import ChartsPage from "@/pages/charts";
@@ -10,7 +11,7 @@ import ChartsPage from "@/pages/charts";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={UploadPage} />
+      <Route path="/" component={HomeAuthPage} />
       <Route path="/upload" component={UploadPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/charts" component={ChartsPage} />

@@ -5,13 +5,16 @@ import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  email: text("email").unique(),
+  passwordHash: text("password_hash"),
   // Keep existing profile fields for backwards compatibility
-  username: text("username"),
+  username: text("username").unique(),
   firstName: text("first_name"),
   lastName: text("last_name"),
   profileImageUrl: text("profile_image_url"),
+  // Wallet authentication fields
+  walletAddress: text("wallet_address").unique(),
+  walletType: text("wallet_type"), // "phantom", "metamask", etc.
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
