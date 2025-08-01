@@ -102,7 +102,7 @@ export default function ChartComparison({ mainChartId, mainChartPath, similarCha
                     size="sm" 
                     variant="outline" 
                     className="text-xs h-6 px-2 flex-1"
-                    onClick={() => window.open(chart.filePath, '_blank')}
+                    onClick={() => window.open(`/debug/chart/${chart.chartId}/preview`, '_blank')}
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />
                     Full View
