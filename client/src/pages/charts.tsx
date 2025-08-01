@@ -200,19 +200,6 @@ export default function ChartsPage() {
       </nav>
 
       <div className="flex h-[calc(100vh-80px)]">
-        {/* Left Sidebar - Watchlist and Layout Manager */}
-        <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 space-y-4 overflow-y-auto">
-          <WatchlistManager 
-            onSymbolSelect={handleSymbolSelect}
-            currentSymbol={currentSymbol}
-          />
-          
-          <ChartLayoutManager 
-            onLayoutLoad={handleLayoutLoad}
-            onSaveLayout={handleSaveLayout}
-          />
-        </div>
-
         {/* Main Chart Area */}
         <div className="flex-1 p-4">
           <Card className="h-full">
@@ -236,6 +223,19 @@ export default function ChartsPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Right Sidebar - Watchlist and Layout Manager */}
+        <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 space-y-4 overflow-y-auto">
+          <WatchlistManager 
+            onSymbolSelect={handleSymbolSelect}
+            currentSymbol={currentSymbol}
+          />
+          
+          <ChartLayoutManager 
+            onLayoutLoad={handleLayoutLoad}
+            onSaveLayout={handleSaveLayout}
+          />
         </div>
       </div>
     </div>
