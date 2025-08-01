@@ -1,11 +1,33 @@
-import { pgTable, text, serial, integer, boolean, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, real, uuid, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  // Keep existing profile fields for backwards compatibility
+  username: text("username"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const watchlists = pgTable("watchlists", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  symbol: text("symbol").notNull(), // e.g., "NAS100", "EURUSD"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const chartLayouts = pgTable("chart_layouts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  layoutConfig: jsonb("layout_config").notNull(), // Saved chart layout configuration from TradingView SDK
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const charts = pgTable("charts", {
@@ -42,9 +64,20 @@ export const analysisResults = pgTable("analysis_results", {
   createdAt: text("created_at").notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWatchlistSchema = createInsertSchema(watchlists).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertChartLayoutSchema = createInsertSchema(chartLayouts).omit({
+  id: true,
+  updatedAt: true,
 });
 
 export const insertChartSchema = createInsertSchema(charts).omit({
@@ -63,6 +96,10 @@ export const insertBundleSchema = createInsertSchema(chartBundles).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type InsertWatchlist = z.infer<typeof insertWatchlistSchema>;
+export type Watchlist = typeof watchlists.$inferSelect;
+export type InsertChartLayout = z.infer<typeof insertChartLayoutSchema>;
+export type ChartLayout = typeof chartLayouts.$inferSelect;
 export type Chart = typeof charts.$inferSelect;
 export type InsertChart = z.infer<typeof insertChartSchema>;
 export type AnalysisResult = typeof analysisResults.$inferSelect;

@@ -403,8 +403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!embeddingResult.embedding || embeddingResult.embedding.length !== 1024) {
         return res.status(500).json({ message: 'Failed to generate embedding for similarity search' });
       }
-      const debugLogs = req.query.debug === 'true';
-      const similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3, debugLogs);
+      const similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3);
 
       // ENHANCED: Check if any similar charts belong to bundles and include bundle context
       const enrichedSimilarCharts: Array<{
@@ -861,10 +860,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 2. RAG Retrieval: Get similar charts using vector embeddings
       let similarCharts: Array<{ chart: any; similarity: number }> = [];
-      const debugLogs = req.query.debug === 'true';
       
       if (chart.embedding && chart.embedding.length === 1024) {
-        similarCharts = await storage.findSimilarCharts(chart.embedding, 3, debugLogs);
+        similarCharts = await storage.findSimilarCharts(chart.embedding, 3);
         console.log(`Found ${similarCharts.length} similar charts for RAG context`);
       } else {
         console.log('No embedding available for similarity search');
@@ -1460,6 +1458,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: 'CLIP index rebuild failed: ' + (error as Error).message 
+      });
+    }
+  });
+
+  // Watchlist API Routes
+  app.get('/api/watchlist', async (req, res) => {
+    try {
+      // For now, use a hardcoded userId since we don't have authentication
+      const userId = 'temp-user-id';
+      const watchlist = await storage.getUserWatchlist(userId);
+      
+      res.json({
+        success: true,
+        watchlist
+      });
+    } catch (error) {
+      console.error('Get watchlist error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to get watchlist: ' + (error as Error).message 
+      });
+    }
+  });
+
+  app.post('/api/watchlist', async (req, res) => {
+    try {
+      const { symbol } = req.body;
+      
+      if (!symbol) {
+        return res.status(400).json({ message: 'Symbol is required' });
+      }
+
+      // For now, use a hardcoded userId since we don't have authentication
+      const userId = 'temp-user-id';
+      
+      // Check if symbol already exists in watchlist
+      const existingWatchlist = await storage.getUserWatchlist(userId);
+      const exists = existingWatchlist.some(item => item.symbol === symbol);
+      
+      if (exists) {
+        return res.status(400).json({ message: 'Symbol already in watchlist' });
+      }
+
+      const watchlistItem = await storage.addToWatchlist({
+        userId,
+        symbol
+      });
+
+      res.json({
+        success: true,
+        watchlistItem
+      });
+    } catch (error) {
+      console.error('Add to watchlist error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to add to watchlist: ' + (error as Error).message 
+      });
+    }
+  });
+
+  app.delete('/api/watchlist/:symbol', async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      
+      if (!symbol) {
+        return res.status(400).json({ message: 'Symbol is required' });
+      }
+
+      // For now, use a hardcoded userId since we don't have authentication
+      const userId = 'temp-user-id';
+      
+      await storage.removeFromWatchlist(userId, symbol);
+
+      res.json({
+        success: true,
+        message: 'Symbol removed from watchlist'
+      });
+    } catch (error) {
+      console.error('Remove from watchlist error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to remove from watchlist: ' + (error as Error).message 
+      });
+    }
+  });
+
+  // Chart Layout API Routes
+  app.get('/api/chart-layout', async (req, res) => {
+    try {
+      // For now, use a hardcoded userId since we don't have authentication
+      const userId = 'temp-user-id';
+      const layout = await storage.getUserChartLayout(userId);
+      
+      res.json({
+        success: true,
+        layout
+      });
+    } catch (error) {
+      console.error('Get chart layout error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to get chart layout: ' + (error as Error).message 
+      });
+    }
+  });
+
+  app.post('/api/chart-layout', async (req, res) => {
+    try {
+      const { layoutConfig } = req.body;
+      
+      if (!layoutConfig) {
+        return res.status(400).json({ message: 'Layout configuration is required' });
+      }
+
+      // For now, use a hardcoded userId since we don't have authentication
+      const userId = 'temp-user-id';
+      
+      const layout = await storage.saveChartLayout({
+        userId,
+        layoutConfig
+      });
+
+      res.json({
+        success: true,
+        layout
+      });
+    } catch (error) {
+      console.error('Save chart layout error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to save chart layout: ' + (error as Error).message 
       });
     }
   });

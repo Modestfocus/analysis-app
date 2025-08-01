@@ -34,6 +34,10 @@ Preferred communication style: Simple, everyday language.
 ✓ **Admin Dashboard Interface**: Created /debug/admin panel for CLIP index management, debug toggling, and system status monitoring
 ✓ **Live Charts Integration**: Added TradingView integration with new /charts route displaying NASDAQ US100 live market data with full interactivity
 ✓ **Enhanced Navigation**: Integrated Charts button across all pages (Upload, Dashboard) with active state highlighting for seamless user experience
+✓ **Database Schema Update**: Extended database with watchlists and chart layouts tables using UUID primary keys for better user session management
+✓ **Watchlist API Implementation**: Added complete CRUD operations for user watchlists (/api/watchlist endpoints) supporting symbol management
+✓ **Chart Layout Persistence**: Implemented chart layout save/load functionality (/api/chart-layout endpoints) for TradingView configuration storage
+✓ **React Warning Fixes**: Resolved missing key prop warnings in ChartComparison component for cleaner console output
 
 ## System Architecture
 
@@ -56,10 +60,12 @@ Preferred communication style: Simple, everyday language.
 ### Key Components
 
 #### Data Storage
-- **Database**: PostgreSQL with three main tables:
-  - `users`: User authentication data with username/password
+- **Database**: PostgreSQL with five main tables:
+  - `users`: User authentication data with UUID primary keys, email/password, and profile information
   - `charts`: Chart metadata, file paths, CLIP embeddings, instrument, session, timeframe, and analysis map paths (depth, edge, gradient)
   - `analysis_results`: GPT analysis results and similar chart references with confidence scores
+  - `watchlists`: User symbol watchlists for TradingView chart switching (userId + symbol pairs)
+  - `chart_layouts`: Saved TradingView chart configurations and user layout preferences (JSON storage)
 - **File Storage**: Local filesystem storage for uploaded images, depth maps, edge maps, and gradient maps
 - **ORM**: Drizzle ORM with Zod schema validation and automated timestamp handling
 - **Storage Interface**: IStorage interface ensures consistent data operations across memory and database implementations

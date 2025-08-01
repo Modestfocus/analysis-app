@@ -56,7 +56,7 @@ export default function ChartComparison({ mainChartId, mainChartPath, similarCha
           <div className="space-y-4">
             <h4 className="text-sm font-medium text-gray-700">Historical Matches Used for Context:</h4>
             {similarCharts.map((chart, index) => (
-              <div key={chart.chartId} className="border rounded-lg p-3 bg-gray-50">
+              <div key={`similar-chart-${chart.chartId}-${index}`} className="border rounded-lg p-3 bg-gray-50">
                 <div className="flex items-center justify-between mb-3">
                   <h5 className="text-sm font-medium text-gray-800">
                     Matched Chart #{index + 1}: {chart.comment ? getOutcomeDescription(chart.comment) : 'Historical Pattern'}
