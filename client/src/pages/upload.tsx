@@ -473,12 +473,7 @@ export default function UploadPage() {
                 </Button>
               </div>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/dashboard">
-                <Eye className="mr-2 h-4 w-4" />
-                View Dashboard
-              </Link>
-            </Button>
+
           </div>
         </nav>
 
