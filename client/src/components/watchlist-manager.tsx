@@ -26,12 +26,20 @@ export default function WatchlistManager({ onSymbolSelect, currentSymbol }: Watc
   const [isAdding, setIsAdding] = useState(false);
 
   // Fetch user's watchlist
-  const { data: watchlist = [], isLoading } = useQuery<WatchlistItem[]>({
+  const { data: watchlist = [], isLoading } = useQuery({
     queryKey: ["/api/watchlist"],
     queryFn: async () => {
-      const response = await fetch("/api/watchlist");
-      const data = await response.json();
-      return data.watchlist || [];
+      try {
+        const response = await fetch("/api/watchlist");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.watchlist || [];
+      } catch (error) {
+        console.error("Error fetching watchlist:", error);
+        return [];
+      }
     },
   });
 

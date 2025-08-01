@@ -24,12 +24,20 @@ export default function ChartLayoutManager({ onLayoutLoad, onSaveLayout }: Chart
   const [isSaving, setIsSaving] = useState(false);
 
   // Fetch user's saved layout
-  const { data: layout, isLoading } = useQuery<ChartLayout>({
+  const { data: layout, isLoading } = useQuery({
     queryKey: ["/api/chart-layout"],
     queryFn: async () => {
-      const response = await fetch("/api/chart-layout");
-      const data = await response.json();
-      return data.layout;
+      try {
+        const response = await fetch("/api/chart-layout");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.layout || null;
+      } catch (error) {
+        console.error("Error fetching chart layout:", error);
+        return null;
+      }
     },
   });
 

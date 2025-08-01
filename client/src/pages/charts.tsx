@@ -15,15 +15,15 @@ export default function ChartsPage() {
   // Convert our symbol format to TradingView format
   const formatSymbolForTradingView = (symbol: string) => {
     const symbolMap: Record<string, string> = {
-      "NAS100": "NASDAQ:US100",
-      "SPX500": "SP:SPX",
-      "US30": "FOREXCOM:DJI",
+      "NAS100": "NASDAQ:NDX", // Changed to a more reliable symbol
+      "SPX500": "TVC:SPX", // Changed to TradingView Community version
+      "US30": "TVC:DJI", // Changed to TradingView Community version
       "EURUSD": "FX:EURUSD",
       "GBPUSD": "FX:GBPUSD",
       "USDJPY": "FX:USDJPY",
-      "XAUUSD": "FOREXCOM:XAUUSD",
-      "BTCUSD": "COINBASE:BTCUSD",
-      "ETHUSD": "COINBASE:ETHUSD"
+      "XAUUSD": "TVC:GOLD", // Changed to TradingView Community version
+      "BTCUSD": "BITSTAMP:BTCUSD", // Changed to more reliable exchange
+      "ETHUSD": "BITSTAMP:ETHUSD" // Changed to more reliable exchange
     };
     return symbolMap[symbol] || `FX:${symbol}`;
   };
@@ -32,49 +32,60 @@ export default function ChartsPage() {
   const initializeChart = useCallback((symbol: string = currentSymbol) => {
     if (!containerRef.current) return;
 
-    // Clear existing content
-    containerRef.current.innerHTML = '';
+    try {
+      // Clear existing content
+      containerRef.current.innerHTML = '';
 
-    // Create TradingView widget script
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    
-    const config = {
-      "autosize": true,
-      "symbol": formatSymbolForTradingView(symbol),
-      "interval": "60",
-      "timezone": "Etc/UTC",
-      "theme": "light",
-      "style": "1",
-      "locale": "en",
-      "enable_publishing": false,
-      "allow_symbol_change": true,
-      "calendar": false,
-      "hide_top_toolbar": false,
-      "hide_legend": false,
-      "save_image": false,
-      "container_id": "tradingview_chart",
-      "support_host": "https://www.tradingview.com"
-    };
-    
-    script.innerHTML = JSON.stringify(config);
+      // Create TradingView widget script
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+      script.async = true;
+      
+      const config = {
+        "autosize": true,
+        "symbol": formatSymbolForTradingView(symbol),
+        "interval": "60",
+        "timezone": "Etc/UTC",
+        "theme": "light",
+        "style": "1",
+        "locale": "en",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "calendar": false,
+        "hide_top_toolbar": false,
+        "hide_legend": false,
+        "save_image": false,
+        "container_id": "tradingview_chart",
+        "support_host": "https://www.tradingview.com"
+      };
+      
+      script.innerHTML = JSON.stringify(config);
 
-    // Add event listener for when widget loads
-    script.onload = () => {
-      setIsChartReady(true);
-      // Try to access the widget instance
-      setTimeout(() => {
-        try {
-          widgetRef.current = (window as any).TradingView?.widget;
-        } catch (error) {
-          console.log("TradingView widget not accessible:", error);
-        }
-      }, 2000);
-    };
+      // Add error handling for script loading
+      script.onerror = (error) => {
+        console.error("Failed to load TradingView script:", error);
+        setIsChartReady(false);
+      };
 
-    containerRef.current.appendChild(script);
+      // Add event listener for when widget loads
+      script.onload = () => {
+        setIsChartReady(true);
+        // Try to access the widget instance
+        setTimeout(() => {
+          try {
+            widgetRef.current = (window as any).TradingView?.widget;
+          } catch (error) {
+            console.log("TradingView widget not accessible:", error);
+          }
+        }, 2000);
+      };
+
+      containerRef.current.appendChild(script);
+    } catch (error) {
+      console.error("Error initializing chart:", error);
+      setIsChartReady(false);
+    }
   }, [currentSymbol]);
 
   useEffect(() => {
