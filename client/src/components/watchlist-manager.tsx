@@ -101,11 +101,20 @@ export default function WatchlistManager({ onSymbolSelect, currentSymbol }: Watc
   };
 
   const handleSymbolClick = (symbol: string) => {
-    onSymbolSelect(symbol);
-    toast({
-      title: "Chart updated",
-      description: `Switched to ${symbol}`,
-    });
+    try {
+      onSymbolSelect(symbol);
+      toast({
+        title: "Chart updated",
+        description: `Switched to ${symbol}`,
+      });
+    } catch (error) {
+      console.error("Error selecting symbol:", error);
+      toast({
+        title: "Error switching chart",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
   };
 
   // Popular trading symbols for quick access
@@ -171,7 +180,7 @@ export default function WatchlistManager({ onSymbolSelect, currentSymbol }: Watc
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-muted-foreground">Your Symbols</h4>
             <div className="flex flex-wrap gap-2">
-              {watchlist.map((item) => (
+              {watchlist.map((item: WatchlistItem) => (
                 <Badge
                   key={item.id}
                   variant={currentSymbol === item.symbol ? "default" : "outline"}

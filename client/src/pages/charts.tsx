@@ -9,6 +9,7 @@ import ChartLayoutManager from "@/components/chart-layout-manager";
 export default function ChartsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
+  const initializingRef = useRef<boolean>(false);
   const [currentSymbol, setCurrentSymbol] = useState("NAS100");
   const [isChartReady, setIsChartReady] = useState(false);
 
@@ -31,8 +32,17 @@ export default function ChartsPage() {
   // Initialize TradingView widget
   const initializeChart = useCallback((symbol: string = currentSymbol) => {
     if (!containerRef.current) return;
+    
+    // Prevent multiple concurrent initializations
+    if (initializingRef.current) {
+      console.log("Chart initialization already in progress, skipping...");
+      return;
+    }
 
     try {
+      initializingRef.current = true;
+      setIsChartReady(false);
+      
       // Clear existing content
       containerRef.current.innerHTML = '';
 
@@ -66,11 +76,13 @@ export default function ChartsPage() {
       script.onerror = (error) => {
         console.error("Failed to load TradingView script:", error);
         setIsChartReady(false);
+        initializingRef.current = false;
       };
 
       // Add event listener for when widget loads
       script.onload = () => {
         setIsChartReady(true);
+        initializingRef.current = false;
         // Try to access the widget instance
         setTimeout(() => {
           try {
@@ -85,6 +97,7 @@ export default function ChartsPage() {
     } catch (error) {
       console.error("Error initializing chart:", error);
       setIsChartReady(false);
+      initializingRef.current = false;
     }
   }, [currentSymbol]);
 
@@ -101,9 +114,27 @@ export default function ChartsPage() {
 
   // Handle symbol selection from watchlist
   const handleSymbolSelect = useCallback((symbol: string) => {
-    setCurrentSymbol(symbol);
-    initializeChart(symbol);
-  }, [initializeChart]);
+    try {
+      console.log("Switching to symbol:", symbol);
+      
+      // Only proceed if symbol is different
+      if (symbol === currentSymbol) {
+        console.log("Same symbol selected, skipping reinitialization");
+        return;
+      }
+      
+      setCurrentSymbol(symbol);
+      
+      // Add a small delay to ensure state update before reinitializing
+      setTimeout(() => {
+        if (!initializingRef.current) {
+          initializeChart(symbol);
+        }
+      }, 150);
+    } catch (error) {
+      console.error("Error in handleSymbolSelect:", error);
+    }
+  }, [currentSymbol, initializeChart]);
 
   // Handle saving current chart layout
   const handleSaveLayout = useCallback(async () => {
