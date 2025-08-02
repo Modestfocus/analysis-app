@@ -223,18 +223,21 @@ export default function HomeAuthPage() {
       <div className="relative z-10 min-h-screen bg-transparent">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">
-            Chart<span className="text-purple-400">Analysis</span>
+        <div className="text-left mb-16 max-w-4xl">
+          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight">
+            Analyze first /<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+              Then trade.
+            </span>
           </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            AI-powered trading chart analysis with advanced pattern recognition and visual intelligence
+          <p className="text-xl text-slate-300 max-w-xl leading-relaxed">
+            The best trades require deep analysis, then confident execution.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-3 gap-12 items-start">
           {/* Left side - Features */}
-          <div className="space-y-8">
+          <div className="lg:col-span-2 space-y-8">
             <div className="flex items-start space-x-4">
               <div className="bg-purple-500/20 p-3 rounded-lg">
                 <TrendingUp className="h-6 w-6 text-purple-400" />
@@ -273,63 +276,63 @@ export default function HomeAuthPage() {
           </div>
 
           {/* Right side - Authentication */}
-          <div className="w-full max-w-md mx-auto">
+          <div className="w-full max-w-xs mx-auto lg:mx-0">
             <Card className="bg-white/10 backdrop-blur-md border-white/20">
-              <CardHeader className="text-center">
-                <CardTitle className="text-white">Welcome Back</CardTitle>
-                <CardDescription className="text-slate-300">
-                  Sign in to access your chart analysis dashboard
+              <CardHeader className="text-center pb-4">
+                <CardTitle className="text-white text-lg">Welcome Back</CardTitle>
+                <CardDescription className="text-slate-300 text-sm">
+                  Sign in to start analyzing
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 <Tabs defaultValue="traditional" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-6">
-                    <TabsTrigger value="traditional" className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Traditional
+                  <TabsList className="grid w-full grid-cols-2 mb-4 h-8">
+                    <TabsTrigger value="traditional" className="flex items-center gap-1 text-xs">
+                      <User className="h-3 w-3" />
+                      Login
                     </TabsTrigger>
-                    <TabsTrigger value="wallet" className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4" />
+                    <TabsTrigger value="wallet" className="flex items-center gap-1 text-xs">
+                      <Wallet className="h-3 w-3" />
                       Wallet
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="traditional" className="space-y-4">
-                    <div className="space-y-3">
+                  <TabsContent value="traditional" className="space-y-3">
+                    <div className="space-y-2">
                       <div>
-                        <Label htmlFor="username" className="text-white">Username</Label>
+                        <Label htmlFor="username" className="text-white text-xs">Username</Label>
                         <Input
                           id="username"
                           type="text"
-                          placeholder="Enter your username"
+                          placeholder="Username"
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
-                          className="bg-white/10 border-white/20 text-white placeholder-slate-400"
+                          className="bg-white/10 border-white/20 text-white placeholder-slate-400 h-8 text-sm"
                         />
                       </div>
                       
                       <div>
-                        <Label htmlFor="password" className="text-white">Password</Label>
+                        <Label htmlFor="password" className="text-white text-xs">Password</Label>
                         <Input
                           id="password"
                           type="password"
-                          placeholder="Enter your password"
+                          placeholder="Password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="bg-white/10 border-white/20 text-white placeholder-slate-400"
+                          className="bg-white/10 border-white/20 text-white placeholder-slate-400 h-8 text-sm"
                         />
                       </div>
 
                       {isRegisterMode && (
                         <div>
-                          <Label htmlFor="email" className="text-white">Email (optional)</Label>
+                          <Label htmlFor="email" className="text-white text-xs">Email (optional)</Label>
                           <Input
                             id="email"
                             type="email"
-                            placeholder="Enter your email"
+                            placeholder="Email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="bg-white/10 border-white/20 text-white placeholder-slate-400"
+                            className="bg-white/10 border-white/20 text-white placeholder-slate-400 h-8 text-sm"
                           />
                         </div>
                       )}
@@ -338,7 +341,7 @@ export default function HomeAuthPage() {
                     <Button 
                       onClick={handleTraditionalAuth}
                       disabled={isLoading || !username || !password}
-                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      className="w-full bg-purple-600 hover:bg-purple-700 h-8 text-sm"
                     >
                       {isLoading ? "Processing..." : (isRegisterMode ? "Register" : "Sign In")}
                     </Button>
@@ -346,37 +349,37 @@ export default function HomeAuthPage() {
                     <div className="text-center">
                       <button
                         onClick={() => setIsRegisterMode(!isRegisterMode)}
-                        className="text-purple-400 hover:text-purple-300 text-sm"
+                        className="text-purple-400 hover:text-purple-300 text-xs"
                       >
-                        {isRegisterMode ? "Already have an account? Sign in" : "Need an account? Register"}
+                        {isRegisterMode ? "Sign in instead" : "Create account"}
                       </button>
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="wallet" className="space-y-4">
-                    <div className="space-y-3">
+                  <TabsContent value="wallet" className="space-y-3">
+                    <div className="space-y-2">
                       <Button
                         onClick={connectPhantom}
                         disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                        className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 h-8 text-sm"
                       >
-                        <Wallet className="mr-2 h-4 w-4" />
-                        {isLoading ? "Connecting..." : "Connect Phantom Wallet"}
+                        <Wallet className="mr-1 h-3 w-3" />
+                        {isLoading ? "Connecting..." : "Phantom"}
                       </Button>
 
                       <Button
                         onClick={connectMetaMask}
                         disabled={isLoading}
                         variant="outline"
-                        className="w-full border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                        className="w-full border-orange-500/50 text-orange-400 hover:bg-orange-500/10 h-8 text-sm"
                       >
-                        <Wallet className="mr-2 h-4 w-4" />
-                        {isLoading ? "Connecting..." : "Connect MetaMask"}
+                        <Wallet className="mr-1 h-3 w-3" />
+                        {isLoading ? "Connecting..." : "MetaMask"}
                       </Button>
                     </div>
 
                     <div className="text-xs text-slate-400 text-center">
-                      Connect your crypto wallet for secure, decentralized authentication
+                      Secure wallet authentication
                     </div>
                   </TabsContent>
                 </Tabs>
