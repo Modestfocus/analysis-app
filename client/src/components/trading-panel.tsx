@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -21,7 +24,11 @@ import {
   Minimize2,
   Zap,
   Upload,
-  Camera
+  Camera,
+  Bolt,
+  X,
+  RefreshCw,
+  CloudUpload
 } from 'lucide-react';
 
 interface Position {
@@ -117,6 +124,14 @@ export default function TradingPanel({
   const [takeProfit, setTakeProfit] = useState('');
   const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
   const [selectedTab, setSelectedTab] = useState("trading");
+  
+  // Quick Chart Analysis state
+  const [selectedTimeframes, setSelectedTimeframes] = useState<{ [key: number]: string }>({});
+  const [analysisResults, setAnalysisResults] = useState<any[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const totalPnL = mockPositions.reduce((sum, pos) => sum + pos.pnl, 0);
   const accountBalance = 10000; // Mock account balance
@@ -137,6 +152,136 @@ export default function TradingPanel({
       onTakeScreenshot();
     }
   };
+
+  // Quick Chart Analysis functions
+  const handleQuickAnalysisFiles = useCallback((files: File[]) => {
+    setAnalysisFiles(prev => [...prev, ...files]);
+    
+    // Initialize timeframes for new files
+    const newTimeframes: { [key: number]: string } = {};
+    files.forEach((_, index) => {
+      const fileIndex = analysisFiles.length + index;
+      newTimeframes[fileIndex] = "1H"; // Default timeframe
+    });
+    setSelectedTimeframes(prev => ({ ...prev, ...newTimeframes }));
+  }, [analysisFiles.length]);
+
+  // Remove a file from quick analysis
+  const removeQuickAnalysisFile = useCallback((index: number) => {
+    setAnalysisFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedTimeframes(prev => {
+      const updated = { ...prev };
+      delete updated[index];
+      // Reindex remaining timeframes
+      const reindexed: { [key: number]: string } = {};
+      Object.entries(updated).forEach(([oldIndex, timeframe]) => {
+        const oldIdx = parseInt(oldIndex);
+        if (oldIdx > index) {
+          reindexed[oldIdx - 1] = timeframe;
+        } else if (oldIdx < index) {
+          reindexed[oldIdx] = timeframe;
+        }
+      });
+      return reindexed;
+    });
+  }, []);
+
+  // Clear all files
+  const clearQuickAnalysisFiles = useCallback(() => {
+    setAnalysisFiles([]);
+    setSelectedTimeframes({});
+    setAnalysisResults([]);
+  }, []);
+
+  // Quick analysis mutation
+  const quickAnalysisMutation = useMutation({
+    mutationFn: async () => {
+      if (analysisFiles.length === 0) {
+        throw new Error("No files selected for analysis");
+      }
+
+      const formData = new FormData();
+      analysisFiles.forEach((file, index) => {
+        formData.append('charts', file);
+        formData.append(`timeframe_${index}`, selectedTimeframes[index] || "1H");
+      });
+
+      return apiRequest('POST', '/api/quick-analysis', formData);
+    },
+    onSuccess: (data: any) => {
+      setAnalysisResults(data.analyses || []);
+      queryClient.invalidateQueries({ queryKey: ["/api/charts"] });
+      
+      toast({
+        title: "Analysis Complete",
+        description: `Successfully analyzed ${analysisFiles.length} chart${analysisFiles.length !== 1 ? 's' : ''}`,
+      });
+    },
+    onError: (error) => {
+      console.error("Quick analysis failed:", error);
+      toast({
+        title: "Analysis Failed",
+        description: "Failed to analyze charts. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length > 0) {
+      handleQuickAnalysisFiles(imageFiles);
+    }
+  }, [handleQuickAnalysisFiles]);
+
+  // Handle paste events
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    if (selectedTab !== "analysis") return;
+    
+    const items = Array.from(e.clipboardData?.items || []);
+    const imageItems = items.filter(item => item.type.startsWith('image/'));
+    
+    if (imageItems.length > 0) {
+      e.preventDefault();
+      const files: File[] = [];
+      
+      imageItems.forEach((item, index) => {
+        const file = item.getAsFile();
+        if (file) {
+          const newFile = new File([file], `pasted-chart-${Date.now()}-${index}.png`, {
+            type: file.type,
+            lastModified: Date.now(),
+          });
+          files.push(newFile);
+        }
+      });
+      
+      if (files.length > 0) {
+        handleQuickAnalysisFiles(files);
+      }
+    }
+  }, [selectedTab, handleQuickAnalysisFiles]);
+
+  // Set up paste event listener
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handlePaste]);
 
   const handlePlaceOrder = () => {
     const order = {
@@ -517,89 +662,188 @@ export default function TradingPanel({
             {/* Quick Chart Analysis Tab */}
             <TabsContent value="analysis">
               <div className="space-y-4">
-                <Card>
+                <Card className="h-80 overflow-hidden">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
+                      <Bolt className="h-4 w-4 text-amber-500" />
                       Quick Chart Analysis
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* File Preview Section */}
-                    {analysisFiles.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Loaded Files ({analysisFiles.length})</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {analysisFiles.map((file, index) => (
-                            <div key={index} className="relative border rounded-lg p-2 bg-gray-50 dark:bg-gray-700">
-                              <div className="flex items-center gap-2">
-                                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center">
-                                  <Camera className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium truncate">{file.name}</p>
-                                  <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          <Zap className="h-4 w-4 mr-2" />
-                          Analyze Charts ({analysisFiles.length})
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Upload/Drop Zone */}
-                    {analysisFiles.length === 0 && (
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                  <CardContent className="space-y-3 h-full overflow-y-auto">
+                    {/* Drag & Drop Zone or Files Preview */}
+                    {analysisFiles.length === 0 ? (
+                      <div
+                        className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+                          isDragOver 
+                            ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20' 
+                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                        }`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
                         <div className="flex flex-col items-center gap-2">
-                          <Upload className="h-8 w-8 text-gray-400" />
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                          <CloudUpload className="h-6 w-6 text-gray-400" />
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
                             <p className="font-medium">Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here</p>
-                            <p className="text-xs mt-1">Supports PNG, JPG, GIF up to 10MB (Multiple files supported) • Press Ctrl/Cmd+V to paste</p>
+                            <p className="text-xs mt-1">Supports PNG, JPG, GIF up to 10MB</p>
                           </div>
                         </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="hidden"
-                          id="quick-analysis-file-input"
-                        />
+                      </div>
+                    ) : (
+                      /* Files Preview Section */
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                            Files ({analysisFiles.length})
+                          </Label>
+                          <Button 
+                            onClick={clearQuickAnalysisFiles}
+                            variant="outline" 
+                            size="sm" 
+                            className="text-amber-600 hover:text-amber-700 border-amber-300 h-5 px-2 text-xs"
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-1 max-h-24 overflow-y-auto">
+                          {analysisFiles.map((file, index) => {
+                            const imageUrl = URL.createObjectURL(file);
+                            return (
+                              <div key={index} className="bg-white dark:bg-gray-700 p-2 rounded border">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <div className="flex-shrink-0">
+                                    <img 
+                                      src={imageUrl} 
+                                      alt={file.name}
+                                      className="w-8 h-8 object-cover rounded border"
+                                      onLoad={() => URL.revokeObjectURL(imageUrl)}
+                                    />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate block">
+                                      {file.name}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                                    </span>
+                                  </div>
+                                  <Button
+                                    onClick={() => removeQuickAnalysisFile(index)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-400 hover:text-red-500 h-5 w-5 p-0 flex-shrink-0"
+                                  >
+                                    ×
+                                  </Button>
+                                </div>
+                                
+                                {/* Timeframe Selection */}
+                                <div className="flex items-center space-x-1">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">TF:</span>
+                                  <Select
+                                    value={selectedTimeframes[index] || "1H"}
+                                    onValueChange={(value) => setSelectedTimeframes(prev => ({ ...prev, [index]: value }))}
+                                  >
+                                    <SelectTrigger className="w-12 h-5 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1M">1M</SelectItem>
+                                      <SelectItem value="5M">5M</SelectItem>
+                                      <SelectItem value="15M">15M</SelectItem>
+                                      <SelectItem value="30M">30M</SelectItem>
+                                      <SelectItem value="1H">1H</SelectItem>
+                                      <SelectItem value="4H">4H</SelectItem>
+                                      <SelectItem value="1D">1D</SelectItem>
+                                      <SelectItem value="1W">1W</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Analysis Button */}
                         <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3"
-                          onClick={() => document.getElementById('quick-analysis-file-input')?.click()}
+                          onClick={() => quickAnalysisMutation.mutate()}
+                          disabled={analysisFiles.length === 0 || quickAnalysisMutation.isPending}
+                          className="w-full bg-amber-500 hover:bg-amber-600 text-white h-7 text-xs"
                         >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Choose Files
+                          {quickAnalysisMutation.isPending ? (
+                            <>
+                              <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                              Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="mr-1 h-3 w-3" />
+                              Run Quick Analysis
+                            </>
+                          )}
                         </Button>
                       </div>
                     )}
 
-                    {/* Take Screenshot Button */}
+                    {/* Screenshot Button */}
                     <div className="text-center">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleTakeScreenshot}
-                        className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white border-0"
+                        className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white border-0 h-7 text-xs"
                       >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Take Screenshot of Chart
+                        <Camera className="h-3 w-3 mr-1" />
+                        Take Screenshot
                       </Button>
                     </div>
 
-                    {/* Quick Info */}
-                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                      Upload chart images to get AI-powered technical analysis with pattern recognition and trading insights
+                    {/* Analysis Results */}
+                    {analysisResults.length > 0 && (
+                      <div className="space-y-2 border-t pt-2">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-xs">Results</h4>
+                        <div className="space-y-1 max-h-20 overflow-y-auto">
+                          {analysisResults.map((result, index) => (
+                            <div key={index} className="p-2 bg-gray-50 dark:bg-gray-900 rounded border text-xs">
+                              <div className="flex items-center justify-between mb-1">
+                                <Badge variant="outline" className="text-xs h-4">
+                                  Chart {index + 1}
+                                </Badge>
+                                {result.timeframe && (
+                                  <Badge variant="secondary" className="text-xs h-4">
+                                    {result.timeframe}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">
+                                {result.analysis || "Analysis completed"}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length > 0) {
+                          handleQuickAnalysisFiles(files);
+                        }
+                      }}
+                      className="hidden"
+                    />
+
+                    <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+                      AI-powered technical analysis with pattern recognition
                     </div>
                   </CardContent>
                 </Card>
