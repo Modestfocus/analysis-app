@@ -60,6 +60,7 @@ Trading panel: Minimized by default for optimal chart viewing.
 ✓ **TradingView API Integration**: Implemented postMessage API commands to communicate directly with TradingView widget for drawing tool activation
 ✓ **Smart Tool Mapping**: Created mapping system between custom tools and TradingView's native drawing tool identifiers
 ✓ **Multi-Method Activation**: Attempts multiple TradingView API formats for maximum compatibility with embedded chart widgets
+✓ **Simplified Drawing Interface**: Removed left sidebar toolbar, keeping only the menu button (☰) for cleaner chart viewing experience
 
 ## System Architecture
 
