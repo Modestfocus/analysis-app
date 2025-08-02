@@ -217,7 +217,7 @@ export default function HomeAuthPage() {
         }}
       />
       {/* Dark overlay for better content readability */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-purple-900/75 to-slate-900/85" />
+      <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60" />
       
       {/* Content */}
       <div className="relative z-10 min-h-screen bg-transparent">
