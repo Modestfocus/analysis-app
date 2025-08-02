@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi, LineStyle, ColorType, Time } from 'lightweight-charts';
+import { createChart, ColorType } from 'lightweight-charts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -38,8 +38,8 @@ const DRAWING_TOOLS: DrawingTool[] = [
 
 export default function LightweightChart({ symbol, onSymbolChange }: LightweightChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const chartRef = useRef<any>(null);
+  const seriesRef = useRef<any>(null);
   const [selectedTool, setSelectedTool] = useState<string>('cursor');
   const [drawings, setDrawings] = useState<any[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -75,7 +75,7 @@ export default function LightweightChart({ symbol, onSymbolChange }: Lightweight
     chartRef.current = chart;
 
     // Add line series (using correct API)
-    const lineSeries = chart.addSeries('Line', {
+    const lineSeries = chart.addLineSeries({
       color: 'rgba(38, 166, 154, 1)',
       lineWidth: 2,
     });
@@ -98,7 +98,7 @@ export default function LightweightChart({ symbol, onSymbolChange }: Lightweight
         const low = Math.min(open, close) - Math.random() * basePrice * 0.01;
         
         data.push({
-          time: time as Time,
+          time: time,
           value: close,
         });
         
@@ -135,7 +135,7 @@ export default function LightweightChart({ symbol, onSymbolChange }: Lightweight
           price,
           color: '#2196F3',
           lineWidth: 2,
-          lineStyle: LineStyle.Solid,
+          lineStyle: 0, // Solid line
           axisLabelVisible: true,
           title: 'Support',
         });
@@ -171,7 +171,7 @@ export default function LightweightChart({ symbol, onSymbolChange }: Lightweight
           price: avgPrice,
           color: '#FF6B6B',
           lineWidth: 2,
-          lineStyle: LineStyle.Solid,
+          lineStyle: 0, // Solid line
           axisLabelVisible: true,
           title: 'Trend',
         });
