@@ -30,7 +30,8 @@ import {
   Bolt,
   X,
   RefreshCw,
-  CloudUpload
+  CloudUpload,
+  CheckCircle
 } from 'lucide-react';
 
 interface Position {
@@ -808,47 +809,63 @@ export default function TradingPanel({
                     </div>
                     
                     {analysisResults ? (
-                      <div className="space-y-4 h-full overflow-y-auto">
-                        {/* Debug info */}
-                        <div className="p-2 bg-gray-100 text-xs">
-                          Debug: analysisResults exists, prediction: {analysisResults.prediction ? 'YES' : 'NO'}
+                      <div className="space-y-6 h-full overflow-y-auto">
+                        {/* GPT-4o Analysis Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="h-5 w-5 text-blue-600" />
+                            <span className="font-semibold text-lg text-gray-900 dark:text-gray-100">GPT-4o Analysis</span>
+                          </div>
+                          <Button variant="outline" size="sm" className="text-xs">
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Regenerate
+                          </Button>
                         </div>
                         
-                        {/* Multi-Chart Analysis Results */}
-                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-lg border border-amber-200">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-amber-800 dark:text-amber-200 flex items-center">
-                              <Bolt className="mr-2 h-4 w-4" />
-                              Quick Analysis Results
-                            </h3>
-                            <div className="flex gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {analysisResults.chartCount || 'Unknown'} Charts
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs">
-                                Multi-Timeframe
-                              </Badge>
+                        {/* Market Prediction Section */}
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <TrendingUp className="h-4 w-4 text-gray-600" />
+                              <span className="font-medium text-gray-900 dark:text-gray-100">Market Prediction</span>
                             </div>
+                            {analysisResults.prediction?.prediction && (
+                              <div className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                                {analysisResults.prediction.prediction}
+                              </div>
+                            )}
                           </div>
 
-                          {/* Overall Prediction */}
-                          {(analysisResults.prediction?.prediction || analysisResults.prediction?.session || analysisResults.prediction?.confidence) && (
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {analysisResults.prediction.prediction && (
-                                <Badge className="bg-amber-500 hover:bg-amber-600">
-                                  {analysisResults.prediction.prediction}
-                                </Badge>
-                              )}
-                              {analysisResults.prediction.session && (
-                                <Badge variant="secondary">
-                                  {analysisResults.prediction.session} Session
-                                </Badge>
-                              )}
-                              {analysisResults.prediction.confidence && (
-                                <Badge variant="outline">
-                                  Confidence: {analysisResults.prediction.confidence}
-                                </Badge>
-                              )}
+                          {/* Expected Session */}
+                          {analysisResults.prediction?.session && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <Clock className="h-4 w-4 text-gray-600" />
+                                <span className="font-medium text-gray-900 dark:text-gray-100">Expected Session</span>
+                              </div>
+                              <div className="text-lg text-gray-900 dark:text-gray-100">
+                                {analysisResults.prediction.session}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Confidence Level */}
+                          {analysisResults.prediction?.confidence && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <Target className="h-4 w-4 text-gray-600" />
+                                <span className="font-medium text-gray-900 dark:text-gray-100">Confidence Level</span>
+                              </div>
+                              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium ${
+                                analysisResults.prediction.confidence === 'High' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                  : analysisResults.prediction.confidence === 'Medium'
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                              }`}>
+                                <CheckCircle className="h-4 w-4" />
+                                {analysisResults.prediction.confidence}
+                              </div>
                             </div>
                           )}
 
@@ -862,46 +879,23 @@ export default function TradingPanel({
                             </div>
                           )}
 
-                          {/* Reasoning */}
+                          {/* Analysis Reasoning */}
                           {analysisResults.prediction?.reasoning && (
-                            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200">
-                              <h4 className="font-medium text-sm text-blue-800 dark:text-blue-200 mb-2">Technical Reasoning</h4>
-                              <div className="text-sm text-blue-700 dark:text-blue-300">
+                            <div>
+                              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Analysis Reasoning</h3>
+                              <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                                 {analysisResults.prediction.reasoning}
                               </div>
                             </div>
                           )}
 
-                          {/* Individual Chart Results */}
-                          {analysisResults.results && analysisResults.results.length > 0 && (
-                            <div className="mt-4 space-y-3">
-                              <h4 className="font-medium text-sm">Individual Chart Analysis</h4>
-                              {analysisResults.results.map((result: any, index: number) => (
-                                <div key={index} className="bg-white dark:bg-gray-800 p-3 rounded border border-l-4 border-l-amber-400">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">Chart {index + 1}</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {result.timeframe || "Unknown"}
-                                    </Badge>
-                                  </div>
-                                  
-                                  {result.analysis && (
-                                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                                      {result.analysis.substring(0, 150)}...
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Action Button */}
-                          <div className="text-center mt-4">
+                          {/* Clear Analysis Button */}
+                          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                             <Button 
                               onClick={() => setAnalysisResults(null)}
                               variant="outline" 
                               size="sm" 
-                              className="text-amber-600 hover:text-amber-700 border-amber-300"
+                              className="w-full text-gray-600 hover:text-gray-700 border-gray-300"
                             >
                               Clear Analysis
                             </Button>
