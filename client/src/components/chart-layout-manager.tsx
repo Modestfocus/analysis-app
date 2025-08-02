@@ -16,10 +16,11 @@ interface ChartLayout {
 
 interface ChartLayoutManagerProps {
   onLayoutLoad: (layoutConfig: any) => void;
-  onSaveLayout: () => any; // Function to get current layout from TradingView
+  onSaveLayout: (name?: string) => Promise<any>; // Function to get current layout from TradingView
+  onDeleteLayout?: (layoutId: string) => Promise<void>;
 }
 
-export default function ChartLayoutManager({ onLayoutLoad, onSaveLayout }: ChartLayoutManagerProps) {
+export default function ChartLayoutManager({ onLayoutLoad, onSaveLayout, onDeleteLayout }: ChartLayoutManagerProps) {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
