@@ -198,7 +198,7 @@ export default function TradingPanel({
   const clearQuickAnalysisFiles = useCallback(() => {
     setQuickAnalysisFiles([]);
     setQuickAnalysisTimeframes({});
-    setAnalysisResults(null);
+    // Don't clear analysis results when clearing files
   }, []);
 
   // Quick Analysis mutation
@@ -237,7 +237,7 @@ export default function TradingPanel({
     onSuccess: (data) => {
       console.log('🔍 Analysis results received:', data);
       setAnalysisResults(data);
-      clearQuickAnalysisFiles(); // Clear files after successful analysis
+      // Don't clear files immediately - let user see results first
       toast({
         title: "Analysis Complete",
         description: `Quick analysis completed for ${quickAnalysisFiles.length} chart(s)`,
