@@ -218,7 +218,6 @@ export default function HomeAuthPage() {
       />
       {/* Dark overlay for better content readability */}
       <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60" />
-      
       {/* Content */}
       <div className="relative z-10 min-h-screen bg-transparent">
       <div className="container mx-auto px-4 py-8">
@@ -234,7 +233,7 @@ export default function HomeAuthPage() {
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left side - Features */}
-          <div className="space-y-8">
+          <div className="space-y-8 text-[12px] font-normal">
             <div className="flex items-start space-x-4">
               <div className="bg-purple-500/20 p-3 rounded-lg">
                 <TrendingUp className="h-6 w-6 text-purple-400" />
