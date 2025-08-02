@@ -53,13 +53,15 @@ export default function WorkingChartCanvas({
     
     const updateCanvasSize = () => {
       const canvas = canvasRef.current;
-      const container = chartContainer;
-      if (!canvas || !container) return;
+      if (!canvas || !chartContainer) return;
 
-      const rect = container.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-      setCanvasBounds(rect);
+      // Use the parent container size instead of chart element
+      const parentRect = chartContainer.getBoundingClientRect();
+      canvas.width = parentRect.width;
+      canvas.height = parentRect.height;
+      setCanvasBounds(parentRect);
+      
+      console.log('Canvas sized to:', { width: parentRect.width, height: parentRect.height });
       
       // Redraw all existing drawings
       redrawCanvas();
@@ -95,13 +97,15 @@ export default function WorkingChartCanvas({
   }, [drawings]);
 
   const getMousePosition = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
-    if (!canvasRef.current || !canvasBounds) return { x: 0, y: 0 };
+    if (!canvasRef.current) return { x: 0, y: 0 };
     
     const rect = canvasRef.current.getBoundingClientRect();
-    return {
+    const point = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     };
+    console.log('Mouse position:', point, 'Canvas rect:', rect);
+    return point;
   };
 
   const drawShape = (ctx: CanvasRenderingContext2D, drawing: DrawingObject) => {
@@ -199,9 +203,14 @@ export default function WorkingChartCanvas({
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    console.log('Mouse down on canvas, selected tool:', selectedTool);
     if (selectedTool === 'cursor') return;
 
+    e.preventDefault();
+    e.stopPropagation();
+    
     const point = getMousePosition(e);
+    console.log('Drawing started at:', point);
     setStartPoint(point);
     setIsDrawing(true);
 
@@ -293,17 +302,25 @@ export default function WorkingChartCanvas({
   if (!chartContainer) return null;
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="absolute top-0 left-0 pointer-events-auto z-10"
-      style={{
-        cursor: selectedTool === 'cursor' ? 'default' : 'crosshair',
-        width: '100%',
-        height: '100%'
+    <div 
+      className="absolute inset-0 z-50"
+      style={{ 
+        pointerEvents: selectedTool === 'cursor' ? 'none' : 'auto',
+        cursor: selectedTool === 'cursor' ? 'default' : 'crosshair'
       }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        className="absolute top-0 left-0 w-full h-full"
+        style={{
+          backgroundColor: 'transparent',
+          cursor: selectedTool === 'cursor' ? 'default' : 'crosshair'
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onClick={(e) => console.log('Canvas clicked at:', getMousePosition(e))}
+      />
+    </div>
   );
 }
