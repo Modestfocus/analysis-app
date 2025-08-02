@@ -210,7 +210,7 @@ export default function TradingPanel({
 
       const formData = new FormData();
       quickAnalysisFiles.forEach((file) => {
-        formData.append('files', file);
+        formData.append('charts', file);
       });
 
       // Create timeframe mapping
