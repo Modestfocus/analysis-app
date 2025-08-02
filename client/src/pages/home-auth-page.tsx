@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,28 @@ import { Wallet, User, TrendingUp, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
+// Background images array for rotation - using relative paths to avoid import issues with special characters
+const backgroundImages = [
+  "/attached_assets/silhouette-two-male-hikers-climbing-600nw-1866436603_1754174187596.webp",
+  "/attached_assets/rowing-bg2_1754174196782.png",
+  "/attached_assets/Perte-de-motivation-sportive_prevention-et-solutions-1_1754174204304.jpg",
+  "/attached_assets/man-7834594_640_1754174210314.jpg",
+  "/attached_assets/Lee_Barnes,_champion_olympique_du_saut_à_la_perche_en_1924_1754174220715.jpg",
+  "/attached_assets/KellyFallon1_1754174230720.jpg",
+  "/attached_assets/istockphoto-2060317185-612x612_1754174239238.jpg",
+  "/attached_assets/istockphoto-1483065861-612x612_1754174248870.jpg",
+  "/attached_assets/istockphoto-644503898-612x612_1754174266181.jpg",
+  "/attached_assets/istockphoto-1370663803-612x612_1754174276784.jpg"
+];
+
 export default function HomeAuthPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Background rotation state
+  const [currentBackgroundIndex, setCurrentBackgroundIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Traditional login state
   const [username, setUsername] = useState("");
@@ -23,6 +41,38 @@ export default function HomeAuthPage() {
   // Wallet connection state
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
+
+  // Background rotation effect
+  useEffect(() => {
+    const getRandomInterval = () => Math.random() * 3000 + 4000; // Random interval between 4-7 seconds
+    
+    const rotateBackground = () => {
+      setIsTransitioning(true);
+      
+      setTimeout(() => {
+        setCurrentBackgroundIndex(prevIndex => {
+          let newIndex;
+          do {
+            newIndex = Math.floor(Math.random() * backgroundImages.length);
+          } while (newIndex === prevIndex && backgroundImages.length > 1); // Ensure we don't repeat the same image
+          return newIndex;
+        });
+        setIsTransitioning(false);
+      }, 500); // Transition duration
+    };
+
+    const scheduleNextRotation = () => {
+      const timeoutId = setTimeout(() => {
+        rotateBackground();
+        scheduleNextRotation();
+      }, getRandomInterval());
+      return timeoutId;
+    };
+
+    const timeoutId = scheduleNextRotation();
+
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   const handleTraditionalAuth = async () => {
     setIsLoading(true);
@@ -156,7 +206,21 @@ export default function HomeAuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div 
+        className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
+          isTransitioning ? 'opacity-50' : 'opacity-100'
+        }`}
+        style={{
+          backgroundImage: `url(${backgroundImages[currentBackgroundIndex]})`
+        }}
+      />
+      {/* Dark overlay for better content readability */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-purple-900/75 to-slate-900/85" />
+      
+      {/* Content */}
+      <div className="relative z-10 min-h-screen bg-transparent">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -325,6 +389,7 @@ export default function HomeAuthPage() {
         <div className="text-center mt-16 text-slate-400">
           <p>Powered by GPT-4o Vision, CLIP, and Advanced Image Processing</p>
         </div>
+      </div>
       </div>
     </div>
   );
