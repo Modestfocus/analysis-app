@@ -7,6 +7,7 @@ This is a full-stack chart analysis application that combines React frontend wit
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Trading panel: Minimized by default for optimal chart viewing.
 
 ## Recent Changes (January 2025)
 
@@ -47,6 +48,7 @@ Preferred communication style: Simple, everyday language.
 ✓ **Enhanced Watchlist Panel**: Symbol search, real-time price details, percentage changes, and volume data with TradingView-style cards
 ✓ **Professional Trading Panel**: Bottom-docked trading interface with order placement, positions, pending orders, and account management
 ✓ **Chart Layout Management**: Complete save/load functionality for chart configurations, indicators, and drawing persistence
+✓ **Trading Panel Default State**: Set trading panel to minimized by default for better chart viewing experience
 
 ## System Architecture
 
