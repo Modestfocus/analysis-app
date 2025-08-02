@@ -417,6 +417,7 @@ export default function ChartsPage() {
           isCollapsed={isDrawingToolbarCollapsed}
           onToggleCollapse={handleToggleDrawingToolbar}
           onClearAll={handleClearAllDrawings}
+          chartContainer={containerRef.current}
         />
 
 

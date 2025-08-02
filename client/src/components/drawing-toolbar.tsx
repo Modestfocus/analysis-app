@@ -19,8 +19,10 @@ import {
   Trash2,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Menu
 } from 'lucide-react';
+import CustomDrawingPanel from './custom-drawing-panel';
 
 interface DrawingTool {
   id: string;
@@ -35,6 +37,7 @@ interface DrawingToolbarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onClearAll?: () => void;
+  chartContainer?: HTMLElement | null;
 }
 
 const drawingTools: DrawingTool[] = [
@@ -61,9 +64,11 @@ export default function DrawingToolbar({
   selectedTool, 
   isCollapsed, 
   onToggleCollapse,
-  onClearAll
+  onClearAll,
+  chartContainer
 }: DrawingToolbarProps) {
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+  const [isCustomPanelOpen, setIsCustomPanelOpen] = useState(false);
 
   const handleToolClick = (toolId: string) => {
     onToolSelect(toolId);
@@ -104,14 +109,25 @@ export default function DrawingToolbar({
             <CardTitle className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Drawing Tools
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggleCollapse}
-              className="h-6 w-6 p-0"
-            >
-              <ChevronLeft className="h-3 w-3" />
-            </Button>
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCustomPanelOpen(true)}
+                className="h-6 w-6 p-0"
+                title="Open Drawing Tools Panel"
+              >
+                <Menu className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleCollapse}
+                className="h-6 w-6 p-0"
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-2 space-y-1">
@@ -241,6 +257,15 @@ export default function DrawingToolbar({
           </div>
         </CardContent>
       </Card>
+      
+      {/* Custom Drawing Panel */}
+      <CustomDrawingPanel
+        isOpen={isCustomPanelOpen}
+        onClose={() => setIsCustomPanelOpen(false)}
+        chartContainer={chartContainer || null}
+        activeTool={selectedTool}
+        onToolSelect={onToolSelect}
+      />
     </div>
   );
 }
