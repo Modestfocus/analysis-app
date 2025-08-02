@@ -40,6 +40,13 @@ interface CustomDrawingPanelProps {
   onToolSelect: (toolId: string) => void;
 }
 
+interface KeyboardShortcut {
+  key: string;
+  altKey?: boolean;
+  shiftKey?: boolean;
+  ctrlKey?: boolean;
+}
+
 const drawingTools: DrawingTool[] = [
   // Lines Category
   {
@@ -177,64 +184,67 @@ export default function CustomDrawingPanel({
   activeTool,
   onToolSelect
 }: CustomDrawingPanelProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [focusedTool, setFocusedTool] = useState<string | null>(null);
-
-  // Focus the TradingView chart iframe
-  const focusChart = () => {
-    if (!chartContainer) return;
+  const [processingTool, setProcessingTool] = useState<string | null>(null);
+  
+  // Function to dispatch keyboard shortcuts to TradingView iframe
+  const dispatchShortcutToChart = async (tool: DrawingTool) => {
+    if (processingTool) return; // Prevent double clicks
+    
+    setProcessingTool(tool.id);
     
     try {
-      // Find the TradingView iframe within the chart container
-      const iframe = chartContainer.querySelector('iframe') as HTMLIFrameElement;
-      if (iframe) {
-        iframe.focus();
-        // Also try to focus the iframe's content window
-        if (iframe.contentWindow) {
-          iframe.contentWindow.focus();
-        }
+      // Find the TradingView iframe
+      const iframe = document.querySelector('iframe[src*="tradingview"]') as HTMLIFrameElement;
+      
+      if (!iframe || !iframe.contentWindow) {
+        console.warn('TradingView iframe not found');
+        setProcessingTool(null);
+        return;
       }
-    } catch (error) {
-      console.warn('Could not focus chart iframe:', error);
-    }
-  };
-
-  // Dispatch keyboard shortcut
-  const dispatchShortcut = (tool: DrawingTool) => {
-    if (!chartContainer) return;
-
-    // Focus the chart first
-    focusChart();
-    
-    // Small delay to ensure focus is set
-    setTimeout(() => {
-      const keyboardEvent = new KeyboardEvent('keydown', {
-        key: tool.keyCode,
+      
+      // Focus the iframe first
+      iframe.contentWindow.focus();
+      
+      // Wait a brief moment for focus to take effect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Create and dispatch the keyboard event
+      const event = new KeyboardEvent('keydown', {
+        key: tool.keyCode.toUpperCase(),
         code: `Key${tool.keyCode.toUpperCase()}`,
         altKey: tool.altKey || false,
-        ctrlKey: tool.ctrlKey || false,
         shiftKey: tool.shiftKey || false,
+        ctrlKey: tool.ctrlKey || false,
         bubbles: true,
         cancelable: true
       });
-
-      // Dispatch to both the container and document
-      chartContainer.dispatchEvent(keyboardEvent);
-      document.dispatchEvent(keyboardEvent);
       
-      // Also try dispatching to the iframe if available
-      const iframe = chartContainer.querySelector('iframe') as HTMLIFrameElement;
-      if (iframe && iframe.contentDocument) {
-        iframe.contentDocument.dispatchEvent(keyboardEvent);
-      }
-    }, 100);
+      // Dispatch to iframe's document
+      iframe.contentWindow.document.dispatchEvent(event);
+      
+      // Also try dispatching to iframe's window
+      iframe.contentWindow.dispatchEvent(event);
+      
+      console.log(`✅ Successfully dispatched ${tool.shortcut} shortcut for ${tool.name} to TradingView`);
+      
+      // Update tool selection
+      onToolSelect(tool.id);
+      
+    } catch (error) {
+      console.error('Error dispatching shortcut:', error);
+    } finally {
+      // Reset processing state after a short delay
+      setTimeout(() => setProcessingTool(null), 500);
+    }
   };
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [focusedTool, setFocusedTool] = useState<string | null>(null);
 
-  // Handle tool selection
+  // Handle tool selection with keyboard shortcut dispatch
   const handleToolSelect = (tool: DrawingTool) => {
     setFocusedTool(tool.id);
     onToolSelect(tool.id);
-    dispatchShortcut(tool);
+    dispatchShortcutToChart(tool);
     
     // Clear focus highlight after a delay
     setTimeout(() => {
@@ -305,8 +315,9 @@ export default function CustomDrawingPanel({
                       variant={activeTool === tool.id ? "default" : "ghost"}
                       className={`justify-start h-auto p-3 transition-all duration-200 ${
                         focusedTool === tool.id ? 'ring-2 ring-primary' : ''
-                      }`}
+                      } ${processingTool === tool.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                       onClick={() => handleToolSelect(tool)}
+                      disabled={processingTool === tool.id}
                     >
                       <div className="flex items-center gap-3 w-full">
                         <div className="flex-shrink-0">
@@ -319,6 +330,11 @@ export default function CustomDrawingPanel({
                             <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
                               {tool.shortcut}
                             </Badge>
+                            {processingTool === tool.id && (
+                              <Badge variant="default" className="text-xs px-1.5 py-0.5 animate-pulse">
+                                Activating...
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {tool.description}
