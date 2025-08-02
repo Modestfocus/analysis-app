@@ -8,7 +8,7 @@ import ChartLayoutManager from "@/components/chart-layout-manager";
 import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
-import LightweightChart from "@/components/lightweight-chart";
+import SimpleChart from "@/components/simple-chart";
 
 export default function ChartsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -332,7 +332,7 @@ export default function ChartsPage() {
           <Card className="h-full">
             <CardContent className="p-0 h-full">
               {useAlternativeChart ? (
-                <LightweightChart 
+                <SimpleChart 
                   symbol={currentSymbol}
                   onSymbolChange={setCurrentSymbol}
                 />

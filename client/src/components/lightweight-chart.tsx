@@ -76,7 +76,7 @@ export default function LightweightChart({ symbol, onSymbolChange }: Lightweight
 
     // Add line series (using correct API)
     const lineSeries = chart.addLineSeries({
-      color: 'rgba(38, 166, 154, 1)',
+      color: '#2196F3',
       lineWidth: 2,
     });
 
