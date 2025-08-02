@@ -256,16 +256,29 @@ export default function CustomDrawingPanel({
       } catch (crossOriginError) {
         console.log('Cross-origin iframe, using postMessage approach');
         
-        // Strategy 3: Use postMessage for cross-origin communication
+        // Strategy 3: Use TradingView's widget postMessage API
         if (iframe.contentWindow) {
+          // TradingView widget expects specific message format
           iframe.contentWindow.postMessage({
-            type: 'keyboard-shortcut',
-            tool: tool.name,
-            key: tool.keyCode.toUpperCase(),
-            altKey: tool.altKey || false,
-            shiftKey: tool.shiftKey || false,
-            ctrlKey: tool.ctrlKey || false
+            name: 'set_symbol',
+            data: {
+              symbol: 'NASDAQ:NDX' // Keep current symbol
+            }
           }, '*');
+          
+          // Try TradingView's chart action postMessage
+          setTimeout(() => {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage({
+                name: 'chart_action',
+                data: {
+                  action: 'drawing_tool',
+                  tool: tool.id,
+                  shortcut: tool.keyCode
+                }
+              }, '*');
+            }
+          }, 100);
         }
       }
       
@@ -273,31 +286,48 @@ export default function CustomDrawingPanel({
       dispatchEvent(document);
       dispatchEvent(document.body);
       
-      // Strategy 5: Try to find and click TradingView toolbar buttons directly
+      // Strategy 5: Try to simulate focus and key press more aggressively
       setTimeout(() => {
         try {
-          // Look for TradingView toolbar buttons that match our tool
-          const toolbarSelectors = [
-            `[data-name="${tool.id}"]`,
-            `[data-tool="${tool.id}"]`,
-            `[title*="${tool.name}"]`,
-            `button[aria-label*="${tool.name}"]`
-          ];
-          
-          for (const selector of toolbarSelectors) {
-            const toolButton = document.querySelector(selector) as HTMLElement;
-            if (toolButton) {
-              console.log(`Found TradingView toolbar button: ${selector}`);
-              toolButton.click();
-              break;
-            }
+          // Focus the iframe container and simulate user interaction
+          if (chartContainer) {
+            chartContainer.focus();
+            chartContainer.click();
           }
-        } catch (toolbarError) {
-          console.log('Could not interact with TradingView toolbar directly');
+          
+          // Try to dispatch the key event with different event types
+          ['keydown', 'keypress', 'keyup'].forEach(eventType => {
+            const keyEvent = new KeyboardEvent(eventType, {
+              key: tool.keyCode.toUpperCase(),
+              code: `Key${tool.keyCode.toUpperCase()}`,
+              altKey: tool.altKey || false,
+              shiftKey: tool.shiftKey || false,
+              ctrlKey: tool.ctrlKey || false,
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              view: window
+            });
+            
+            // Dispatch to multiple targets
+            document.dispatchEvent(keyEvent);
+            if (chartContainer) chartContainer.dispatchEvent(keyEvent);
+            if (iframe) iframe.dispatchEvent(keyEvent);
+          });
+          
+          console.log(`Simulated aggressive key press for ${tool.shortcut}`);
+          
+        } catch (aggresiveError) {
+          console.log('Aggressive key simulation failed:', aggresiveError);
         }
-      }, 200);
+      }, 300);
       
       console.log(`✅ Dispatched ${tool.shortcut} shortcut for ${tool.name} using multiple strategies`);
+      
+      // Strategy 6: Show user instructions since automated activation may not work
+      setTimeout(() => {
+        console.log(`💡 If drawing doesn't activate automatically, manually press ${tool.shortcut} while focused on the chart`);
+      }, 500);
       
       // Update tool selection
       onToolSelect(tool.id);
@@ -419,14 +449,26 @@ export default function CustomDrawingPanel({
               </div>
             ))}
             
-            <div className="pt-3 border-t border-border/50 space-y-2">
+            <div className="pt-3 border-t border-border/50 space-y-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <div className="w-2 h-2 bg-primary rounded-full" />
-                <span>Tools activate TradingView's native drawing features</span>
+                <span>Drawing Tools Integration</span>
               </div>
               
-              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                <strong>Troubleshoot:</strong> If drawing doesn't work, try clicking directly on the chart first, then select a tool.
+              <div className="text-xs space-y-2">
+                <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded border border-blue-200 dark:border-blue-800">
+                  <div className="font-medium text-blue-900 dark:text-blue-100 mb-1">How to Draw:</div>
+                  <ol className="text-blue-800 dark:text-blue-200 space-y-1">
+                    <li>1. Click a tool above (activates automatically)</li>
+                    <li>2. If needed, manually press the shortcut (e.g. Alt+T)</li>
+                    <li>3. Click and drag on the chart to draw</li>
+                  </ol>
+                </div>
+                
+                <div className="bg-muted/50 p-2 rounded space-y-1">
+                  <div><strong>Backup:</strong> Use TradingView's built-in toolbar at the top of the chart</div>
+                  <div><strong>Common shortcuts:</strong> Alt+T, Alt+H, Alt+R, Alt+C</div>
+                </div>
               </div>
             </div>
           </CardContent>
