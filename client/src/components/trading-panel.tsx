@@ -127,7 +127,7 @@ export default function TradingPanel({
   
   // Quick Chart Analysis state
   const [selectedTimeframes, setSelectedTimeframes] = useState<{ [key: number]: string }>({});
-  const [analysisResults, setAnalysisResults] = useState<any[]>([]);
+  const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -190,10 +190,10 @@ export default function TradingPanel({
   const clearQuickAnalysisFiles = useCallback(() => {
     setAnalysisFiles([]);
     setSelectedTimeframes({});
-    setAnalysisResults([]);
+    setAnalysisResults(null);
   }, []);
 
-  // Quick analysis mutation
+  // Quick analysis mutation - exactly like Upload page
   const quickAnalysisMutation = useMutation({
     mutationFn: async () => {
       if (analysisFiles.length === 0) {
@@ -201,26 +201,57 @@ export default function TradingPanel({
       }
 
       const formData = new FormData();
-      analysisFiles.forEach((file, index) => {
+      
+      // Add all files to FormData
+      analysisFiles.forEach((file) => {
         formData.append('charts', file);
-        formData.append(`timeframe_${index}`, selectedTimeframes[index] || "1H");
       });
+      
+      // Add timeframe mapping as JSON string for quick analysis
+      const timeframeMapping: Record<string, string> = {};
+      analysisFiles.forEach((file, index) => {
+        timeframeMapping[file.name] = selectedTimeframes[index] || "1H";
+      });
+      formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
 
-      return apiRequest('POST', '/api/quick-analysis', formData);
+      // Use Quick Analysis endpoint - processes temporarily without saving to dashboard
+      const quickAnalysisResponse = await apiRequest('POST', '/api/analyze/quick', formData);
+      const quickAnalysisData = await quickAnalysisResponse.json();
+      
+      // Return comprehensive quick analysis (no database save)
+      return {
+        isQuickAnalysis: true,
+        chartCount: quickAnalysisData.chartCount,
+        timeframes: Object.values(timeframeMapping),
+        savedToDatabase: false, // Quick Analysis does NOT save to database
+        multiChartAnalysis: true,
+        chartsProcessed: quickAnalysisData.chartCount,
+        visualMapsIncluded: quickAnalysisData.visualMapsIncluded,
+        // Include analysis results for UI display
+        ...quickAnalysisData
+      };
     },
     onSuccess: (data: any) => {
-      setAnalysisResults(data.analyses || []);
-      queryClient.invalidateQueries({ queryKey: ["/api/charts"] });
+      setAnalysisResults(data);
+      // Clear files after successful analysis
+      setAnalysisFiles([]);
+      setSelectedTimeframes({});
+      
+      // Quick Analysis doesn't save to dashboard, so no need to invalidate queries
+      let description = `${data.chartCount} chart(s) analyzed temporarily (not saved to dashboard)`;
+      if (data.visualMapsIncluded) {
+        description += ` with depth maps`;
+      }
       
       toast({
-        title: "Analysis Complete",
-        description: `Successfully analyzed ${analysisFiles.length} chart${analysisFiles.length !== 1 ? 's' : ''}`,
+        title: "Quick Analysis Complete",
+        description: description,
       });
     },
     onError: (error) => {
       console.error("Quick analysis failed:", error);
       toast({
-        title: "Analysis Failed",
+        title: "Quick Analysis Failed",
         description: "Failed to analyze charts. Please try again.",
         variant: "destructive",
       });
@@ -802,27 +833,54 @@ export default function TradingPanel({
                     </div>
 
                     {/* Analysis Results */}
-                    {analysisResults.length > 0 && (
+                    {analysisResults && (
                       <div className="space-y-2 border-t pt-2">
-                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-xs">Results</h4>
-                        <div className="space-y-1 max-h-20 overflow-y-auto">
-                          {analysisResults.map((result, index) => (
-                            <div key={index} className="p-2 bg-gray-50 dark:bg-gray-900 rounded border text-xs">
-                              <div className="flex items-center justify-between mb-1">
-                                <Badge variant="outline" className="text-xs h-4">
-                                  Chart {index + 1}
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-xs">Analysis Results</h4>
+                        <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-900 rounded p-2">
+                          <div className="text-xs space-y-1">
+                            {analysisResults.isQuickAnalysis && (
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="text-xs">
+                                  Quick Analysis
                                 </Badge>
-                                {result.timeframe && (
-                                  <Badge variant="secondary" className="text-xs h-4">
-                                    {result.timeframe}
+                                <Badge variant="secondary" className="text-xs">
+                                  {analysisResults.chartCount} Charts
+                                </Badge>
+                              </div>
+                            )}
+                            
+                            {analysisResults.analysis && (
+                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                {analysisResults.analysis}
+                              </div>
+                            )}
+                            
+                            {analysisResults.prediction && (
+                              <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-xs">Prediction:</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {analysisResults.prediction}
                                   </Badge>
+                                  {analysisResults.confidence && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {analysisResults.confidence}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {analysisResults.session && (
+                                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                                    Session: {analysisResults.session}
+                                  </div>
+                                )}
+                                {analysisResults.reasoning && (
+                                  <div className="text-xs text-gray-700 dark:text-gray-300 mt-1">
+                                    {analysisResults.reasoning}
+                                  </div>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">
-                                {result.analysis || "Analysis completed"}
-                              </div>
-                            </div>
-                          ))}
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
