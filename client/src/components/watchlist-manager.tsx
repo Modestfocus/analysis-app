@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Plus, X, TrendingUp, Search, Star, TrendingDown } from "lucide-react";
+import { Plus, X, TrendingUp, Search, Star, TrendingDown, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import TradingViewImportModal from "./tradingview-import-modal";
 
 interface WatchlistItem {
   id: string;
@@ -50,6 +51,7 @@ export default function WatchlistManager({ onSymbolSelect, currentSymbol }: Watc
   const [newSymbol, setNewSymbol] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
   // Get current symbol details
   const currentSymbolDetails = currentSymbol ? getSymbolDetails(currentSymbol) : null;
@@ -216,14 +218,25 @@ export default function WatchlistManager({ onSymbolSelect, currentSymbol }: Watc
         {/* Add symbol section */}
         <div className="space-y-2">
           {!isAdding ? (
-            <Button 
-              onClick={() => setIsAdding(true)}
-              variant="outline" 
-              className="w-full"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Symbol
-            </Button>
+            <div className="space-y-2">
+              <Button 
+                onClick={() => setIsAdding(true)}
+                variant="outline" 
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Symbol
+              </Button>
+              
+              <Button 
+                onClick={() => setIsImportModalOpen(true)}
+                variant="outline" 
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Import TradingView Watchlist
+              </Button>
+            </div>
           ) : (
             <div className="flex gap-2">
               <Input
@@ -321,6 +334,12 @@ export default function WatchlistManager({ onSymbolSelect, currentSymbol }: Watc
         </div>
         </CardContent>
       </Card>
+
+      {/* TradingView Import Modal */}
+      <TradingViewImportModal 
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   );
 }
