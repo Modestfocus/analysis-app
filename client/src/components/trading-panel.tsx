@@ -859,10 +859,28 @@ export default function TradingPanel({
                                     </div>
                                   </div>
                                   <div className="flex gap-1">
-                                    <Button variant="link" size="sm" className="text-xs text-blue-600 p-1 h-auto">
+                                    <Button 
+                                      variant="link" 
+                                      size="sm" 
+                                      className="text-xs text-blue-600 p-1 h-auto"
+                                      onClick={() => {
+                                        const chartUrl = chart.filePath || `/uploads/${chart.filename}`;
+                                        window.open(chartUrl, '_blank');
+                                      }}
+                                    >
                                       View full chart
                                     </Button>
-                                    <Button variant="link" size="sm" className="text-xs text-blue-600 p-1 h-auto">
+                                    <Button 
+                                      variant="link" 
+                                      size="sm" 
+                                      className="text-xs text-blue-600 p-1 h-auto"
+                                      onClick={() => {
+                                        const depthMapUrl = chart.depthMapUrl || chart.depthMapPath;
+                                        if (depthMapUrl) {
+                                          window.open(depthMapUrl, '_blank');
+                                        }
+                                      }}
+                                    >
                                       View Depth map
                                     </Button>
                                   </div>
