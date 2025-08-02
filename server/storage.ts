@@ -432,13 +432,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteChart(id: number): Promise<boolean> {
+    // First delete any analysis results that reference this chart
+    await db.delete(analysisResults).where(eq(analysisResults.chartId, id));
+    
+    // Then delete the chart
     const result = await db.delete(charts).where(eq(charts.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
   async deleteCharts(ids: number[]): Promise<boolean> {
-    const result = await db.delete(charts).where(eq(charts.id, ids[0])); // This would need proper inArray implementation
-    return (result.rowCount ?? 0) > 0;
+    // First delete any analysis results that reference these charts
+    for (const id of ids) {
+      await db.delete(analysisResults).where(eq(analysisResults.chartId, id));
+    }
+    
+    // Then delete the charts
+    let success = true;
+    for (const id of ids) {
+      const result = await db.delete(charts).where(eq(charts.id, id));
+      if ((result.rowCount ?? 0) === 0) {
+        success = false;
+      }
+    }
+    return success;
   }
 
   async createAnalysis(insertAnalysis: InsertAnalysis): Promise<AnalysisResult> {
