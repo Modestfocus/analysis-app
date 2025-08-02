@@ -808,6 +808,11 @@ export default function TradingPanel({
                     
                     {analysisResults ? (
                       <div className="space-y-4 h-full overflow-y-auto">
+                        {/* Debug info - remove later */}
+                        <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
+                          Debug: {JSON.stringify(analysisResults, null, 2).substring(0, 200)}...
+                        </div>
+                        
                         {/* Multi-Chart Analysis Results */}
                         <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-lg border border-amber-200">
                           <div className="flex items-center justify-between mb-3">
