@@ -799,8 +799,8 @@ export default function TradingPanel({
                 </Card>
 
                 {/* Right Column - Analysis Panel */}
-                <Card>
-                  <CardContent className="p-6 h-full">
+                <Card className="flex flex-col">
+                  <CardContent className="p-6 flex flex-col h-full">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                         <BarChart3 className="text-blue-500 mr-2 h-5 w-5" />
@@ -809,8 +809,9 @@ export default function TradingPanel({
                     </div>
                     
                     {analysisResults ? (
-                      <div className="space-y-6 h-full overflow-y-auto">
-                        {/* GPT-4o Analysis Header */}
+                      <div className="flex-1 overflow-y-auto">
+                        <div className="space-y-4">
+                          {/* GPT-4o Analysis Header */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -953,6 +954,7 @@ export default function TradingPanel({
                             </div>
                           </div>
                         </div>
+                      </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center h-64 text-center">
