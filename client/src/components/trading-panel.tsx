@@ -18,7 +18,8 @@ import {
   Activity,
   ChevronUp,
   ChevronDown,
-  Minimize2
+  Minimize2,
+  Zap
 } from 'lucide-react';
 
 interface Position {
@@ -49,6 +50,7 @@ interface TradingPanelProps {
   onPlaceOrder: (order: any) => void;
   isMinimized: boolean;
   onToggleMinimize: () => void;
+  onQuickAnalysis?: () => void;
 }
 
 // Mock data for demonstration
@@ -90,7 +92,7 @@ const mockOrders: Order[] = [
   }
 ];
 
-export default function TradingPanel({ currentSymbol, onPlaceOrder, isMinimized, onToggleMinimize }: TradingPanelProps) {
+export default function TradingPanel({ currentSymbol, onPlaceOrder, isMinimized, onToggleMinimize, onQuickAnalysis }: TradingPanelProps) {
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [size, setSize] = useState('0.1');
@@ -127,18 +129,31 @@ export default function TradingPanel({ currentSymbol, onPlaceOrder, isMinimized,
             <BarChart3 className="h-4 w-4" />
             <span className="text-sm font-medium">Trading Panel</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleMinimize}
-            className="h-6 w-6 p-0"
-          >
-            {isMinimized ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
+          <div className="flex items-center gap-2">
+            {onQuickAnalysis && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onQuickAnalysis}
+                className="h-7 px-2 text-xs font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700"
+              >
+                <Zap className="h-3 w-3 mr-1" />
+                Quick Chart Analysis
+              </Button>
             )}
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleMinimize}
+              className="h-6 w-6 p-0"
+            >
+              {isMinimized ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
 
         {!isMinimized && (

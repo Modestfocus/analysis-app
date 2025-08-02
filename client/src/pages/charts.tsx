@@ -467,14 +467,6 @@ export default function ChartsPage() {
               <Camera className="mr-2 h-4 w-4" />
               Take Screenshot
             </Button>
-            <Button
-              onClick={handleOpenQuickAnalysis}
-              variant="outline"
-              className="w-full"
-              size="sm"
-            >
-              Quick Chart Analysis
-            </Button>
           </div>
           
           <WatchlistManager 
@@ -521,6 +513,7 @@ export default function ChartsPage() {
             onPlaceOrder={handlePlaceOrder}
             isMinimized={isTradingPanelMinimized}
             onToggleMinimize={handleToggleTradingPanelMinimize}
+            onQuickAnalysis={handleOpenQuickAnalysis}
           />
         )}
 
