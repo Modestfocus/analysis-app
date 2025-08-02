@@ -342,16 +342,21 @@ export default function CustomDrawingPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const [focusedTool, setFocusedTool] = useState<string | null>(null);
 
-  // Handle tool selection with keyboard shortcut dispatch
+  // Handle tool selection with user guidance
   const handleToolSelect = (tool: DrawingTool) => {
     setFocusedTool(tool.id);
     onToolSelect(tool.id);
+    
+    // Show clear instructions to user
+    console.log(`🎯 ${tool.name} selected! Press ${tool.shortcut} on your keyboard while focused on the chart to activate.`);
+    
+    // Try automated dispatch (likely won't work due to cross-origin)
     dispatchShortcutToChart(tool);
     
     // Clear focus highlight after a delay
     setTimeout(() => {
       setFocusedTool(null);
-    }, 2000);
+    }, 3000);
   };
 
   // Group tools by category
@@ -437,6 +442,11 @@ export default function CustomDrawingPanel({
                                 Activating...
                               </Badge>
                             )}
+                            {focusedTool === tool.id && processingTool !== tool.id && (
+                              <Badge variant="outline" className="text-xs px-1.5 py-0.5 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200">
+                                Press {tool.shortcut}
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {tool.description}
@@ -456,18 +466,20 @@ export default function CustomDrawingPanel({
               </div>
               
               <div className="text-xs space-y-2">
-                <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded border border-blue-200 dark:border-blue-800">
-                  <div className="font-medium text-blue-900 dark:text-blue-100 mb-1">How to Draw:</div>
-                  <ol className="text-blue-800 dark:text-blue-200 space-y-1">
-                    <li>1. Click a tool above (activates automatically)</li>
-                    <li>2. If needed, manually press the shortcut (e.g. Alt+T)</li>
-                    <li>3. Click and drag on the chart to draw</li>
+                <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded border border-green-200 dark:border-green-800">
+                  <div className="font-medium text-green-900 dark:text-green-100 mb-2">✅ How to Activate Drawing:</div>
+                  <ol className="text-green-800 dark:text-green-200 space-y-1.5">
+                    <li><strong>1.</strong> Click a tool above</li>
+                    <li><strong>2.</strong> Click on the chart to focus it</li>
+                    <li><strong>3.</strong> Press the keyboard shortcut shown</li>
+                    <li><strong>4.</strong> Click and drag to draw</li>
                   </ol>
                 </div>
                 
-                <div className="bg-muted/50 p-2 rounded space-y-1">
-                  <div><strong>Backup:</strong> Use TradingView's built-in toolbar at the top of the chart</div>
-                  <div><strong>Common shortcuts:</strong> Alt+T, Alt+H, Alt+R, Alt+C</div>
+                <div className="bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-800">
+                  <div className="text-amber-800 dark:text-amber-200">
+                    <strong>💡 Pro Tip:</strong> TradingView's drawing toolbar is at the top of the chart
+                  </div>
                 </div>
               </div>
             </div>
