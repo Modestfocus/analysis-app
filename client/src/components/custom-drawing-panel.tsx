@@ -193,39 +193,111 @@ export default function CustomDrawingPanel({
     setProcessingTool(tool.id);
     
     try {
-      // Find the TradingView iframe
-      const iframe = document.querySelector('iframe[src*="tradingview"]') as HTMLIFrameElement;
+      // Try multiple methods to find the TradingView iframe
+      let iframe: HTMLIFrameElement | null = null;
       
-      if (!iframe || !iframe.contentWindow) {
-        console.warn('TradingView iframe not found');
+      // Method 1: Look for iframe with TradingView in src
+      iframe = document.querySelector('iframe[src*="tradingview"]') as HTMLIFrameElement;
+      
+      // Method 2: Look for iframe in chart container
+      if (!iframe && chartContainer) {
+        iframe = chartContainer.querySelector('iframe') as HTMLIFrameElement;
+      }
+      
+      // Method 3: Look for any iframe (fallback)
+      if (!iframe) {
+        iframe = document.querySelector('iframe') as HTMLIFrameElement;
+      }
+      
+      if (!iframe) {
+        console.warn('No iframe found for TradingView');
         setProcessingTool(null);
         return;
       }
       
-      // Focus the iframe first
-      iframe.contentWindow.focus();
+      console.log(`Found iframe: ${iframe.src || 'no src'}`);
       
-      // Wait a brief moment for focus to take effect
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Focus the iframe element first
+      iframe.focus();
       
-      // Create and dispatch the keyboard event
-      const event = new KeyboardEvent('keydown', {
-        key: tool.keyCode.toUpperCase(),
-        code: `Key${tool.keyCode.toUpperCase()}`,
-        altKey: tool.altKey || false,
-        shiftKey: tool.shiftKey || false,
-        ctrlKey: tool.ctrlKey || false,
-        bubbles: true,
-        cancelable: true
-      });
+      // Multiple dispatch strategies
+      const dispatchEvent = (target: EventTarget, eventType: string = 'keydown') => {
+        const event = new KeyboardEvent(eventType, {
+          key: tool.keyCode.toUpperCase(),
+          code: `Key${tool.keyCode.toUpperCase()}`,
+          altKey: tool.altKey || false,
+          shiftKey: tool.shiftKey || false,
+          ctrlKey: tool.ctrlKey || false,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        });
+        target.dispatchEvent(event);
+      };
       
-      // Dispatch to iframe's document
-      iframe.contentWindow.document.dispatchEvent(event);
+      // Strategy 1: Dispatch to iframe element itself
+      dispatchEvent(iframe);
       
-      // Also try dispatching to iframe's window
-      iframe.contentWindow.dispatchEvent(event);
+      // Strategy 2: Try to access iframe content if same origin
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          
+          // Wait for focus
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          // Dispatch to content window and document
+          if (iframe.contentDocument) {
+            dispatchEvent(iframe.contentDocument);
+            dispatchEvent(iframe.contentDocument.body || iframe.contentDocument);
+          }
+          dispatchEvent(iframe.contentWindow);
+        }
+      } catch (crossOriginError) {
+        console.log('Cross-origin iframe, using postMessage approach');
+        
+        // Strategy 3: Use postMessage for cross-origin communication
+        if (iframe.contentWindow) {
+          iframe.contentWindow.postMessage({
+            type: 'keyboard-shortcut',
+            tool: tool.name,
+            key: tool.keyCode.toUpperCase(),
+            altKey: tool.altKey || false,
+            shiftKey: tool.shiftKey || false,
+            ctrlKey: tool.ctrlKey || false
+          }, '*');
+        }
+      }
       
-      console.log(`✅ Successfully dispatched ${tool.shortcut} shortcut for ${tool.name} to TradingView`);
+      // Strategy 4: Simulate the key press on the main document
+      dispatchEvent(document);
+      dispatchEvent(document.body);
+      
+      // Strategy 5: Try to find and click TradingView toolbar buttons directly
+      setTimeout(() => {
+        try {
+          // Look for TradingView toolbar buttons that match our tool
+          const toolbarSelectors = [
+            `[data-name="${tool.id}"]`,
+            `[data-tool="${tool.id}"]`,
+            `[title*="${tool.name}"]`,
+            `button[aria-label*="${tool.name}"]`
+          ];
+          
+          for (const selector of toolbarSelectors) {
+            const toolButton = document.querySelector(selector) as HTMLElement;
+            if (toolButton) {
+              console.log(`Found TradingView toolbar button: ${selector}`);
+              toolButton.click();
+              break;
+            }
+          }
+        } catch (toolbarError) {
+          console.log('Could not interact with TradingView toolbar directly');
+        }
+      }, 200);
+      
+      console.log(`✅ Dispatched ${tool.shortcut} shortcut for ${tool.name} using multiple strategies`);
       
       // Update tool selection
       onToolSelect(tool.id);
@@ -234,7 +306,7 @@ export default function CustomDrawingPanel({
       console.error('Error dispatching shortcut:', error);
     } finally {
       // Reset processing state after a short delay
-      setTimeout(() => setProcessingTool(null), 500);
+      setTimeout(() => setProcessingTool(null), 800);
     }
   };
   const panelRef = useRef<HTMLDivElement>(null);
@@ -347,10 +419,14 @@ export default function CustomDrawingPanel({
               </div>
             ))}
             
-            <div className="pt-3 border-t border-border/50">
+            <div className="pt-3 border-t border-border/50 space-y-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <div className="w-2 h-2 bg-primary rounded-full" />
                 <span>Tools activate TradingView's native drawing features</span>
+              </div>
+              
+              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                <strong>Troubleshoot:</strong> If drawing doesn't work, try clicking directly on the chart first, then select a tool.
               </div>
             </div>
           </CardContent>
