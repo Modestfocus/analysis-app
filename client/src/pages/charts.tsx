@@ -8,10 +8,8 @@ import ChartLayoutManager from "@/components/chart-layout-manager";
 import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
-import CustomDrawingPanel from "@/components/custom-drawing-panel";
-import ChartCanvasOverlay from "@/components/chart-canvas-overlay";
-import CustomDrawingSettings from "@/components/custom-drawing-settings";
-import { useChartLayout } from "@/hooks/use-chart-layout";
+
+
 
 export default function ChartsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,20 +26,9 @@ export default function ChartsPage() {
   const [isTradingPanelMinimized, setIsTradingPanelMinimized] = useState(true);
   const [tvWidget, setTvWidget] = useState<any>(null);
   
-  // Custom drawing states
-  const [customSelectedTool, setCustomSelectedTool] = useState("cursor");
-  const [isCustomDrawingCollapsed, setIsCustomDrawingCollapsed] = useState(false);
-  const [isCustomSettingsOpen, setIsCustomSettingsOpen] = useState(false);
-  const [customDrawingStyle, setCustomDrawingStyle] = useState({
-    color: '#3b82f6',
-    thickness: 2,
-    lineStyle: 'solid' as 'solid' | 'dashed'
-  });
   const [chartBounds, setChartBounds] = useState<DOMRect | null>(null);
-  const [customDrawings, setCustomDrawings] = useState<any[]>([]);
   
-  // Chart layout management
-  const { saveLayout, loadLayout, deleteLayout } = useChartLayout();
+
 
   // Convert our symbol format to TradingView format
   const formatSymbolForTradingView = (symbol: string) => {
@@ -220,39 +207,45 @@ export default function ChartsPage() {
   }, []);
 
   // Handle saving current chart layout
-  const handleSaveLayout = useCallback(async (layoutName?: string) => {
+  const handleSaveLayout = useCallback(async () => {
     try {
-      const name = layoutName || `Layout_${currentSymbol}_${new Date().toLocaleDateString()}`;
-      const savedLayout = await saveLayout(name, currentSymbol, customDrawings);
-      console.log('Layout saved:', savedLayout);
-      return savedLayout;
+      // In a real implementation, we would use TradingView's save_load API
+      // For now, we'll save basic configuration
+      const layoutConfig = {
+        symbol: currentSymbol,
+        interval: "60",
+        timezone: "Etc/UTC",
+        theme: "light",
+        style: "1",
+        // In production, these would come from the actual TradingView widget
+        indicators: [], // Would be populated by widget.getIndicators()
+        drawings: [], // Would be populated by widget.getDrawings()
+        savedAt: new Date().toISOString()
+      };
+      
+      return layoutConfig;
     } catch (error) {
-      console.error("Error saving layout:", error);
+      console.error("Error getting layout:", error);
       throw error;
     }
-  }, [currentSymbol, customDrawings, saveLayout]);
+  }, [currentSymbol]);
 
   // Handle loading a saved chart layout
   const handleLayoutLoad = useCallback((layoutConfig: any) => {
     try {
-      const loaded = loadLayout(layoutConfig);
-      
-      // Load custom drawings
-      if (loaded.customDrawings) {
-        setCustomDrawings(loaded.customDrawings);
+      if (layoutConfig.symbol && layoutConfig.symbol !== currentSymbol) {
+        setCurrentSymbol(layoutConfig.symbol);
+        initializeChart(layoutConfig.symbol);
       }
       
-      // Switch symbol if different
-      if (loaded.symbol && loaded.symbol !== currentSymbol) {
-        setCurrentSymbol(loaded.symbol);
-        initializeChart(loaded.symbol);
-      }
+      // In production, this would restore indicators, drawings, etc.
+      // widget.loadLayout(layoutConfig);
       
-      console.log("Layout loaded:", loaded);
+      console.log("Loading layout:", layoutConfig);
     } catch (error) {
       console.error("Error loading layout:", error);
     }
-  }, [currentSymbol, initializeChart, loadLayout]);
+  }, [currentSymbol, initializeChart]);
 
   // Drawing tool handlers
   const handleDrawingToolSelect = useCallback((toolId: string) => {
@@ -321,25 +314,7 @@ export default function ChartsPage() {
     setIsTradingPanelMinimized(!isTradingPanelMinimized);
   }, [isTradingPanelMinimized]);
 
-  // Custom drawing handlers
-  const handleCustomToolSelect = (toolId: string) => {
-    setCustomSelectedTool(toolId);
-    console.log(`Custom drawing tool selected: ${toolId}`);
-  };
 
-  const handleCustomDrawingComplete = (drawing: any) => {
-    setCustomDrawings(prev => [...prev, drawing]);
-    console.log('Custom drawing completed:', drawing);
-  };
-
-  const handleCustomDrawingDelete = (id: string) => {
-    setCustomDrawings(prev => prev.filter(drawing => drawing.id !== id));
-    console.log('Custom drawing deleted:', id);
-  };
-
-  const handleCustomDrawingStyleChange = (style: typeof customDrawingStyle) => {
-    setCustomDrawingStyle(style);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -386,17 +361,7 @@ export default function ChartsPage() {
                 </div>
               </div>
 
-              {/* Custom Canvas Overlay for Drawings */}
-              {isChartReady && (
-                <ChartCanvasOverlay
-                  selectedTool={customSelectedTool}
-                  drawingStyle={customDrawingStyle}
-                  chartBounds={chartBounds}
-                  onDrawingComplete={handleCustomDrawingComplete}
-                  drawings={customDrawings}
-                  onDrawingDelete={handleCustomDrawingDelete}
-                />
-              )}
+
             </CardContent>
           </Card>
         </div>
@@ -411,7 +376,6 @@ export default function ChartsPage() {
           <ChartLayoutManager 
             onLayoutLoad={handleLayoutLoad}
             onSaveLayout={handleSaveLayout}
-            onDeleteLayout={deleteLayout}
           />
         </div>
 
@@ -423,14 +387,7 @@ export default function ChartsPage() {
           onToggleCollapse={handleToggleDrawingToolbar}
         />
 
-        {/* Custom Drawing Panel - Left overlay */}
-        <CustomDrawingPanel
-          onToolSelect={handleCustomToolSelect}
-          selectedTool={customSelectedTool}
-          isCollapsed={isCustomDrawingCollapsed}
-          onToggleCollapse={() => setIsCustomDrawingCollapsed(!isCustomDrawingCollapsed)}
-          onOpenSettings={() => setIsCustomSettingsOpen(true)}
-        />
+
 
         {/* Drawing Settings Panel - Shows when drawing is selected */}
         <DrawingSettingsPanel
@@ -444,13 +401,7 @@ export default function ChartsPage() {
           onToggleVisibility={handleToggleDrawingVisibility}
         />
 
-        {/* Custom Drawing Settings Panel */}
-        <CustomDrawingSettings
-          isOpen={isCustomSettingsOpen}
-          onClose={() => setIsCustomSettingsOpen(false)}
-          drawingStyle={customDrawingStyle}
-          onStyleChange={handleCustomDrawingStyleChange}
-        />
+
 
         {/* Trading Panel - Fixed at bottom */}
         {showTradingPanel && (
