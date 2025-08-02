@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { X, Plus, Download, TrendingUp, Search, BarChart3, Star } from "lucide-react";
+import { X, Plus, Download, TrendingUp, Search, BarChart3, Star, Link, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -26,6 +26,8 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
   const [selectedSymbols, setSelectedSymbols] = useState<SelectedSymbol[]>([]);
   const [manualSymbol, setManualSymbol] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [importUrl, setImportUrl] = useState("");
+  const [activeTab, setActiveTab] = useState<"browse" | "url">("browse");
 
   // Comprehensive trading symbols organized by category
   const symbolCategories = {
@@ -152,6 +154,35 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
     },
   });
 
+  // URL import mutation
+  const urlImportMutation = useMutation({
+    mutationFn: async (url: string) => {
+      return apiRequest('POST', '/api/watchlist/import-url', { url });
+    },
+    onSuccess: (data: any) => {
+      const importedCount = data.symbols?.length || 0;
+      toast({
+        title: "URL import successful",
+        description: `${importedCount} symbols imported from TradingView watchlist`,
+      });
+      
+      // Refresh watchlist data
+      queryClient.invalidateQueries({ queryKey: ["/api/watchlist"] });
+      
+      // Reset and close
+      setImportUrl("");
+      onClose();
+    },
+    onError: (error) => {
+      console.error("Failed to import from URL:", error);
+      toast({
+        title: "URL import failed",
+        description: "Failed to import watchlist from URL. Please check the URL and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSaveWatchlist = useCallback(() => {
     if (selectedSymbols.length === 0) {
       toast({
@@ -166,10 +197,36 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
     saveWatchlistMutation.mutate(symbols);
   }, [selectedSymbols, saveWatchlistMutation, toast]);
 
+  const handleUrlImport = useCallback(() => {
+    if (!importUrl.trim()) {
+      toast({
+        title: "URL required",
+        description: "Please enter a valid TradingView watchlist URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate URL format
+    const urlPattern = /^https:\/\/(?:www\.)?tradingview\.com\/watchlists\/\d+\/?$/;
+    if (!urlPattern.test(importUrl.trim())) {
+      toast({
+        title: "Invalid URL format",
+        description: "Please enter a valid TradingView watchlist URL (e.g., https://www.tradingview.com/watchlists/12345/)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    urlImportMutation.mutate(importUrl.trim());
+  }, [importUrl, urlImportMutation, toast]);
+
   const handleClose = useCallback(() => {
     setSelectedSymbols([]);
     setManualSymbol("");
     setSearchQuery("");
+    setImportUrl("");
+    setActiveTab("browse");
     onClose();
   }, [onClose]);
 
@@ -182,14 +239,37 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
             Import Trading Symbols to Watchlist
           </DialogTitle>
           <div id="import-modal-description" className="sr-only">
-            Select trading symbols from popular categories or search to add them to your watchlist
+            Select trading symbols from popular categories or import from TradingView watchlist URL
+          </div>
+          
+          {/* Tab Navigation */}
+          <div className="flex gap-2 mt-4">
+            <Button
+              variant={activeTab === "browse" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("browse")}
+              className="flex items-center gap-2"
+            >
+              <Search className="h-4 w-4" />
+              Browse Symbols
+            </Button>
+            <Button
+              variant={activeTab === "url" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("url")}
+              className="flex items-center gap-2"
+            >
+              <Link className="h-4 w-4" />
+              Import from URL
+            </Button>
           </div>
         </DialogHeader>
         
         <div className="flex-1 p-6 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-            {/* Left Side - Symbol Categories */}
-            <div className="space-y-4 overflow-y-auto">
+          {activeTab === "browse" ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+              {/* Left Side - Symbol Categories */}
+              <div className="space-y-4 overflow-y-auto">
               {/* Search symbols */}
               <Card>
                 <CardHeader>
@@ -360,25 +440,88 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
               </Card>
             </div>
           </div>
+          ) : (
+            // URL Import Tab
+            <div className="max-w-2xl mx-auto space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="h-5 w-5" />
+                    Import from TradingView Watchlist URL
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">TradingView Watchlist URL</label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://www.tradingview.com/watchlists/12345/"
+                        value={importUrl}
+                        onChange={(e) => setImportUrl(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handleUrlImport()}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={handleUrlImport}
+                        disabled={!importUrl.trim() || urlImportMutation.isPending}
+                      >
+                        {urlImportMutation.isPending ? "Importing..." : "Import"}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">How to use:</h4>
+                    <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
+                      <li>Go to TradingView.com and open any public watchlist</li>
+                      <li>Copy the URL from your browser address bar</li>
+                      <li>Paste the URL above and click Import</li>
+                      <li>All symbols from the watchlist will be added to your account</li>
+                    </ol>
+                  </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border">
+                    <h4 className="text-sm font-medium mb-2">Example URLs:</h4>
+                    <ul className="text-xs text-muted-foreground space-y-1 font-mono">
+                      <li>• https://www.tradingview.com/watchlists/12345/</li>
+                      <li>• https://tradingview.com/watchlists/67890/</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="p-6 pt-0">
           <div className="flex items-center justify-between w-full">
             <div className="text-sm text-muted-foreground">
-              {selectedSymbols.length > 0 && (
+              {activeTab === "browse" && selectedSymbols.length > 0 && (
                 <span>{selectedSymbols.length} symbol{selectedSymbols.length !== 1 ? 's' : ''} ready to import</span>
+              )}
+              {activeTab === "url" && importUrl && (
+                <span>Ready to import from TradingView URL</span>
               )}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleSaveWatchlist}
-                disabled={selectedSymbols.length === 0 || saveWatchlistMutation.isPending}
-              >
-                {saveWatchlistMutation.isPending ? "Saving..." : "Save to My Watchlist"}
-              </Button>
+              {activeTab === "browse" ? (
+                <Button 
+                  onClick={handleSaveWatchlist}
+                  disabled={selectedSymbols.length === 0 || saveWatchlistMutation.isPending}
+                >
+                  {saveWatchlistMutation.isPending ? "Saving..." : "Save to My Watchlist"}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleUrlImport}
+                  disabled={!importUrl.trim() || urlImportMutation.isPending}
+                >
+                  {urlImportMutation.isPending ? "Importing..." : "Import from URL"}
+                </Button>
+              )}
             </div>
           </div>
         </DialogFooter>

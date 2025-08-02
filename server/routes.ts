@@ -1646,6 +1646,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import TradingView watchlist from URL
+  app.post('/api/watchlist/import-url', async (req, res) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Valid TradingView watchlist URL is required" 
+        });
+      }
+
+      // Validate TradingView URL format
+      const urlPattern = /^https:\/\/(?:www\.)?tradingview\.com\/watchlists\/\d+\/?$/;
+      if (!urlPattern.test(url)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid TradingView watchlist URL format. Expected: https://www.tradingview.com/watchlists/12345/" 
+        });
+      }
+
+      // For now, use a hardcoded userId since we don't have authentication
+      const userId = 'temp-user-id';
+
+      // Import symbols from URL
+      const importedSymbols = await storage.importWatchlistFromURL(url, userId);
+      
+      res.json({ 
+        success: true, 
+        message: `Successfully imported ${importedSymbols.length} symbols`,
+        symbols: importedSymbols 
+      });
+    } catch (error) {
+      console.error("Error importing watchlist from URL:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to import watchlist. Please check the URL and try again." 
+      });
+    }
+  });
+
   // Chart Layout API Routes
   app.get('/api/chart-layout', async (req, res) => {
     try {

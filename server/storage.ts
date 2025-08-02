@@ -22,6 +22,8 @@ import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 import { existsSync } from "fs";
 import { join } from "path";
+import axios from "axios";
+import * as cheerio from "cheerio";
 
 export interface IStorage {
   // User operations
@@ -59,6 +61,7 @@ export interface IStorage {
   getUserWatchlist(userId: string): Promise<Watchlist[]>;
   addToWatchlist(watchlistItem: InsertWatchlist): Promise<Watchlist>;
   removeFromWatchlist(userId: string, symbol: string): Promise<void>;
+  importWatchlistFromURL(url: string, userId: string): Promise<string[]>;
   
   // Chart layout operations
   getUserChartLayout(userId: string): Promise<ChartLayout | undefined>;
@@ -288,6 +291,11 @@ export class MemStorage implements IStorage {
     this.watchlists.set(userId, filteredWatchlist);
   }
 
+  async importWatchlistFromURL(url: string, userId: string): Promise<string[]> {
+    // MemStorage implementation - this is mainly for testing/development
+    throw new Error('URL import is not supported in memory storage. Please use database storage.');
+  }
+
   async getUserChartLayout(userId: string): Promise<ChartLayout | undefined> {
     return this.chartLayouts.get(userId);
   }
@@ -515,6 +523,130 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(watchlists)
       .where(and(eq(watchlists.userId, userId), eq(watchlists.symbol, symbol)));
+  }
+
+  async importWatchlistFromURL(url: string, userId: string): Promise<string[]> {
+    try {
+      console.log(`🔍 Importing watchlist from URL: ${url}`);
+      
+      // Fetch the HTML content from TradingView
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        timeout: 15000
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`Failed to fetch page: HTTP ${response.status}`);
+      }
+
+      // Parse HTML with Cheerio
+      const $ = cheerio.load(response.data);
+      const symbols: string[] = [];
+
+      // Multiple selectors to try for different TradingView page layouts
+      const selectors = [
+        // Common symbol selectors on TradingView
+        '[data-symbol]',
+        '.tv-screener__symbol',
+        '.js-symbol-link',
+        '.symbol-name',
+        '.tv-symbol-link',
+        'a[href*="/symbols/"]',
+        '.watchlist-item [data-symbol]',
+        '.row .symbol'
+      ];
+
+      console.log(`📊 Trying ${selectors.length} different selectors to find symbols...`);
+
+      for (const selector of selectors) {
+        $(selector).each((_, element) => {
+          const symbolElement = $(element);
+          
+          // Try different ways to extract symbol
+          let symbol = symbolElement.attr('data-symbol') ||
+                      symbolElement.text().trim() ||
+                      symbolElement.attr('title') ||
+                      symbolElement.attr('data-field-key');
+
+          if (symbol) {
+            // Clean up symbol - remove exchange prefix if present (e.g., "NASDAQ:AAPL" -> "AAPL")
+            symbol = symbol.split(':').pop()?.trim().toUpperCase();
+            
+            if (symbol && 
+                symbol.length > 0 && 
+                symbol.length <= 20 && 
+                /^[A-Z0-9]+$/.test(symbol) && 
+                !symbols.includes(symbol)) {
+              symbols.push(symbol);
+              console.log(`✓ Found symbol: ${symbol}`);
+            }
+          }
+        });
+
+        if (symbols.length > 0) {
+          console.log(`📈 Found ${symbols.length} symbols using selector: ${selector}`);
+          break; // Use the first successful selector
+        }
+      }
+
+      // Alternative: Look for symbol patterns in text content
+      if (symbols.length === 0) {
+        console.log(`🔍 No symbols found with selectors, trying text pattern matching...`);
+        
+        const pageText = $.text();
+        // Look for common trading symbols pattern
+        const symbolMatches = pageText.match(/\b[A-Z]{2,10}(?:USD|EUR|GBP|JPY|CHF|CAD|AUD|NZD|\d{2,4})\b/g);
+        
+        if (symbolMatches) {
+          symbolMatches.forEach(match => {
+            const cleanSymbol = match.trim().toUpperCase();
+            if (!symbols.includes(cleanSymbol) && cleanSymbol.length <= 20) {
+              symbols.push(cleanSymbol);
+              console.log(`✓ Found symbol via pattern: ${cleanSymbol}`);
+            }
+          });
+        }
+      }
+
+      if (symbols.length === 0) {
+        throw new Error('No trading symbols found on this page. Please check the URL or try a different watchlist.');
+      }
+
+      console.log(`📋 Total symbols found: ${symbols.length} - ${symbols.join(', ')}`);
+
+      // Get existing watchlist to avoid duplicates
+      const existingWatchlist = await this.getUserWatchlist(userId);
+      const existingSymbols = existingWatchlist.map(item => item.symbol.toUpperCase());
+
+      // Filter out duplicates
+      const newSymbols = symbols.filter(symbol => !existingSymbols.includes(symbol.toUpperCase()));
+      
+      if (newSymbols.length === 0) {
+        console.log(`⚠️ All symbols already exist in watchlist`);
+        return [];
+      }
+
+      console.log(`💾 Adding ${newSymbols.length} new symbols to watchlist: ${newSymbols.join(', ')}`);
+
+      // Add new symbols to watchlist
+      const insertPromises = newSymbols.map(symbol => 
+        this.addToWatchlist({
+          userId,
+          symbol: symbol.toUpperCase()
+        })
+      );
+
+      await Promise.all(insertPromises);
+
+      console.log(`✅ Successfully imported ${newSymbols.length} symbols from ${url}`);
+      return newSymbols;
+
+    } catch (error) {
+      console.error(`❌ Error importing watchlist from URL:`, error);
+      throw new Error(`Failed to import watchlist: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async getUserChartLayout(userId: string): Promise<ChartLayout | undefined> {
