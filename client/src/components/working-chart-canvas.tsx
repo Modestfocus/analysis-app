@@ -287,7 +287,7 @@ export default function WorkingChartCanvas({
 
     // Draw current drawing preview
     const previewDrawing: DrawingObject = {
-      ...currentDrawing as DrawingObject,
+      ...currentDrawing,
       points: currentDrawing.type === 'horizontal-line' || currentDrawing.type === 'vertical-line' 
         ? [startPoint] 
         : [startPoint, currentPoint],
@@ -332,7 +332,7 @@ export default function WorkingChartCanvas({
     <div 
       className="absolute inset-0 z-30"
       style={{ 
-        pointerEvents: selectedTool === 'cursor' || isDrawing ? 'none' : 'auto',
+        pointerEvents: selectedTool === 'cursor' ? 'none' : 'auto',
         cursor: selectedTool === 'cursor' ? 'default' : 'crosshair'
       }}
       onMouseDown={handleMouseDown}
