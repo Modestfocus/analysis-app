@@ -73,7 +73,6 @@ export default function ChartsPage() {
         "locale": "en",
         "enable_publishing": false,
         "allow_symbol_change": true,
-        "calendar": false,
         "hide_top_toolbar": false,
         "hide_legend": false,
         "save_image": false,
