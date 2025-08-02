@@ -833,17 +833,17 @@ export default function TradingPanel({
                           {/* Overall Prediction */}
                           {(analysisResults.analysis?.prediction || analysisResults.analysis?.session || analysisResults.analysis?.confidence) && (
                             <div className="flex flex-wrap gap-2 mb-4">
-                              {analysisResults.analysis?.prediction && (
+                              {analysisResults.analysis.prediction && (
                                 <Badge className="bg-amber-500 hover:bg-amber-600">
                                   {analysisResults.analysis.prediction}
                                 </Badge>
                               )}
-                              {analysisResults.analysis?.session && (
+                              {analysisResults.analysis.session && (
                                 <Badge variant="secondary">
                                   {analysisResults.analysis.session} Session
                                 </Badge>
                               )}
-                              {analysisResults.analysis?.confidence && (
+                              {analysisResults.analysis.confidence && (
                                 <Badge variant="outline">
                                   Confidence: {analysisResults.analysis.confidence}
                                 </Badge>
