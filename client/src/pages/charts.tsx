@@ -389,7 +389,7 @@ export default function ChartsPage() {
                 </div>
 
                 {/* Working Drawing Canvas Overlay */}
-                {isChartReady && selectedDrawingTool !== 'cursor' && (
+                {isChartReady && (
                   <WorkingChartCanvas
                     selectedTool={selectedDrawingTool}
                     chartContainer={containerRef.current}

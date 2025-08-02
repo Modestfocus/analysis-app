@@ -54,7 +54,7 @@ export default function WorkingChartCanvas({
     lineStyle: 'solid'
   };
 
-  // Update canvas size when chart container changes
+  // Update canvas size and redraw when chart container changes
   useEffect(() => {
     if (!canvasRef.current || !chartContainer) return;
     
@@ -74,10 +74,26 @@ export default function WorkingChartCanvas({
       redrawCanvas();
     };
 
+    // Set up observers for chart changes
+    const resizeObserver = new ResizeObserver(updateCanvasSize);
+    const mutationObserver = new MutationObserver(updateCanvasSize);
+    
     updateCanvasSize();
+    resizeObserver.observe(chartContainer);
+    mutationObserver.observe(chartContainer, { 
+      childList: true, 
+      subtree: true, 
+      attributes: true,
+      attributeFilter: ['style'] 
+    });
+    
     window.addEventListener('resize', updateCanvasSize);
     
-    return () => window.removeEventListener('resize', updateCanvasSize);
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener('resize', updateCanvasSize);
+    };
   }, [chartContainer]);
 
   // Redraw canvas when drawings change
@@ -311,8 +327,11 @@ export default function WorkingChartCanvas({
     
     if (!needsTwoPoints || distance >= minDistance) {
       const completedDrawing: DrawingObject = {
-        ...currentDrawing as DrawingObject,
+        id: currentDrawing.id,
+        type: currentDrawing.type,
         points: needsTwoPoints ? [startPoint, endPoint] : [startPoint],
+        style: currentDrawing.style,
+        text: currentDrawing.text,
         completed: true
       };
       
@@ -329,24 +348,29 @@ export default function WorkingChartCanvas({
   if (!chartContainer) return null;
 
   return (
-    <div 
-      className="absolute inset-0 z-30"
-      style={{ 
-        pointerEvents: selectedTool === 'cursor' ? 'none' : 'auto',
-        cursor: selectedTool === 'cursor' ? 'default' : 'crosshair'
-      }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    >
+    <>
+      {/* Drawing overlay - only active when drawing tool selected */}
+      {selectedTool !== 'cursor' && (
+        <div 
+          className="absolute inset-0 z-30"
+          style={{ 
+            pointerEvents: 'auto',
+            cursor: 'crosshair'
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+        />
+      )}
+      
+      {/* Canvas for displaying drawings - always visible */}
       <canvas
         ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+        className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
         style={{
-          backgroundColor: 'transparent',
-          cursor: selectedTool === 'cursor' ? 'default' : 'crosshair'
+          backgroundColor: 'transparent'
         }}
       />
-    </div>
+    </>
   );
 }
