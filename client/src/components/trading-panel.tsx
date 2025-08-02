@@ -154,12 +154,22 @@ export default function TradingPanel({
   };
 
   // Quick Chart Analysis functions (moved from Upload page)
-  const handleQuickAnalysisFiles = useCallback((files: File[]) => {
-    setQuickAnalysisFiles(prev => [...prev, ...files]);
+  const handleQuickAnalysisFiles = useCallback((files: FileList | File[] | File) => {
+    // Convert FileList or File to File array
+    let fileArray: File[];
+    if (files instanceof FileList) {
+      fileArray = Array.from(files);
+    } else if (Array.isArray(files)) {
+      fileArray = files;
+    } else {
+      fileArray = [files];
+    }
+    
+    setQuickAnalysisFiles(prev => [...prev, ...fileArray]);
     
     // Initialize timeframes for new files with default "1H"
     const newTimeframes: { [fileName: string]: Timeframe } = {};
-    files.forEach((file) => {
+    fileArray.forEach((file) => {
       newTimeframes[file.name] = "1H";
     });
     setQuickAnalysisTimeframes(prev => ({ ...prev, ...newTimeframes }));
@@ -211,12 +221,18 @@ export default function TradingPanel({
       
       formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
 
-      const response = await apiRequest('/api/analyze/quick', {
+      const response = await fetch('/api/analyze/quick', {
         method: 'POST',
         body: formData,
       });
 
-      return response;
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      return data;
     },
     onSuccess: (data) => {
       setAnalysisResults(data);
