@@ -808,11 +808,6 @@ export default function TradingPanel({
                     
                     {analysisResults ? (
                       <div className="space-y-4 h-full overflow-y-auto">
-                        {/* Debug info - remove later */}
-                        <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
-                          Debug: {JSON.stringify(analysisResults, null, 2).substring(0, 200)}...
-                        </div>
-                        
                         {/* Multi-Chart Analysis Results */}
                         <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-lg border border-amber-200">
                           <div className="flex items-center justify-between mb-3">
@@ -822,7 +817,7 @@ export default function TradingPanel({
                             </h3>
                             <div className="flex gap-2">
                               <Badge variant="outline" className="text-xs">
-                                {analysisResults.chartCount} Charts
+                                {analysisResults.chartCount || 'Unknown'} Charts
                               </Badge>
                               <Badge variant="secondary" className="text-xs">
                                 Multi-Timeframe
@@ -831,21 +826,21 @@ export default function TradingPanel({
                           </div>
 
                           {/* Overall Prediction */}
-                          {(analysisResults.analysis?.prediction || analysisResults.analysis?.session || analysisResults.analysis?.confidence) && (
+                          {(analysisResults.prediction?.prediction || analysisResults.prediction?.session || analysisResults.prediction?.confidence) && (
                             <div className="flex flex-wrap gap-2 mb-4">
-                              {analysisResults.analysis.prediction && (
+                              {analysisResults.prediction.prediction && (
                                 <Badge className="bg-amber-500 hover:bg-amber-600">
-                                  {analysisResults.analysis.prediction}
+                                  {analysisResults.prediction.prediction}
                                 </Badge>
                               )}
-                              {analysisResults.analysis.session && (
+                              {analysisResults.prediction.session && (
                                 <Badge variant="secondary">
-                                  {analysisResults.analysis.session} Session
+                                  {analysisResults.prediction.session} Session
                                 </Badge>
                               )}
-                              {analysisResults.analysis.confidence && (
+                              {analysisResults.prediction.confidence && (
                                 <Badge variant="outline">
-                                  Confidence: {analysisResults.analysis.confidence}
+                                  Confidence: {analysisResults.prediction.confidence}
                                 </Badge>
                               )}
                             </div>
@@ -862,11 +857,11 @@ export default function TradingPanel({
                           )}
 
                           {/* Reasoning */}
-                          {analysisResults.analysis?.reasoning && (
+                          {analysisResults.prediction?.reasoning && (
                             <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200">
                               <h4 className="font-medium text-sm text-blue-800 dark:text-blue-200 mb-2">Technical Reasoning</h4>
                               <div className="text-sm text-blue-700 dark:text-blue-300">
-                                {analysisResults.analysis.reasoning}
+                                {analysisResults.prediction.reasoning}
                               </div>
                             </div>
                           )}
