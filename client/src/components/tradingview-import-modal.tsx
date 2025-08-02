@@ -49,8 +49,21 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
   const initializeTradingViewChart = useCallback(() => {
     if (!containerRef.current || !isOpen) return;
 
-    // Clear existing content
-    containerRef.current.innerHTML = '';
+    // More gentle cleanup to avoid DOM errors
+    try {
+      if (containerRef.current.firstChild) {
+        containerRef.current.removeChild(containerRef.current.firstChild);
+      }
+    } catch (error) {
+      // Ignore DOM errors during cleanup
+      console.log('DOM cleanup handled gracefully');
+    }
+
+    // Create container div for TradingView widget
+    const widgetContainer = document.createElement('div');
+    widgetContainer.id = 'tradingview_import_chart';
+    widgetContainer.style.height = '400px';
+    widgetContainer.style.width = '100%';
 
     // Create TradingView widget script
     const script = document.createElement('script');
@@ -88,23 +101,34 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
       setIsChartReady(true);
     };
 
-    containerRef.current.appendChild(script);
+    // Append container and script to DOM
+    widgetContainer.appendChild(script);
+    containerRef.current.appendChild(widgetContainer);
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
       // Delay initialization to ensure modal is fully rendered
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         initializeTradingViewChart();
       }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        // Gentle cleanup to avoid DOM errors
+        if (containerRef.current) {
+          try {
+            while (containerRef.current.firstChild) {
+              containerRef.current.removeChild(containerRef.current.firstChild);
+            }
+          } catch (error) {
+            // Ignore DOM errors during cleanup
+            console.log('DOM cleanup handled gracefully on unmount');
+          }
+        }
+        setIsChartReady(false);
+      };
     }
-    
-    return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
-      setIsChartReady(false);
-    };
   }, [isOpen, initializeTradingViewChart]);
 
   // Add symbol to selected list
@@ -202,12 +226,15 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl h-[80vh] p-0">
+      <DialogContent className="max-w-6xl h-[80vh] p-0" aria-describedby="import-modal-description">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
             Import TradingView Watchlist
           </DialogTitle>
+          <div id="import-modal-description" className="sr-only">
+            Import symbols from TradingView by selecting them from the chart or using the quick add buttons
+          </div>
         </DialogHeader>
         
         <div className="flex-1 p-6 overflow-hidden">
