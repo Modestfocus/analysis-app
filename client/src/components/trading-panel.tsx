@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +56,7 @@ interface TradingPanelProps {
   isQuickAnalysisOpen?: boolean;
   onCloseQuickAnalysis?: () => void;
   quickAnalysisFiles?: File[];
+  onTakeScreenshot?: () => void;
 }
 
 // Mock data for demonstration
@@ -105,7 +106,8 @@ export default function TradingPanel({
   onQuickAnalysis, 
   isQuickAnalysisOpen, 
   onCloseQuickAnalysis, 
-  quickAnalysisFiles 
+  quickAnalysisFiles,
+  onTakeScreenshot
 }: TradingPanelProps) {
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
@@ -113,10 +115,28 @@ export default function TradingPanel({
   const [price, setPrice] = useState('');
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
+  const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
+  const [selectedTab, setSelectedTab] = useState("trading");
 
   const totalPnL = mockPositions.reduce((sum, pos) => sum + pos.pnl, 0);
   const accountBalance = 10000; // Mock account balance
   const equity = accountBalance + totalPnL;
+
+  // Handle screenshot files - auto switch to Analysis tab and load files
+  useEffect(() => {
+    if (quickAnalysisFiles && quickAnalysisFiles.length > 0) {
+      setAnalysisFiles(quickAnalysisFiles);
+      setSelectedTab("analysis");
+    }
+  }, [quickAnalysisFiles]);
+
+  // Handle screenshot button - call parent handler and switch to Analysis tab
+  const handleTakeScreenshot = () => {
+    setSelectedTab("analysis");
+    if (onTakeScreenshot) {
+      onTakeScreenshot();
+    }
+  };
 
   const handlePlaceOrder = () => {
     const order = {
@@ -158,7 +178,7 @@ export default function TradingPanel({
         </div>
 
         {!isMinimized && (
-          <Tabs defaultValue="trading" className="w-full">
+          <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
             <TabsList className="grid grid-cols-5 w-full max-w-2xl mt-2">
               <TabsTrigger value="trading">Trading</TabsTrigger>
               <TabsTrigger value="positions">Positions</TabsTrigger>
@@ -505,38 +525,71 @@ export default function TradingPanel({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Upload/Drop Zone */}
-                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                      <div className="flex flex-col items-center gap-2">
-                        <Upload className="h-8 w-8 text-gray-400" />
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          <p className="font-medium">Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here</p>
-                          <p className="text-xs mt-1">Supports PNG, JPG, GIF up to 10MB (Multiple files supported) • Press Ctrl/Cmd+V to paste</p>
+                    {/* File Preview Section */}
+                    {analysisFiles.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Loaded Files ({analysisFiles.length})</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {analysisFiles.map((file, index) => (
+                            <div key={index} className="relative border rounded-lg p-2 bg-gray-50 dark:bg-gray-700">
+                              <div className="flex items-center gap-2">
+                                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center">
+                                  <Camera className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium truncate">{file.name}</p>
+                                  <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          <Zap className="h-4 w-4 mr-2" />
+                          Analyze Charts ({analysisFiles.length})
+                        </Button>
                       </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        id="quick-analysis-file-input"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3"
-                        onClick={() => document.getElementById('quick-analysis-file-input')?.click()}
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose Files
-                      </Button>
-                    </div>
+                    )}
+
+                    {/* Upload/Drop Zone */}
+                    {analysisFiles.length === 0 && (
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                        <div className="flex flex-col items-center gap-2">
+                          <Upload className="h-8 w-8 text-gray-400" />
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="font-medium">Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here</p>
+                            <p className="text-xs mt-1">Supports PNG, JPG, GIF up to 10MB (Multiple files supported) • Press Ctrl/Cmd+V to paste</p>
+                          </div>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          id="quick-analysis-file-input"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => document.getElementById('quick-analysis-file-input')?.click()}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Choose Files
+                        </Button>
+                      </div>
+                    )}
 
                     {/* Take Screenshot Button */}
                     <div className="text-center">
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={handleTakeScreenshot}
                         className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white border-0"
                       >
                         <Camera className="h-4 w-4 mr-2" />

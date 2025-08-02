@@ -34,7 +34,8 @@ export default function ChartsPage() {
   const [activeDrawings, setActiveDrawings] = useState<any[]>([]);
   const [chartContainer, setChartContainer] = useState<HTMLElement | null>(null);
   
-
+  // Screenshot files for Analysis tab
+  const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
   const { toast } = useToast();
   
 
@@ -369,9 +370,12 @@ export default function ChartsPage() {
 
       const screenshotFile = await captureChartScreenshot(chartElement);
       
+      // Add the screenshot to the state for the Trading Panel Analysis tab
+      setScreenshotFiles([screenshotFile]);
+      
       toast({
         title: "Screenshot Captured",
-        description: "Chart screenshot captured successfully",
+        description: "Chart screenshot loaded into Analysis tab",
       });
 
     } catch (error) {
@@ -499,6 +503,8 @@ export default function ChartsPage() {
             onPlaceOrder={handlePlaceOrder}
             isMinimized={isTradingPanelMinimized}
             onToggleMinimize={handleToggleTradingPanelMinimize}
+            quickAnalysisFiles={screenshotFiles}
+            onTakeScreenshot={handleTakeScreenshot}
           />
         )}
       </div>
