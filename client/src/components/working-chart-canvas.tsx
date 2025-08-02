@@ -35,7 +35,7 @@ interface WorkingChartCanvasProps {
   onDrawingUpdate?: (drawings: DrawingObject[]) => void;
 }
 
-export default function WorkingChartCanvas({
+function WorkingChartCanvasCore({
   selectedTool,
   chartContainer,
   onDrawingComplete,
@@ -43,6 +43,7 @@ export default function WorkingChartCanvas({
   onDrawingUpdate
 }: WorkingChartCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentDrawing, setCurrentDrawing] = useState<Partial<DrawingObject> | null>(null);
   const [startPoint, setStartPoint] = useState<ChartPoint | null>(null);
@@ -84,19 +85,26 @@ export default function WorkingChartCanvas({
     window.addEventListener('resize', updateCanvasSize);
     
     // Listen for chart updates with a simple interval
-    const intervalId = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       if (chartContainer && canvasRef.current) {
-        const rect = chartContainer.getBoundingClientRect();
-        const canvas = canvasRef.current;
-        if (canvas.width !== rect.width || canvas.height !== rect.height) {
-          updateCanvasSize();
+        try {
+          const rect = chartContainer.getBoundingClientRect();
+          const canvas = canvasRef.current;
+          if (canvas.width !== rect.width || canvas.height !== rect.height) {
+            updateCanvasSize();
+          }
+        } catch (error) {
+          console.warn('Error checking canvas size:', error);
         }
       }
     }, 100);
     
     return () => {
       window.removeEventListener('resize', updateCanvasSize);
-      clearInterval(intervalId);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [chartContainer]);
 
@@ -349,6 +357,16 @@ export default function WorkingChartCanvas({
     setStartPoint(null);
   };
 
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
+
   if (!chartContainer) return null;
 
   return (
@@ -377,4 +395,14 @@ export default function WorkingChartCanvas({
       />
     </>
   );
+}
+
+// Error boundary wrapper
+export default function WorkingChartCanvas(props: WorkingChartCanvasProps) {
+  try {
+    return <WorkingChartCanvasCore {...props} />;
+  } catch (error) {
+    console.warn('WorkingChartCanvas error:', error);
+    return null;
+  }
 }

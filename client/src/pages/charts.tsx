@@ -8,7 +8,7 @@ import ChartLayoutManager from "@/components/chart-layout-manager";
 import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
-import WorkingChartCanvas from "@/components/working-chart-canvas";
+import ChartDrawingOverlay from "@/components/chart-drawing-overlay";
 
 
 
@@ -388,16 +388,14 @@ export default function ChartsPage() {
                   </a>
                 </div>
 
-                {/* Working Drawing Canvas Overlay */}
-                {isChartReady && (
-                  <WorkingChartCanvas
-                    selectedTool={selectedDrawingTool}
-                    chartContainer={containerRef.current}
-                    onDrawingComplete={handleDrawingComplete}
-                    drawings={activeDrawings}
-                    onDrawingUpdate={handleDrawingsUpdate}
-                  />
-                )}
+                {/* Chart Drawing Overlay */}
+                <ChartDrawingOverlay
+                  selectedTool={selectedDrawingTool}
+                  isChartReady={isChartReady}
+                  drawings={activeDrawings}
+                  onDrawingComplete={handleDrawingComplete}
+                  onDrawingUpdate={handleDrawingsUpdate}
+                />
               </div>
 
 
