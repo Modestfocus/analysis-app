@@ -8,7 +8,6 @@ import ChartLayoutManager from "@/components/chart-layout-manager";
 import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
-import SimpleChart from "@/components/simple-chart";
 
 export default function ChartsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,7 +23,6 @@ export default function ChartsPage() {
   const [showTradingPanel, setShowTradingPanel] = useState(true);
   const [isTradingPanelMinimized, setIsTradingPanelMinimized] = useState(false);
   const [tvWidget, setTvWidget] = useState<any>(null);
-  const [useAlternativeChart, setUseAlternativeChart] = useState(false);
 
   // Convert our symbol format to TradingView format
   const formatSymbolForTradingView = (symbol: string) => {
@@ -312,17 +310,6 @@ export default function ChartsPage() {
               </h1>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <Button
-              variant={useAlternativeChart ? "default" : "outline"}
-              size="sm"
-              onClick={() => setUseAlternativeChart(!useAlternativeChart)}
-              className="flex items-center gap-2"
-            >
-              <TrendingUp className="h-4 w-4" />
-              {useAlternativeChart ? "Switch to TradingView" : "Lightweight Charts"}
-            </Button>
-          </div>
         </div>
       </nav>
 
@@ -331,30 +318,23 @@ export default function ChartsPage() {
         <div className="flex-1 p-4">
           <Card className="h-full">
             <CardContent className="p-0 h-full">
-              {useAlternativeChart ? (
-                <SimpleChart 
-                  symbol={currentSymbol}
-                  onSymbolChange={setCurrentSymbol}
-                />
-              ) : (
-                <div 
-                  ref={containerRef}
-                  className="tradingview-widget-container h-full w-full"
-                  style={{ height: "100%", width: "100%" }}
-                >
-                  <div className="tradingview-widget-container__widget h-full"></div>
-                  <div className="tradingview-widget-copyright">
-                    <a 
-                      href="https://www.tradingview.com/" 
-                      rel="noopener nofollow" 
-                      target="_blank"
-                      className="text-xs text-gray-500"
-                    >
-                      Track all markets on TradingView
-                    </a>
-                  </div>
+              <div 
+                ref={containerRef}
+                className="tradingview-widget-container h-full w-full"
+                style={{ height: "100%", width: "100%" }}
+              >
+                <div className="tradingview-widget-container__widget h-full"></div>
+                <div className="tradingview-widget-copyright">
+                  <a 
+                    href="https://www.tradingview.com/" 
+                    rel="noopener nofollow" 
+                    target="_blank"
+                    className="text-xs text-gray-500"
+                  >
+                    Track all markets on TradingView
+                  </a>
                 </div>
-              )}
+              </div>
             </CardContent>
           </Card>
         </div>
