@@ -333,6 +333,15 @@ export default function ChartsPage() {
     console.log('All drawings cleared');
   }, []);
 
+  const handleToolSelect = useCallback((toolId: string) => {
+    setSelectedDrawingTool(toolId);
+    console.log(`Selected drawing tool: ${toolId}`);
+    
+    if (toolId !== 'cursor') {
+      console.log(`${toolId} tool is now active - draw directly on the chart`);
+    }
+  }, []);
+
 
 
   return (
