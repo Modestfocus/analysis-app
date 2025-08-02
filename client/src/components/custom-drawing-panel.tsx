@@ -186,148 +186,80 @@ export default function CustomDrawingPanel({
 }: CustomDrawingPanelProps) {
   const [processingTool, setProcessingTool] = useState<string | null>(null);
   
-  // Function to dispatch keyboard shortcuts to TradingView iframe
+  // Function to dispatch keyboard shortcuts while maintaining chart focus
   const dispatchShortcutToChart = async (tool: DrawingTool) => {
     if (processingTool) return; // Prevent double clicks
     
     setProcessingTool(tool.id);
     
     try {
-      // Try multiple methods to find the TradingView iframe
-      let iframe: HTMLIFrameElement | null = null;
-      
-      // Method 1: Look for iframe with TradingView in src
-      iframe = document.querySelector('iframe[src*="tradingview"]') as HTMLIFrameElement;
-      
-      // Method 2: Look for iframe in chart container
-      if (!iframe && chartContainer) {
-        iframe = chartContainer.querySelector('iframe') as HTMLIFrameElement;
-      }
-      
-      // Method 3: Look for any iframe (fallback)
-      if (!iframe) {
-        iframe = document.querySelector('iframe') as HTMLIFrameElement;
-      }
+      // Find the TradingView iframe
+      const iframe = document.querySelector('iframe[src*="tradingview"]') as HTMLIFrameElement;
       
       if (!iframe) {
-        console.warn('No iframe found for TradingView');
+        console.warn('TradingView iframe not found');
         setProcessingTool(null);
         return;
       }
       
-      console.log(`Found iframe: ${iframe.src || 'no src'}`);
+      console.log(`Dispatching ${tool.shortcut} to TradingView chart`);
       
-      // Focus the iframe element first
-      iframe.focus();
+      // Close the drawing panel first to restore focus to the chart
+      onClose();
       
-      // Multiple dispatch strategies
-      const dispatchEvent = (target: EventTarget, eventType: string = 'keydown') => {
-        const event = new KeyboardEvent(eventType, {
-          key: tool.keyCode.toUpperCase(),
-          code: `Key${tool.keyCode.toUpperCase()}`,
-          altKey: tool.altKey || false,
-          shiftKey: tool.shiftKey || false,
-          ctrlKey: tool.ctrlKey || false,
-          bubbles: true,
-          cancelable: true,
-          composed: true
-        });
-        target.dispatchEvent(event);
-      };
+      // Small delay to allow panel to close and focus to return
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Strategy 1: Dispatch to iframe element itself
-      dispatchEvent(iframe);
-      
-      // Strategy 2: Try to access iframe content if same origin
-      try {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.focus();
-          
-          // Wait for focus
-          await new Promise(resolve => setTimeout(resolve, 150));
-          
-          // Dispatch to content window and document
-          if (iframe.contentDocument) {
-            dispatchEvent(iframe.contentDocument);
-            dispatchEvent(iframe.contentDocument.body || iframe.contentDocument);
-          }
-          dispatchEvent(iframe.contentWindow);
-        }
-      } catch (crossOriginError) {
-        console.log('Cross-origin iframe, using postMessage approach');
-        
-        // Strategy 3: Use TradingView's widget postMessage API
-        if (iframe.contentWindow) {
-          // TradingView widget expects specific message format
-          iframe.contentWindow.postMessage({
-            name: 'set_symbol',
-            data: {
-              symbol: 'NASDAQ:NDX' // Keep current symbol
-            }
-          }, '*');
-          
-          // Try TradingView's chart action postMessage
-          setTimeout(() => {
-            if (iframe.contentWindow) {
-              iframe.contentWindow.postMessage({
-                name: 'chart_action',
-                data: {
-                  action: 'drawing_tool',
-                  tool: tool.id,
-                  shortcut: tool.keyCode
-                }
-              }, '*');
-            }
-          }, 100);
-        }
+      // Focus the chart container
+      if (chartContainer) {
+        chartContainer.focus();
+        chartContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       
-      // Strategy 4: Simulate the key press on the main document
-      dispatchEvent(document);
-      dispatchEvent(document.body);
+      // Focus the iframe
+      iframe.focus();
       
-      // Strategy 5: Try to simulate focus and key press more aggressively
-      setTimeout(() => {
-        try {
-          // Focus the iframe container and simulate user interaction
+      // Wait for focus to stabilize
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Create the keyboard event with precise properties
+      const createKeyEvent = (type: string) => new KeyboardEvent(type, {
+        key: tool.keyCode.toUpperCase(),
+        code: `Key${tool.keyCode.toUpperCase()}`,
+        keyCode: tool.keyCode.toUpperCase().charCodeAt(0),
+        which: tool.keyCode.toUpperCase().charCodeAt(0),
+        altKey: tool.altKey || false,
+        shiftKey: tool.shiftKey || false,
+        ctrlKey: tool.ctrlKey || false,
+        metaKey: false,
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        view: window,
+        detail: 0
+      });
+      
+      // Dispatch sequence: keydown -> keypress -> keyup
+      ['keydown', 'keypress', 'keyup'].forEach((eventType, index) => {
+        setTimeout(() => {
+          const event = createKeyEvent(eventType);
+          
+          // Dispatch to multiple targets
+          document.dispatchEvent(event);
+          document.body.dispatchEvent(event);
+          iframe.dispatchEvent(event);
+          
           if (chartContainer) {
-            chartContainer.focus();
-            chartContainer.click();
+            chartContainer.dispatchEvent(event);
           }
           
-          // Try to dispatch the key event with different event types
-          ['keydown', 'keypress', 'keyup'].forEach(eventType => {
-            const keyEvent = new KeyboardEvent(eventType, {
-              key: tool.keyCode.toUpperCase(),
-              code: `Key${tool.keyCode.toUpperCase()}`,
-              altKey: tool.altKey || false,
-              shiftKey: tool.shiftKey || false,
-              ctrlKey: tool.ctrlKey || false,
-              bubbles: true,
-              cancelable: true,
-              composed: true,
-              view: window
-            });
-            
-            // Dispatch to multiple targets
-            document.dispatchEvent(keyEvent);
-            if (chartContainer) chartContainer.dispatchEvent(keyEvent);
-            if (iframe) iframe.dispatchEvent(keyEvent);
-          });
+          // Try window-level dispatch
+          window.dispatchEvent(event);
           
-          console.log(`Simulated aggressive key press for ${tool.shortcut}`);
-          
-        } catch (aggresiveError) {
-          console.log('Aggressive key simulation failed:', aggresiveError);
-        }
-      }, 300);
+        }, index * 50); // Stagger events by 50ms
+      });
       
-      console.log(`✅ Dispatched ${tool.shortcut} shortcut for ${tool.name} using multiple strategies`);
-      
-      // Strategy 6: Show user instructions since automated activation may not work
-      setTimeout(() => {
-        console.log(`💡 If drawing doesn't activate automatically, manually press ${tool.shortcut} while focused on the chart`);
-      }, 500);
+      console.log(`✅ Dispatched ${tool.shortcut} shortcut sequence for ${tool.name}`);
       
       // Update tool selection
       onToolSelect(tool.id);
@@ -335,28 +267,26 @@ export default function CustomDrawingPanel({
     } catch (error) {
       console.error('Error dispatching shortcut:', error);
     } finally {
-      // Reset processing state after a short delay
-      setTimeout(() => setProcessingTool(null), 800);
+      // Reset processing state
+      setTimeout(() => setProcessingTool(null), 1000);
     }
   };
   const panelRef = useRef<HTMLDivElement>(null);
   const [focusedTool, setFocusedTool] = useState<string | null>(null);
 
-  // Handle tool selection with user guidance
+  // Handle tool selection with automated shortcut dispatch
   const handleToolSelect = (tool: DrawingTool) => {
     setFocusedTool(tool.id);
-    onToolSelect(tool.id);
     
-    // Show clear instructions to user
-    console.log(`🎯 ${tool.name} selected! Press ${tool.shortcut} on your keyboard while focused on the chart to activate.`);
+    console.log(`🎯 Activating ${tool.name} with ${tool.shortcut} shortcut`);
     
-    // Try automated dispatch (likely won't work due to cross-origin)
+    // Dispatch shortcut automatically and close panel
     dispatchShortcutToChart(tool);
     
-    // Clear focus highlight after a delay
+    // Clear focus highlight after tool is activated
     setTimeout(() => {
       setFocusedTool(null);
-    }, 3000);
+    }, 1500);
   };
 
   // Group tools by category
@@ -466,19 +396,18 @@ export default function CustomDrawingPanel({
               </div>
               
               <div className="text-xs space-y-2">
-                <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded border border-green-200 dark:border-green-800">
-                  <div className="font-medium text-green-900 dark:text-green-100 mb-2">✅ How to Activate Drawing:</div>
-                  <ol className="text-green-800 dark:text-green-200 space-y-1.5">
-                    <li><strong>1.</strong> Click a tool above</li>
-                    <li><strong>2.</strong> Click on the chart to focus it</li>
-                    <li><strong>3.</strong> Press the keyboard shortcut shown</li>
-                    <li><strong>4.</strong> Click and drag to draw</li>
+                <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-800">
+                  <div className="font-medium text-blue-900 dark:text-blue-100 mb-2">🚀 Automatic Drawing Activation:</div>
+                  <ol className="text-blue-800 dark:text-blue-200 space-y-1.5">
+                    <li><strong>1.</strong> Click any tool above</li>
+                    <li><strong>2.</strong> Panel closes and activates the tool</li>
+                    <li><strong>3.</strong> Click and drag on chart to draw</li>
                   </ol>
                 </div>
                 
-                <div className="bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-800">
-                  <div className="text-amber-800 dark:text-amber-200">
-                    <strong>💡 Pro Tip:</strong> TradingView's drawing toolbar is at the top of the chart
+                <div className="bg-green-50 dark:bg-green-950/20 p-2 rounded border border-green-200 dark:border-green-800">
+                  <div className="text-green-800 dark:text-green-200">
+                    <strong>✨ Smart Focus:</strong> Chart focus is maintained automatically
                   </div>
                 </div>
               </div>
