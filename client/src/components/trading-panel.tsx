@@ -235,6 +235,7 @@ export default function TradingPanel({
       return data;
     },
     onSuccess: (data) => {
+      console.log('🔍 Analysis results received:', data);
       setAnalysisResults(data);
       clearQuickAnalysisFiles(); // Clear files after successful analysis
       toast({
@@ -808,6 +809,11 @@ export default function TradingPanel({
                     
                     {analysisResults ? (
                       <div className="space-y-4 h-full overflow-y-auto">
+                        {/* Debug info */}
+                        <div className="p-2 bg-gray-100 text-xs">
+                          Debug: analysisResults exists, prediction: {analysisResults.prediction ? 'YES' : 'NO'}
+                        </div>
+                        
                         {/* Multi-Chart Analysis Results */}
                         <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-lg border border-amber-200">
                           <div className="flex items-center justify-between mb-3">
