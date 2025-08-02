@@ -45,7 +45,7 @@ export default function WorkingChartCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentDrawing, setCurrentDrawing] = useState<Partial<DrawingObject> | null>(null);
-  const [startPoint, setStartPoint] = useState<Point | null>(null);
+  const [startPoint, setStartPoint] = useState<ChartPoint | null>(null);
   const [canvasBounds, setCanvasBounds] = useState<DOMRect | null>(null);
 
   const defaultStyle: DrawingStyle = {
@@ -62,37 +62,41 @@ export default function WorkingChartCanvas({
       const canvas = canvasRef.current;
       if (!canvas || !chartContainer) return;
 
-      // Use the parent container size instead of chart element
-      const parentRect = chartContainer.getBoundingClientRect();
-      canvas.width = parentRect.width;
-      canvas.height = parentRect.height;
-      setCanvasBounds(parentRect);
-      
-      console.log('Canvas sized to:', { width: parentRect.width, height: parentRect.height });
-      
-      // Redraw all existing drawings
-      redrawCanvas();
+      try {
+        // Use the parent container size instead of chart element
+        const parentRect = chartContainer.getBoundingClientRect();
+        canvas.width = parentRect.width;
+        canvas.height = parentRect.height;
+        setCanvasBounds(parentRect);
+        
+        console.log('Canvas sized to:', { width: parentRect.width, height: parentRect.height });
+        
+        // Redraw all existing drawings
+        redrawCanvas();
+      } catch (error) {
+        console.warn('Error updating canvas size:', error);
+      }
     };
 
-    // Set up observers for chart changes
-    const resizeObserver = new ResizeObserver(updateCanvasSize);
-    const mutationObserver = new MutationObserver(updateCanvasSize);
-    
     updateCanvasSize();
-    resizeObserver.observe(chartContainer);
-    mutationObserver.observe(chartContainer, { 
-      childList: true, 
-      subtree: true, 
-      attributes: true,
-      attributeFilter: ['style'] 
-    });
     
+    // Simple resize listener instead of complex observers
     window.addEventListener('resize', updateCanvasSize);
     
+    // Listen for chart updates with a simple interval
+    const intervalId = setInterval(() => {
+      if (chartContainer && canvasRef.current) {
+        const rect = chartContainer.getBoundingClientRect();
+        const canvas = canvasRef.current;
+        if (canvas.width !== rect.width || canvas.height !== rect.height) {
+          updateCanvasSize();
+        }
+      }
+    }, 100);
+    
     return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
       window.removeEventListener('resize', updateCanvasSize);
+      clearInterval(intervalId);
     };
   }, [chartContainer]);
 
