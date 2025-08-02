@@ -5,10 +5,17 @@ interface Point {
   y: number;
 }
 
+interface ChartPoint {
+  x: number; // Canvas pixel coordinate
+  y: number; // Canvas pixel coordinate
+  chartX?: number; // Chart time coordinate (percentage 0-1)
+  chartY?: number; // Chart price coordinate (percentage 0-1)
+}
+
 interface DrawingObject {
   id: string;
   type: 'cursor' | 'trend-line' | 'horizontal-line' | 'vertical-line' | 'ray' | 'rectangle' | 'ellipse' | 'text' | 'note';
-  points: Point[];
+  points: ChartPoint[];
   style: DrawingStyle;
   text?: string;
   completed: boolean;
@@ -96,16 +103,32 @@ export default function WorkingChartCanvas({
     });
   }, [drawings]);
 
-  const getMousePosition = (e: React.MouseEvent<HTMLDivElement>): Point => {
+  const getMousePosition = (e: React.MouseEvent<HTMLDivElement>): ChartPoint => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     
     const rect = canvasRef.current.getBoundingClientRect();
-    const point = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Convert to chart coordinates (0-1 range)
+    const chartX = x / rect.width;
+    const chartY = y / rect.height;
+    
+    const point = { x, y, chartX, chartY };
     console.log('Mouse position:', point, 'Canvas rect:', rect);
     return point;
+  };
+
+  // Convert chart coordinates back to canvas pixels
+  const chartToCanvas = (chartPoint: ChartPoint): ChartPoint => {
+    if (!canvasRef.current) return chartPoint;
+    
+    const canvas = canvasRef.current;
+    return {
+      ...chartPoint,
+      x: (chartPoint.chartX || 0) * canvas.width,
+      y: (chartPoint.chartY || 0) * canvas.height
+    };
   };
 
   const drawShape = (ctx: CanvasRenderingContext2D, drawing: DrawingObject) => {
@@ -113,38 +136,41 @@ export default function WorkingChartCanvas({
     ctx.lineWidth = drawing.style.thickness;
     ctx.setLineDash(drawing.style.lineStyle === 'dashed' ? [5, 5] : []);
 
+    // Convert chart coordinates to current canvas coordinates
+    const canvasPoints = drawing.points.map(chartToCanvas);
+
     switch (drawing.type) {
       case 'trend-line':
-        if (drawing.points.length >= 2) {
+        if (canvasPoints.length >= 2) {
           ctx.beginPath();
-          ctx.moveTo(drawing.points[0].x, drawing.points[0].y);
-          ctx.lineTo(drawing.points[1].x, drawing.points[1].y);
+          ctx.moveTo(canvasPoints[0].x, canvasPoints[0].y);
+          ctx.lineTo(canvasPoints[1].x, canvasPoints[1].y);
           ctx.stroke();
         }
         break;
         
       case 'horizontal-line':
-        if (drawing.points.length >= 1 && canvasRef.current) {
+        if (canvasPoints.length >= 1 && canvasRef.current) {
           ctx.beginPath();
-          ctx.moveTo(0, drawing.points[0].y);
-          ctx.lineTo(canvasRef.current.width, drawing.points[0].y);
+          ctx.moveTo(0, canvasPoints[0].y);
+          ctx.lineTo(canvasRef.current.width, canvasPoints[0].y);
           ctx.stroke();
         }
         break;
         
       case 'vertical-line':
-        if (drawing.points.length >= 1 && canvasRef.current) {
+        if (canvasPoints.length >= 1 && canvasRef.current) {
           ctx.beginPath();
-          ctx.moveTo(drawing.points[0].x, 0);
-          ctx.lineTo(drawing.points[0].x, canvasRef.current.height);
+          ctx.moveTo(canvasPoints[0].x, 0);
+          ctx.lineTo(canvasPoints[0].x, canvasRef.current.height);
           ctx.stroke();
         }
         break;
         
       case 'ray':
-        if (drawing.points.length >= 2 && canvasRef.current) {
-          const start = drawing.points[0];
-          const end = drawing.points[1];
+        if (canvasPoints.length >= 2 && canvasRef.current) {
+          const start = canvasPoints[0];
+          const end = canvasPoints[1];
           
           // Calculate direction and extend to canvas edge
           const dx = end.x - start.x;
@@ -164,9 +190,9 @@ export default function WorkingChartCanvas({
         break;
         
       case 'rectangle':
-        if (drawing.points.length >= 2) {
-          const start = drawing.points[0];
-          const end = drawing.points[1];
+        if (canvasPoints.length >= 2) {
+          const start = canvasPoints[0];
+          const end = canvasPoints[1];
           const width = end.x - start.x;
           const height = end.y - start.y;
           
@@ -177,9 +203,9 @@ export default function WorkingChartCanvas({
         break;
         
       case 'ellipse':
-        if (drawing.points.length >= 2) {
-          const start = drawing.points[0];
-          const end = drawing.points[1];
+        if (canvasPoints.length >= 2) {
+          const start = canvasPoints[0];
+          const end = canvasPoints[1];
           const centerX = (start.x + end.x) / 2;
           const centerY = (start.y + end.y) / 2;
           const radiusX = Math.abs(end.x - start.x) / 2;
@@ -193,10 +219,10 @@ export default function WorkingChartCanvas({
         
       case 'text':
       case 'note':
-        if (drawing.points.length >= 1 && drawing.text) {
+        if (canvasPoints.length >= 1 && drawing.text) {
           ctx.fillStyle = drawing.style.color;
           ctx.font = '14px Arial';
-          ctx.fillText(drawing.text, drawing.points[0].x, drawing.points[0].y);
+          ctx.fillText(drawing.text, canvasPoints[0].x, canvasPoints[0].y);
         }
         break;
     }
