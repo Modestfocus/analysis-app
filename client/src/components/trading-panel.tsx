@@ -690,186 +690,230 @@ export default function TradingPanel({
 
             {/* Quick Chart Analysis Tab - Moved from Upload Page */}
             <TabsContent value="analysis">
-              <Card>
-                <CardContent className="p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Bolt className="text-amber-500 mr-2 h-5 w-5" />
-                    Quick Chart Analysis
-                  </h2>
-                  
-                  <DragDropZone
-                    onFilesSelected={handleQuickAnalysisFiles}
-                    className="mb-6 hover:border-amber-400"
-                    isLoading={quickAnalysisMutation.isPending}
-                    placeholder="Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here"
-                    multiple={true}
-                  />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                {/* Left Column - Quick Chart Analysis */}
+                <Card>
+                  <CardContent className="p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Bolt className="text-amber-500 mr-2 h-5 w-5" />
+                      Quick Chart Analysis
+                    </h2>
+                    
+                    <DragDropZone
+                      onFilesSelected={handleQuickAnalysisFiles}
+                      className="mb-6 hover:border-amber-400"
+                      isLoading={quickAnalysisMutation.isPending}
+                      placeholder="Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here"
+                      multiple={true}
+                    />
 
-                  {/* Quick Analysis Files Preview */}
-                  {quickAnalysisFiles.length > 0 && (
-                    <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                          Quick Analysis Files ({quickAnalysisFiles.length})
-                        </h3>
-                        <Button 
-                          onClick={clearQuickAnalysisFiles}
-                          variant="outline" 
-                          size="sm" 
-                          className="text-amber-600 hover:text-amber-700 border-amber-300"
-                        >
-                          Clear All
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        {quickAnalysisFiles.map((file, index) => {
-                          const imageUrl = URL.createObjectURL(file);
-                          return (
-                            <div key={index} className="bg-white dark:bg-gray-700 p-2 rounded border">
-                              <div className="flex items-center space-x-3 mb-2">
-                                <div className="flex-shrink-0">
-                                  <img 
-                                    src={imageUrl} 
-                                    alt={file.name}
-                                    className="w-10 h-10 object-cover rounded border"
-                                    onLoad={() => URL.revokeObjectURL(imageUrl)}
-                                  />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block">
-                                    {file.name}
-                                  </span>
-                                </div>
-                                <Button
-                                  onClick={() => removeQuickAnalysisFile(index)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-gray-400 hover:text-red-500 h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  ×
-                                </Button>
-                              </div>
-                              
-                              {/* Individual Timeframe Selector */}
-                              <div className="flex items-center space-x-1 ml-13">
-                                <span className="text-xs text-gray-600 dark:text-gray-400">Timeframe:</span>
-                                <div className="flex space-x-1">
-                                  {["5M", "15M", "1H", "4H", "Daily"].map((timeframe) => (
-                                    <Button
-                                      key={timeframe}
-                                      size="sm"
-                                      variant={quickAnalysisTimeframes[file.name] === timeframe ? "default" : "outline"}
-                                      onClick={() => updateQuickAnalysisTimeframe(file.name, timeframe as Timeframe)}
-                                      className="h-5 text-xs px-1"
-                                    >
-                                      {timeframe}
-                                    </Button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  <Button 
-                    onClick={runQuickAnalysis}
-                    className="w-full bg-amber-500 hover:bg-amber-600"
-                    disabled={quickAnalysisMutation.isPending || quickAnalysisFiles.length === 0}
-                  >
-                    {quickAnalysisMutation.isPending ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Bolt className="mr-2 h-4 w-4" />
-                        Run Quick Analysis {quickAnalysisFiles.length > 0 && `(${quickAnalysisFiles.length} files)`}
-                      </>
-                    )}
-                  </Button>
-
-                  {/* Quick Analysis Results */}
-                  {analysisResults && (
-                    <div className="mt-6 space-y-4">
-                      <h3 className="text-md font-semibold text-gray-900 flex items-center">
-                        <Bolt className="text-amber-500 mr-2 h-4 w-4" />
-                        Analysis Results
-                      </h3>
-                      
-                      <div className="space-y-4">
-                        {analysisResults.results && analysisResults.results.map((result: any, index: number) => (
-                          <Card key={index} className="border-l-4 border-l-amber-400">
-                            <CardContent className="p-4">
-                              <div className="space-y-3">
-                                {/* Chart info */}
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-700">
-                                    Chart {index + 1}
-                                  </span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {result.timeframe || "Unknown"}
-                                  </Badge>
-                                </div>
-
-                                {/* Prediction badges */}
-                                {(result.prediction || result.session || result.confidence) && (
-                                  <div className="flex flex-wrap gap-2">
-                                    {typeof result.prediction === 'string' && (
-                                      <Badge variant="default" className="bg-amber-100 text-amber-800 border-amber-300">
-                                        {result.prediction}
-                                      </Badge>
-                                    )}
-                                    {typeof result.session === 'string' && (
-                                      <Badge variant="secondary">
-                                        {result.session}
-                                      </Badge>
-                                    )}
-                                    {typeof result.confidence === 'string' && (
-                                      <Badge variant="outline">
-                                        {result.confidence}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Analysis text */}
-                                {result.analysis && (
-                                  <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                                    <div className="whitespace-pre-wrap">{result.analysis}</div>
-                                  </div>
-                                )}
-
-                                {/* Reasoning */}
-                                {typeof result.reasoning === 'string' && (
-                                  <div className="text-xs text-gray-600 italic">
-                                    <strong>Reasoning:</strong> {result.reasoning}
-                                  </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-
-                        {/* Clear results button */}
-                        <div className="text-center">
+                    {/* Quick Analysis Files Preview */}
+                    {quickAnalysisFiles.length > 0 && (
+                      <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                            Quick Analysis Files ({quickAnalysisFiles.length})
+                          </h3>
                           <Button 
-                            onClick={() => setAnalysisResults(null)}
+                            onClick={clearQuickAnalysisFiles}
                             variant="outline" 
                             size="sm" 
-                            className="text-gray-600 hover:text-gray-700"
+                            className="text-amber-600 hover:text-amber-700 border-amber-300"
                           >
-                            Clear Results
+                            Clear All
                           </Button>
                         </div>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {quickAnalysisFiles.map((file, index) => {
+                            const imageUrl = URL.createObjectURL(file);
+                            return (
+                              <div key={index} className="bg-white dark:bg-gray-700 p-2 rounded border">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <div className="flex-shrink-0">
+                                    <img 
+                                      src={imageUrl} 
+                                      alt={file.name}
+                                      className="w-8 h-8 object-cover rounded border"
+                                      onLoad={() => URL.revokeObjectURL(imageUrl)}
+                                    />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate block">
+                                      {file.name}
+                                    </span>
+                                  </div>
+                                  <Button
+                                    onClick={() => removeQuickAnalysisFile(index)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-400 hover:text-red-500 h-5 w-5 p-0 flex-shrink-0"
+                                  >
+                                    ×
+                                  </Button>
+                                </div>
+                                
+                                {/* Individual Timeframe Selector */}
+                                <div className="flex items-center space-x-1">
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">TF:</span>
+                                  <div className="flex space-x-1">
+                                    {["5M", "15M", "1H", "4H", "Daily"].map((timeframe) => (
+                                      <Button
+                                        key={timeframe}
+                                        size="sm"
+                                        variant={quickAnalysisTimeframes[file.name] === timeframe ? "default" : "outline"}
+                                        onClick={() => updateQuickAnalysisTimeframe(file.name, timeframe as Timeframe)}
+                                        className="h-4 text-xs px-1"
+                                      >
+                                        {timeframe}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
+                    )}
+
+                    <Button 
+                      onClick={runQuickAnalysis}
+                      className="w-full bg-amber-500 hover:bg-amber-600"
+                      disabled={quickAnalysisMutation.isPending || quickAnalysisFiles.length === 0}
+                    >
+                      {quickAnalysisMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Bolt className="mr-2 h-4 w-4" />
+                          Run Quick Analysis {quickAnalysisFiles.length > 0 && `(${quickAnalysisFiles.length} files)`}
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Right Column - Analysis Panel */}
+                <Card>
+                  <CardContent className="p-6 h-full">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                        <BarChart3 className="text-blue-500 mr-2 h-5 w-5" />
+                        Analysis Panel
+                      </h2>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    
+                    {analysisResults ? (
+                      <div className="space-y-4 h-full overflow-y-auto">
+                        {/* Multi-Chart Analysis Results */}
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-lg border border-amber-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-amber-800 dark:text-amber-200 flex items-center">
+                              <Bolt className="mr-2 h-4 w-4" />
+                              Quick Analysis Results
+                            </h3>
+                            <div className="flex gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {analysisResults.chartCount} Charts
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                Multi-Timeframe
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Overall Prediction */}
+                          {(analysisResults.prediction || analysisResults.session || analysisResults.confidence) && (
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              {typeof analysisResults.prediction === 'string' && (
+                                <Badge className="bg-amber-500 hover:bg-amber-600">
+                                  {analysisResults.prediction}
+                                </Badge>
+                              )}
+                              {typeof analysisResults.session === 'string' && (
+                                <Badge variant="secondary">
+                                  {analysisResults.session} Session
+                                </Badge>
+                              )}
+                              {typeof analysisResults.confidence === 'string' && (
+                                <Badge variant="outline">
+                                  Confidence: {analysisResults.confidence}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Analysis Summary */}
+                          {analysisResults.analysis && (
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded border">
+                              <h4 className="font-medium text-sm mb-2">Analysis Summary</h4>
+                              <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                {analysisResults.analysis}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Reasoning */}
+                          {typeof analysisResults.reasoning === 'string' && (
+                            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200">
+                              <h4 className="font-medium text-sm text-blue-800 dark:text-blue-200 mb-2">Technical Reasoning</h4>
+                              <div className="text-sm text-blue-700 dark:text-blue-300">
+                                {analysisResults.reasoning}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Individual Chart Results */}
+                          {analysisResults.results && analysisResults.results.length > 0 && (
+                            <div className="mt-4 space-y-3">
+                              <h4 className="font-medium text-sm">Individual Chart Analysis</h4>
+                              {analysisResults.results.map((result: any, index: number) => (
+                                <div key={index} className="bg-white dark:bg-gray-800 p-3 rounded border border-l-4 border-l-amber-400">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium">Chart {index + 1}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {result.timeframe || "Unknown"}
+                                    </Badge>
+                                  </div>
+                                  
+                                  {result.analysis && (
+                                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                                      {result.analysis.substring(0, 150)}...
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Action Button */}
+                          <div className="text-center mt-4">
+                            <Button 
+                              onClick={() => setAnalysisResults(null)}
+                              variant="outline" 
+                              size="sm" 
+                              className="text-amber-600 hover:text-amber-700 border-amber-300"
+                            >
+                              Clear Analysis
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-64 text-center">
+                        <BarChart3 className="h-12 w-12 text-gray-300 mb-3" />
+                        <p className="text-gray-500 text-sm mb-2">Upload a chart to see GPT-4o analysis with RAG similarity matching</p>
+                        <p className="text-xs text-gray-400">
+                          Analysis results will appear here after running Quick Chart Analysis
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </div>
         </Tabs>
