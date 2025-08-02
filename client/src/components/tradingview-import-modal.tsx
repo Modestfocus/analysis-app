@@ -123,19 +123,46 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
   // Save watchlist mutation
   const saveWatchlistMutation = useMutation({
     mutationFn: async (symbols: string[]) => {
-      const promises = symbols.map(symbol => 
-        apiRequest('POST', '/api/watchlist', { 
-          symbol: symbol // Extract just the symbol part - userId handled by server
-        })
-      );
+      console.log("Saving symbols to watchlist:", symbols);
       
-      return Promise.all(promises);
+      const results = [];
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const symbol of symbols) {
+        try {
+          const result = await apiRequest('POST', '/api/watchlist', { symbol });
+          results.push({ symbol, success: true, result });
+          successCount++;
+        } catch (error: any) {
+          console.log(`Symbol ${symbol} failed:`, error.message);
+          // Don't fail the whole operation if some symbols already exist
+          if (error.message.includes("already in watchlist")) {
+            results.push({ symbol, success: false, error: "already exists" });
+          } else {
+            results.push({ symbol, success: false, error: error.message });
+            errorCount++;
+          }
+        }
+      }
+      
+      return { results, successCount, errorCount, totalAttempted: symbols.length };
     },
-    onSuccess: () => {
-      toast({
-        title: "Watchlist imported successfully",
-        description: `${selectedSymbols.length} symbols added to your watchlist`,
-      });
+    onSuccess: (data) => {
+      const { successCount, totalAttempted } = data;
+      
+      if (successCount > 0) {
+        toast({
+          title: "Watchlist updated successfully",
+          description: `${successCount} symbols added to your watchlist`,
+        });
+      } else {
+        toast({
+          title: "No new symbols added",
+          description: "All selected symbols are already in your watchlist",
+          variant: "default",
+        });
+      }
       
       // Refresh watchlist data
       queryClient.invalidateQueries({ queryKey: ["/api/watchlist"] });
