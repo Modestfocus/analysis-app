@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import DragDropZone from "@/components/drag-drop-zone";
+import type { Timeframe } from "@shared/schema";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -113,7 +115,6 @@ export default function TradingPanel({
   onQuickAnalysis, 
   isQuickAnalysisOpen, 
   onCloseQuickAnalysis, 
-  quickAnalysisFiles,
   onTakeScreenshot
 }: TradingPanelProps) {
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
@@ -122,11 +123,11 @@ export default function TradingPanel({
   const [price, setPrice] = useState('');
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
-  const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
   const [selectedTab, setSelectedTab] = useState("trading");
   
-  // Quick Chart Analysis state
-  const [selectedTimeframes, setSelectedTimeframes] = useState<{ [key: number]: string }>({});
+  // Quick Chart Analysis state (moved from Upload page)
+  const [quickAnalysisFiles, setQuickAnalysisFiles] = useState<File[]>([]);
+  const [quickAnalysisTimeframes, setQuickAnalysisTimeframes] = useState<{ [fileName: string]: Timeframe }>({});
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const { toast } = useToast();
@@ -137,10 +138,9 @@ export default function TradingPanel({
   const accountBalance = 10000; // Mock account balance
   const equity = accountBalance + totalPnL;
 
-  // Handle screenshot files - auto switch to Analysis tab and load files
+  // Handle screenshot files - auto switch to Analysis tab when files are added
   useEffect(() => {
     if (quickAnalysisFiles && quickAnalysisFiles.length > 0) {
-      setAnalysisFiles(quickAnalysisFiles);
       setSelectedTab("analysis");
     }
   }, [quickAnalysisFiles]);
@@ -153,132 +153,114 @@ export default function TradingPanel({
     }
   };
 
-  // Quick Chart Analysis functions
+  // Quick Chart Analysis functions (moved from Upload page)
   const handleQuickAnalysisFiles = useCallback((files: File[]) => {
-    setAnalysisFiles(prev => [...prev, ...files]);
+    setQuickAnalysisFiles(prev => [...prev, ...files]);
     
-    // Initialize timeframes for new files
-    const newTimeframes: { [key: number]: string } = {};
-    files.forEach((_, index) => {
-      const fileIndex = analysisFiles.length + index;
-      newTimeframes[fileIndex] = "1H"; // Default timeframe
+    // Initialize timeframes for new files with default "1H"
+    const newTimeframes: { [fileName: string]: Timeframe } = {};
+    files.forEach((file) => {
+      newTimeframes[file.name] = "1H";
     });
-    setSelectedTimeframes(prev => ({ ...prev, ...newTimeframes }));
-  }, [analysisFiles.length]);
+    setQuickAnalysisTimeframes(prev => ({ ...prev, ...newTimeframes }));
+  }, []);
 
-  // Remove a file from quick analysis
+  const updateQuickAnalysisTimeframe = useCallback((fileName: string, timeframe: Timeframe) => {
+    setQuickAnalysisTimeframes(prev => ({ ...prev, [fileName]: timeframe }));
+  }, []);
+
   const removeQuickAnalysisFile = useCallback((index: number) => {
-    setAnalysisFiles(prev => prev.filter((_, i) => i !== index));
-    setSelectedTimeframes(prev => {
-      const updated = { ...prev };
-      delete updated[index];
-      // Reindex remaining timeframes
-      const reindexed: { [key: number]: string } = {};
-      Object.entries(updated).forEach(([oldIndex, timeframe]) => {
-        const oldIdx = parseInt(oldIndex);
-        if (oldIdx > index) {
-          reindexed[oldIdx - 1] = timeframe;
-        } else if (oldIdx < index) {
-          reindexed[oldIdx] = timeframe;
-        }
-      });
-      return reindexed;
+    setQuickAnalysisFiles(prev => {
+      const newFiles = prev.filter((_, i) => i !== index);
+      // Also remove timeframe for this file
+      const removedFile = prev[index];
+      if (removedFile) {
+        setQuickAnalysisTimeframes(prevTf => {
+          const newTf = { ...prevTf };
+          delete newTf[removedFile.name];
+          return newTf;
+        });
+      }
+      return newFiles;
     });
   }, []);
 
-  // Clear all files
   const clearQuickAnalysisFiles = useCallback(() => {
-    setAnalysisFiles([]);
-    setSelectedTimeframes({});
+    setQuickAnalysisFiles([]);
+    setQuickAnalysisTimeframes({});
     setAnalysisResults(null);
   }, []);
 
-  // Quick analysis mutation - exactly like Upload page
+  // Quick Analysis mutation
   const quickAnalysisMutation = useMutation({
     mutationFn: async () => {
-      if (analysisFiles.length === 0) {
+      if (quickAnalysisFiles.length === 0) {
         throw new Error("No files selected for analysis");
       }
 
       const formData = new FormData();
-      
-      // Add all files to FormData
-      analysisFiles.forEach((file) => {
-        formData.append('charts', file);
+      quickAnalysisFiles.forEach((file) => {
+        formData.append('files', file);
+      });
+
+      // Create timeframe mapping
+      const timeframeMapping: { [fileName: string]: Timeframe } = {};
+      quickAnalysisFiles.forEach((file) => {
+        timeframeMapping[file.name] = quickAnalysisTimeframes[file.name] || "1H";
       });
       
-      // Add timeframe mapping as JSON string for quick analysis
-      const timeframeMapping: Record<string, string> = {};
-      analysisFiles.forEach((file, index) => {
-        timeframeMapping[file.name] = selectedTimeframes[index] || "1H";
-      });
       formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
 
-      // Use Quick Analysis endpoint - processes temporarily without saving to dashboard
-      const quickAnalysisResponse = await apiRequest('POST', '/api/analyze/quick', formData);
-      const quickAnalysisData = await quickAnalysisResponse.json();
-      
-      // Return comprehensive quick analysis (no database save)
-      return {
-        isQuickAnalysis: true,
-        chartCount: quickAnalysisData.chartCount,
-        timeframes: Object.values(timeframeMapping),
-        savedToDatabase: false, // Quick Analysis does NOT save to database
-        multiChartAnalysis: true,
-        chartsProcessed: quickAnalysisData.chartCount,
-        visualMapsIncluded: quickAnalysisData.visualMapsIncluded,
-        // Include analysis results for UI display
-        ...quickAnalysisData
-      };
+      const response = await apiRequest('/api/analyze/quick', {
+        method: 'POST',
+        body: formData,
+      });
+
+      return response;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       setAnalysisResults(data);
-      // Clear files after successful analysis
-      setAnalysisFiles([]);
-      setSelectedTimeframes({});
-      
-      // Quick Analysis doesn't save to dashboard, so no need to invalidate queries
-      let description = `${data.chartCount} chart(s) analyzed temporarily (not saved to dashboard)`;
-      if (data.visualMapsIncluded) {
-        description += ` with depth maps`;
-      }
-      
+      clearQuickAnalysisFiles(); // Clear files after successful analysis
       toast({
-        title: "Quick Analysis Complete",
-        description: description,
+        title: "Analysis Complete",
+        description: `Quick analysis completed for ${quickAnalysisFiles.length} chart(s)`,
       });
     },
     onError: (error) => {
-      console.error("Quick analysis failed:", error);
+      console.error('Quick analysis error:', error);
       toast({
-        title: "Quick Analysis Failed",
+        title: "Analysis Failed",
         description: "Failed to analyze charts. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  // Drag and drop handlers
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const runQuickAnalysis = () => {
+    quickAnalysisMutation.mutate();
+  };
+
+  // Screenshot drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
-  }, []);
+  };
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-  }, []);
+  };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    if (imageFiles.length > 0) {
-      handleQuickAnalysisFiles(imageFiles);
+    const files = Array.from(e.dataTransfer.files).filter(file => 
+      file.type.startsWith('image/')
+    );
+    if (files.length > 0) {
+      handleQuickAnalysisFiles(files);
     }
-  }, [handleQuickAnalysisFiles]);
+  };
 
   // Handle paste events
   const handlePaste = useCallback((e: ClipboardEvent) => {
@@ -690,224 +672,188 @@ export default function TradingPanel({
               </div>
             </TabsContent>
 
-            {/* Quick Chart Analysis Tab */}
+            {/* Quick Chart Analysis Tab - Moved from Upload Page */}
             <TabsContent value="analysis">
-              <div className="space-y-4">
-                <Card className="h-80 overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Bolt className="h-4 w-4 text-amber-500" />
-                      Quick Chart Analysis
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 h-full overflow-y-auto">
-                    {/* Drag & Drop Zone or Files Preview */}
-                    {analysisFiles.length === 0 ? (
-                      <div
-                        className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
-                          isDragOver 
-                            ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20' 
-                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-                        }`}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <CloudUpload className="h-6 w-6 text-gray-400" />
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
-                            <p className="font-medium">Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here</p>
-                            <p className="text-xs mt-1">Supports PNG, JPG, GIF up to 10MB</p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Files Preview Section */
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                            Files ({analysisFiles.length})
-                          </Label>
-                          <Button 
-                            onClick={clearQuickAnalysisFiles}
-                            variant="outline" 
-                            size="sm" 
-                            className="text-amber-600 hover:text-amber-700 border-amber-300 h-5 px-2 text-xs"
-                          >
-                            Clear
-                          </Button>
-                        </div>
-                        
-                        <div className="space-y-1 max-h-24 overflow-y-auto">
-                          {analysisFiles.map((file, index) => {
-                            const imageUrl = URL.createObjectURL(file);
-                            return (
-                              <div key={index} className="bg-white dark:bg-gray-700 p-2 rounded border">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <div className="flex-shrink-0">
-                                    <img 
-                                      src={imageUrl} 
-                                      alt={file.name}
-                                      className="w-8 h-8 object-cover rounded border"
-                                      onLoad={() => URL.revokeObjectURL(imageUrl)}
-                                    />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate block">
-                                      {file.name}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                                    </span>
-                                  </div>
-                                  <Button
-                                    onClick={() => removeQuickAnalysisFile(index)}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-gray-400 hover:text-red-500 h-5 w-5 p-0 flex-shrink-0"
-                                  >
-                                    ×
-                                  </Button>
-                                </div>
-                                
-                                {/* Timeframe Selection */}
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-xs text-gray-600 dark:text-gray-400">TF:</span>
-                                  <Select
-                                    value={selectedTimeframes[index] || "1H"}
-                                    onValueChange={(value) => setSelectedTimeframes(prev => ({ ...prev, [index]: value }))}
-                                  >
-                                    <SelectTrigger className="w-12 h-5 text-xs">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="1M">1M</SelectItem>
-                                      <SelectItem value="5M">5M</SelectItem>
-                                      <SelectItem value="15M">15M</SelectItem>
-                                      <SelectItem value="30M">30M</SelectItem>
-                                      <SelectItem value="1H">1H</SelectItem>
-                                      <SelectItem value="4H">4H</SelectItem>
-                                      <SelectItem value="1D">1D</SelectItem>
-                                      <SelectItem value="1W">1W</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Bolt className="text-amber-500 mr-2 h-5 w-5" />
+                    Quick Chart Analysis
+                  </h2>
+                  
+                  <DragDropZone
+                    onFilesSelected={handleQuickAnalysisFiles}
+                    className="mb-6 hover:border-amber-400"
+                    isLoading={quickAnalysisMutation.isPending}
+                    placeholder="Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here"
+                    multiple={true}
+                  />
 
-                        {/* Analysis Button */}
-                        <Button
-                          onClick={() => quickAnalysisMutation.mutate()}
-                          disabled={analysisFiles.length === 0 || quickAnalysisMutation.isPending}
-                          className="w-full bg-amber-500 hover:bg-amber-600 text-white h-7 text-xs"
+                  {/* Quick Analysis Files Preview */}
+                  {quickAnalysisFiles.length > 0 && (
+                    <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                          Quick Analysis Files ({quickAnalysisFiles.length})
+                        </h3>
+                        <Button 
+                          onClick={clearQuickAnalysisFiles}
+                          variant="outline" 
+                          size="sm" 
+                          className="text-amber-600 hover:text-amber-700 border-amber-300"
                         >
-                          {quickAnalysisMutation.isPending ? (
-                            <>
-                              <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
-                              Analyzing...
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="mr-1 h-3 w-3" />
-                              Run Quick Analysis
-                            </>
-                          )}
+                          Clear All
                         </Button>
                       </div>
-                    )}
-
-                    {/* Screenshot Button */}
-                    <div className="text-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleTakeScreenshot}
-                        className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white border-0 h-7 text-xs"
-                      >
-                        <Camera className="h-3 w-3 mr-1" />
-                        Take Screenshot
-                      </Button>
-                    </div>
-
-                    {/* Analysis Results */}
-                    {analysisResults && (
-                      <div className="space-y-2 border-t pt-2">
-                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-xs">Analysis Results</h4>
-                        <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-900 rounded p-2">
-                          <div className="text-xs space-y-1">
-                            {analysisResults.isQuickAnalysis && (
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="outline" className="text-xs">
-                                  Quick Analysis
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs">
-                                  {analysisResults.chartCount} Charts
-                                </Badge>
-                              </div>
-                            )}
-                            
-                            {analysisResults.analysis && (
-                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                {analysisResults.analysis}
-                              </div>
-                            )}
-                            
-                            {(analysisResults.prediction || analysisResults.session || analysisResults.confidence || analysisResults.reasoning) && (
-                              <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium text-xs">Prediction:</span>
-                                  {typeof analysisResults.prediction === 'string' && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {analysisResults.prediction}
-                                    </Badge>
-                                  )}
-                                  {typeof analysisResults.confidence === 'string' && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {analysisResults.confidence}
-                                    </Badge>
-                                  )}
+                      <div className="space-y-2">
+                        {quickAnalysisFiles.map((file, index) => {
+                          const imageUrl = URL.createObjectURL(file);
+                          return (
+                            <div key={index} className="bg-white dark:bg-gray-700 p-2 rounded border">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <div className="flex-shrink-0">
+                                  <img 
+                                    src={imageUrl} 
+                                    alt={file.name}
+                                    className="w-10 h-10 object-cover rounded border"
+                                    onLoad={() => URL.revokeObjectURL(imageUrl)}
+                                  />
                                 </div>
-                                {typeof analysisResults.session === 'string' && (
-                                  <div className="text-xs text-gray-600 dark:text-gray-400">
-                                    Session: {analysisResults.session}
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block">
+                                    {file.name}
+                                  </span>
+                                </div>
+                                <Button
+                                  onClick={() => removeQuickAnalysisFile(index)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-gray-400 hover:text-red-500 h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  ×
+                                </Button>
+                              </div>
+                              
+                              {/* Individual Timeframe Selector */}
+                              <div className="flex items-center space-x-1 ml-13">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">Timeframe:</span>
+                                <div className="flex space-x-1">
+                                  {["5M", "15M", "1H", "4H", "Daily"].map((timeframe) => (
+                                    <Button
+                                      key={timeframe}
+                                      size="sm"
+                                      variant={quickAnalysisTimeframes[file.name] === timeframe ? "default" : "outline"}
+                                      onClick={() => updateQuickAnalysisTimeframe(file.name, timeframe as Timeframe)}
+                                      className="h-5 text-xs px-1"
+                                    >
+                                      {timeframe}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button 
+                    onClick={runQuickAnalysis}
+                    className="w-full bg-amber-500 hover:bg-amber-600"
+                    disabled={quickAnalysisMutation.isPending || quickAnalysisFiles.length === 0}
+                  >
+                    {quickAnalysisMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Bolt className="mr-2 h-4 w-4" />
+                        Run Quick Analysis {quickAnalysisFiles.length > 0 && `(${quickAnalysisFiles.length} files)`}
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Quick Analysis Results */}
+                  {analysisResults && (
+                    <div className="mt-6 space-y-4">
+                      <h3 className="text-md font-semibold text-gray-900 flex items-center">
+                        <Bolt className="text-amber-500 mr-2 h-4 w-4" />
+                        Analysis Results
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        {analysisResults.results && analysisResults.results.map((result: any, index: number) => (
+                          <Card key={index} className="border-l-4 border-l-amber-400">
+                            <CardContent className="p-4">
+                              <div className="space-y-3">
+                                {/* Chart info */}
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700">
+                                    Chart {index + 1}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {result.timeframe || "Unknown"}
+                                  </Badge>
+                                </div>
+
+                                {/* Prediction badges */}
+                                {(result.prediction || result.session || result.confidence) && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {typeof result.prediction === 'string' && (
+                                      <Badge variant="default" className="bg-amber-100 text-amber-800 border-amber-300">
+                                        {result.prediction}
+                                      </Badge>
+                                    )}
+                                    {typeof result.session === 'string' && (
+                                      <Badge variant="secondary">
+                                        {result.session}
+                                      </Badge>
+                                    )}
+                                    {typeof result.confidence === 'string' && (
+                                      <Badge variant="outline">
+                                        {result.confidence}
+                                      </Badge>
+                                    )}
                                   </div>
                                 )}
-                                {typeof analysisResults.reasoning === 'string' && (
-                                  <div className="text-xs text-gray-700 dark:text-gray-300 mt-1">
-                                    {analysisResults.reasoning}
+
+                                {/* Analysis text */}
+                                {result.analysis && (
+                                  <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                                    <div className="whitespace-pre-wrap">{result.analysis}</div>
+                                  </div>
+                                )}
+
+                                {/* Reasoning */}
+                                {typeof result.reasoning === 'string' && (
+                                  <div className="text-xs text-gray-600 italic">
+                                    <strong>Reasoning:</strong> {result.reasoning}
                                   </div>
                                 )}
                               </div>
-                            )}
-                          </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                        {/* Clear results button */}
+                        <div className="text-center">
+                          <Button 
+                            onClick={() => setAnalysisResults(null)}
+                            variant="outline" 
+                            size="sm" 
+                            className="text-gray-600 hover:text-gray-700"
+                          >
+                            Clear Results
+                          </Button>
                         </div>
                       </div>
-                    )}
-
-                    {/* Hidden file input */}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        if (files.length > 0) {
-                          handleQuickAnalysisFiles(files);
-                        }
-                      }}
-                      className="hidden"
-                    />
-
-                    <div className="text-center text-xs text-gray-500 dark:text-gray-400">
-                      AI-powered technical analysis with pattern recognition
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           </div>
         </Tabs>
