@@ -96,7 +96,7 @@ export default function WorkingChartCanvas({
     });
   }, [drawings]);
 
-  const getMousePosition = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
+  const getMousePosition = (e: React.MouseEvent<HTMLDivElement>): Point => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     
     const rect = canvasRef.current.getBoundingClientRect();
@@ -202,10 +202,11 @@ export default function WorkingChartCanvas({
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     console.log('Mouse down on canvas, selected tool:', selectedTool);
     if (selectedTool === 'cursor') return;
 
+    // Only prevent default for actual drawing, not chart interaction
     e.preventDefault();
     e.stopPropagation();
     
@@ -243,7 +244,7 @@ export default function WorkingChartCanvas({
     });
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDrawing || !startPoint || !currentDrawing || !canvasRef.current) return;
 
     const currentPoint = getMousePosition(e);
@@ -269,7 +270,7 @@ export default function WorkingChartCanvas({
     drawShape(ctx, previewDrawing);
   };
 
-  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDrawing || !startPoint || !currentDrawing) return;
 
     const endPoint = getMousePosition(e);
@@ -303,23 +304,22 @@ export default function WorkingChartCanvas({
 
   return (
     <div 
-      className="absolute inset-0 z-50"
+      className="absolute inset-0 z-30"
       style={{ 
-        pointerEvents: selectedTool === 'cursor' ? 'none' : 'auto',
+        pointerEvents: selectedTool === 'cursor' || isDrawing ? 'none' : 'auto',
         cursor: selectedTool === 'cursor' ? 'default' : 'crosshair'
       }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
     >
       <canvas
         ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full"
+        className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{
           backgroundColor: 'transparent',
           cursor: selectedTool === 'cursor' ? 'default' : 'crosshair'
         }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onClick={(e) => console.log('Canvas clicked at:', getMousePosition(e))}
       />
     </div>
   );
