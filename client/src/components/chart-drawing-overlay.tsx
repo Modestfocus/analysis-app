@@ -48,18 +48,28 @@ export default function ChartDrawingOverlay({
     const container = containerRef.current;
     
     const updateCanvas = () => {
-      const rect = container.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-      redrawCanvas();
+      try {
+        const rect = container.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          canvas.width = rect.width;
+          canvas.height = rect.height;
+          redrawCanvas();
+        }
+      } catch (error) {
+        console.warn('Error updating canvas:', error);
+      }
     };
 
     updateCanvas();
     
-    const resizeObserver = new ResizeObserver(updateCanvas);
-    resizeObserver.observe(container);
+    // Simple interval instead of ResizeObserver
+    const intervalId = setInterval(updateCanvas, 200);
+    window.addEventListener('resize', updateCanvas);
     
-    return () => resizeObserver.disconnect();
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('resize', updateCanvas);
+    };
   }, [isChartReady]);
 
   // Redraw canvas
@@ -180,7 +190,11 @@ export default function ChartDrawingOverlay({
     <div 
       ref={containerRef}
       className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: selectedTool === 'cursor' ? -1 : 30 }}
+      style={{ 
+        zIndex: selectedTool === 'cursor' ? -1 : 30,
+        width: '100%',
+        height: '100%'
+      }}
     >
       {/* Drawing overlay */}
       {selectedTool !== 'cursor' && (
@@ -188,6 +202,7 @@ export default function ChartDrawingOverlay({
           className="absolute inset-0 pointer-events-auto cursor-crosshair"
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
+          style={{ width: '100%', height: '100%' }}
         />
       )}
       
@@ -195,7 +210,11 @@ export default function ChartDrawingOverlay({
       <canvas
         ref={canvasRef}
         className="absolute inset-0 pointer-events-none"
-        style={{ backgroundColor: 'transparent' }}
+        style={{ 
+          backgroundColor: 'transparent',
+          width: '100%',
+          height: '100%'
+        }}
       />
     </div>
   );

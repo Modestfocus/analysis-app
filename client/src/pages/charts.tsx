@@ -388,14 +388,8 @@ export default function ChartsPage() {
                   </a>
                 </div>
 
-                {/* Chart Drawing Overlay */}
-                <ChartDrawingOverlay
-                  selectedTool={selectedDrawingTool}
-                  isChartReady={isChartReady}
-                  drawings={activeDrawings}
-                  onDrawingComplete={handleDrawingComplete}
-                  onDrawingUpdate={handleDrawingsUpdate}
-                />
+                {/* Disabled drawing overlay to prevent DOM errors */}
+                {/* Drawing functionality temporarily disabled while fixing TradingView integration */}
               </div>
 
 
