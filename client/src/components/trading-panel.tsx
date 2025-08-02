@@ -204,7 +204,7 @@ export default function TradingPanel({
   // Quick Analysis mutation
   const quickAnalysisMutation = useMutation({
     mutationFn: async () => {
-      if (quickAnalysisFiles.length === 0) {
+      if (!Array.isArray(quickAnalysisFiles) || quickAnalysisFiles.length === 0) {
         throw new Error("No files selected for analysis");
       }
 
@@ -826,21 +826,21 @@ export default function TradingPanel({
                           </div>
 
                           {/* Overall Prediction */}
-                          {(analysisResults.prediction || analysisResults.session || analysisResults.confidence) && (
+                          {(analysisResults.analysis?.prediction || analysisResults.analysis?.session || analysisResults.analysis?.confidence) && (
                             <div className="flex flex-wrap gap-2 mb-4">
-                              {typeof analysisResults.prediction === 'string' && (
+                              {analysisResults.analysis?.prediction && (
                                 <Badge className="bg-amber-500 hover:bg-amber-600">
-                                  {analysisResults.prediction}
+                                  {analysisResults.analysis.prediction}
                                 </Badge>
                               )}
-                              {typeof analysisResults.session === 'string' && (
+                              {analysisResults.analysis?.session && (
                                 <Badge variant="secondary">
-                                  {analysisResults.session} Session
+                                  {analysisResults.analysis.session} Session
                                 </Badge>
                               )}
-                              {typeof analysisResults.confidence === 'string' && (
+                              {analysisResults.analysis?.confidence && (
                                 <Badge variant="outline">
-                                  Confidence: {analysisResults.confidence}
+                                  Confidence: {analysisResults.analysis.confidence}
                                 </Badge>
                               )}
                             </div>
@@ -857,11 +857,11 @@ export default function TradingPanel({
                           )}
 
                           {/* Reasoning */}
-                          {typeof analysisResults.reasoning === 'string' && (
+                          {analysisResults.analysis?.reasoning && (
                             <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200">
                               <h4 className="font-medium text-sm text-blue-800 dark:text-blue-200 mb-2">Technical Reasoning</h4>
                               <div className="text-sm text-blue-700 dark:text-blue-300">
-                                {analysisResults.reasoning}
+                                {analysisResults.analysis.reasoning}
                               </div>
                             </div>
                           )}
