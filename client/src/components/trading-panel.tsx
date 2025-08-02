@@ -855,25 +855,27 @@ export default function TradingPanel({
                               </div>
                             )}
                             
-                            {analysisResults.prediction && (
+                            {(analysisResults.prediction || analysisResults.session || analysisResults.confidence || analysisResults.reasoning) && (
                               <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="font-medium text-xs">Prediction:</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {analysisResults.prediction}
-                                  </Badge>
-                                  {analysisResults.confidence && (
+                                  {typeof analysisResults.prediction === 'string' && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {analysisResults.prediction}
+                                    </Badge>
+                                  )}
+                                  {typeof analysisResults.confidence === 'string' && (
                                     <Badge variant="secondary" className="text-xs">
                                       {analysisResults.confidence}
                                     </Badge>
                                   )}
                                 </div>
-                                {analysisResults.session && (
+                                {typeof analysisResults.session === 'string' && (
                                   <div className="text-xs text-gray-600 dark:text-gray-400">
                                     Session: {analysisResults.session}
                                   </div>
                                 )}
-                                {analysisResults.reasoning && (
+                                {typeof analysisResults.reasoning === 'string' && (
                                   <div className="text-xs text-gray-700 dark:text-gray-300 mt-1">
                                     {analysisResults.reasoning}
                                   </div>
