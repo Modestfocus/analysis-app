@@ -1,14 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp } from "lucide-react";
+import { ArrowLeft, TrendingUp, Camera } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useToast } from "@/hooks/use-toast";
 import WatchlistManager from "@/components/watchlist-manager";
 import ChartLayoutManager from "@/components/chart-layout-manager";
 import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
 import ChartDrawingOverlay from "@/components/chart-drawing-overlay";
+import { QuickChartAnalysis } from "@/components/quick-chart-analysis";
+import { captureChartScreenshot, findChartContainer } from "@/utils/screenshot";
 
 
 
@@ -30,6 +33,11 @@ export default function ChartsPage() {
   const [chartBounds, setChartBounds] = useState<DOMRect | null>(null);
   const [activeDrawings, setActiveDrawings] = useState<any[]>([]);
   const [chartContainer, setChartContainer] = useState<HTMLElement | null>(null);
+  
+  // Quick Chart Analysis state
+  const [isQuickAnalysisOpen, setIsQuickAnalysisOpen] = useState(false);
+  const [quickAnalysisFiles, setQuickAnalysisFiles] = useState<File[]>([]);
+  const { toast } = useToast();
   
 
 
@@ -342,6 +350,56 @@ export default function ChartsPage() {
     }
   }, []);
 
+  // Screenshot capture functionality
+  const handleTakeScreenshot = useCallback(async () => {
+    try {
+      const chartElement = findChartContainer() || containerRef.current;
+      
+      if (!chartElement) {
+        toast({
+          title: "Screenshot Failed",
+          description: "Could not find chart area to capture",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Capturing Screenshot",
+        description: "Please wait while we capture the chart...",
+      });
+
+      const screenshotFile = await captureChartScreenshot(chartElement);
+      
+      // Add the screenshot to Quick Analysis files and open the panel
+      setQuickAnalysisFiles([screenshotFile]);
+      setIsQuickAnalysisOpen(true);
+      
+      toast({
+        title: "Screenshot Captured",
+        description: "Chart screenshot loaded into Quick Analysis panel",
+      });
+
+    } catch (error) {
+      console.error("Screenshot capture failed:", error);
+      toast({
+        title: "Screenshot Failed",
+        description: "Failed to capture chart screenshot. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  // Quick Chart Analysis handlers
+  const handleCloseQuickAnalysis = useCallback(() => {
+    setIsQuickAnalysisOpen(false);
+    setQuickAnalysisFiles([]);
+  }, []);
+
+  const handleOpenQuickAnalysis = useCallback(() => {
+    setIsQuickAnalysisOpen(true);
+  }, []);
+
 
 
   return (
@@ -399,6 +457,26 @@ export default function ChartsPage() {
 
         {/* Right Sidebar - Watchlist and Layout Manager */}
         <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 space-y-4 overflow-y-auto">
+          {/* Take Screenshot Button */}
+          <div className="space-y-2">
+            <Button
+              onClick={handleTakeScreenshot}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+              size="sm"
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Take Screenshot
+            </Button>
+            <Button
+              onClick={handleOpenQuickAnalysis}
+              variant="outline"
+              className="w-full"
+              size="sm"
+            >
+              Quick Chart Analysis
+            </Button>
+          </div>
+          
           <WatchlistManager 
             onSymbolSelect={handleSymbolSelect}
             currentSymbol={currentSymbol}
@@ -443,6 +521,16 @@ export default function ChartsPage() {
             onPlaceOrder={handlePlaceOrder}
             isMinimized={isTradingPanelMinimized}
             onToggleMinimize={handleToggleTradingPanelMinimize}
+          />
+        )}
+
+        {/* Quick Chart Analysis Panel - Integrated with Trading Panel */}
+        {isQuickAnalysisOpen && (
+          <QuickChartAnalysis
+            isOpen={isQuickAnalysisOpen}
+            onClose={handleCloseQuickAnalysis}
+            initialFiles={quickAnalysisFiles}
+            className="fixed bottom-0 left-0 right-0 z-50 max-h-[80vh] overflow-y-auto"
           />
         )}
       </div>
