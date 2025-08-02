@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
 import CustomDrawingPanel from './custom-drawing-panel';
 
 interface DrawingTool {
@@ -30,7 +29,7 @@ export default function DrawingToolbar({
   const [isCustomPanelOpen, setIsCustomPanelOpen] = useState(false);
 
   return (
-    <div className="fixed left-4 top-20 z-50">
+    <div className="fixed left-1 top-20 z-50">
       {/* Only the menu button to open drawing tools panel */}
       <Button
         variant="default"
@@ -39,7 +38,7 @@ export default function DrawingToolbar({
         className="h-10 w-10 p-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-lg hover:bg-gray-50 dark:hover:bg-gray-800"
         title="Open Drawing Tools Panel"
       >
-        <Menu className="h-4 w-4" />
+        <span className="text-base font-normal">☰</span>
       </Button>
       
       {/* Custom Drawing Panel */}
