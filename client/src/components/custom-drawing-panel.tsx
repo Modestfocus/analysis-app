@@ -219,10 +219,7 @@ export default function CustomDrawingPanel({
             </Button>
           </div>
 
-          {/* Help Text */}
-          <div className="text-xs text-gray-500 dark:text-gray-400 px-1 leading-relaxed">
-            💡 <strong>Custom:</strong> Draw directly on chart canvas
-          </div>
+
         </CardContent>
       </Card>
     </div>
