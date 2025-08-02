@@ -195,13 +195,13 @@ export default function DashboardPage() {
               </h1>
               <div className="flex space-x-1">
                 <Button 
-                  variant={location === "/" || location === "/upload" ? "default" : "secondary"}
+                  variant={location === "/charts" ? "default" : "secondary"}
                   size="sm"
                   asChild
                 >
-                  <Link href="/upload">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
+                  <Link href="/charts">
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Charts
                   </Link>
                 </Button>
                 <Button 
@@ -215,13 +215,13 @@ export default function DashboardPage() {
                   </Link>
                 </Button>
                 <Button 
-                  variant={location === "/charts" ? "default" : "secondary"}
+                  variant={location === "/" || location === "/upload" ? "default" : "secondary"}
                   size="sm"
                   asChild
                 >
-                  <Link href="/charts">
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    Charts
+                  <Link href="/upload">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload
                   </Link>
                 </Button>
               </div>
