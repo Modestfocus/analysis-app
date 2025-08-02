@@ -692,7 +692,7 @@ export default function TradingPanel({
 
             {/* Quick Chart Analysis Tab - Moved from Upload Page */}
             <TabsContent value="analysis">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px] max-h-[80vh]">
                 {/* Left Column - Quick Chart Analysis */}
                 <Card>
                   <CardContent className="p-6">
@@ -810,7 +810,7 @@ export default function TradingPanel({
                     
                     {analysisResults ? (
                       <div className="flex-1 overflow-y-auto">
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           {/* GPT-4o Analysis Header */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -873,7 +873,7 @@ export default function TradingPanel({
                         )}
                         
                         {/* Market Prediction Section */}
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           <div>
                             <div className="flex items-center gap-2 mb-3">
                               <TrendingUp className="h-4 w-4 text-gray-600" />
