@@ -10,7 +10,7 @@ import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
 import ChartDrawingOverlay from "@/components/chart-drawing-overlay";
-import { QuickChartAnalysis } from "@/components/quick-chart-analysis";
+
 import { captureChartScreenshot, findChartContainer } from "@/utils/screenshot";
 
 
@@ -34,9 +34,7 @@ export default function ChartsPage() {
   const [activeDrawings, setActiveDrawings] = useState<any[]>([]);
   const [chartContainer, setChartContainer] = useState<HTMLElement | null>(null);
   
-  // Quick Chart Analysis state
-  const [isQuickAnalysisOpen, setIsQuickAnalysisOpen] = useState(false);
-  const [quickAnalysisFiles, setQuickAnalysisFiles] = useState<File[]>([]);
+
   const { toast } = useToast();
   
 
@@ -371,13 +369,9 @@ export default function ChartsPage() {
 
       const screenshotFile = await captureChartScreenshot(chartElement);
       
-      // Add the screenshot to Quick Analysis files and open the panel
-      setQuickAnalysisFiles([screenshotFile]);
-      setIsQuickAnalysisOpen(true);
-      
       toast({
         title: "Screenshot Captured",
-        description: "Chart screenshot loaded into Quick Analysis panel",
+        description: "Chart screenshot captured successfully",
       });
 
     } catch (error) {
@@ -390,15 +384,7 @@ export default function ChartsPage() {
     }
   }, [toast]);
 
-  // Quick Chart Analysis handlers
-  const handleCloseQuickAnalysis = useCallback(() => {
-    setIsQuickAnalysisOpen(false);
-    setQuickAnalysisFiles([]);
-  }, []);
 
-  const handleOpenQuickAnalysis = useCallback(() => {
-    setIsQuickAnalysisOpen(true);
-  }, []);
 
 
 
@@ -513,17 +499,6 @@ export default function ChartsPage() {
             onPlaceOrder={handlePlaceOrder}
             isMinimized={isTradingPanelMinimized}
             onToggleMinimize={handleToggleTradingPanelMinimize}
-            onQuickAnalysis={handleOpenQuickAnalysis}
-          />
-        )}
-
-        {/* Quick Chart Analysis Panel - Integrated with Trading Panel */}
-        {isQuickAnalysisOpen && (
-          <QuickChartAnalysis
-            isOpen={isQuickAnalysisOpen}
-            onClose={handleCloseQuickAnalysis}
-            initialFiles={quickAnalysisFiles}
-            className="fixed bottom-0 left-0 right-0 z-50 max-h-[80vh] overflow-y-auto"
           />
         )}
       </div>

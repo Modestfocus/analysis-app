@@ -19,7 +19,9 @@ import {
   ChevronUp,
   ChevronDown,
   Minimize2,
-  Zap
+  Zap,
+  Upload,
+  Camera
 } from 'lucide-react';
 
 interface Position {
@@ -51,6 +53,9 @@ interface TradingPanelProps {
   isMinimized: boolean;
   onToggleMinimize: () => void;
   onQuickAnalysis?: () => void;
+  isQuickAnalysisOpen?: boolean;
+  onCloseQuickAnalysis?: () => void;
+  quickAnalysisFiles?: File[];
 }
 
 // Mock data for demonstration
@@ -92,7 +97,16 @@ const mockOrders: Order[] = [
   }
 ];
 
-export default function TradingPanel({ currentSymbol, onPlaceOrder, isMinimized, onToggleMinimize, onQuickAnalysis }: TradingPanelProps) {
+export default function TradingPanel({ 
+  currentSymbol, 
+  onPlaceOrder, 
+  isMinimized, 
+  onToggleMinimize, 
+  onQuickAnalysis, 
+  isQuickAnalysisOpen, 
+  onCloseQuickAnalysis, 
+  quickAnalysisFiles 
+}: TradingPanelProps) {
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [size, setSize] = useState('0.1');
@@ -129,40 +143,31 @@ export default function TradingPanel({ currentSymbol, onPlaceOrder, isMinimized,
             <BarChart3 className="h-4 w-4" />
             <span className="text-sm font-medium">Trading Panel</span>
           </div>
-          <div className="flex items-center gap-2">
-            {onQuickAnalysis && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onQuickAnalysis}
-                className="h-7 px-2 text-xs font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700"
-              >
-                <Zap className="h-3 w-3 mr-1" />
-                Quick Chart Analysis
-              </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleMinimize}
+            className="h-6 w-6 p-0"
+          >
+            {isMinimized ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggleMinimize}
-              className="h-6 w-6 p-0"
-            >
-              {isMinimized ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+          </Button>
         </div>
 
         {!isMinimized && (
           <Tabs defaultValue="trading" className="w-full">
-            <TabsList className="grid grid-cols-4 w-full max-w-md mt-2">
+            <TabsList className="grid grid-cols-5 w-full max-w-2xl mt-2">
               <TabsTrigger value="trading">Trading</TabsTrigger>
               <TabsTrigger value="positions">Positions</TabsTrigger>
               <TabsTrigger value="orders">Orders</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
+              <TabsTrigger value="analysis" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-700">
+                <Zap className="h-3 w-3 mr-1" />
+                Analysis
+              </TabsTrigger>
             </TabsList>
 
           <div className="py-4">
@@ -483,6 +488,65 @@ export default function TradingPanel({ currentSymbol, onPlaceOrder, isMinimized,
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Best Trade:</span>
                       <span className="font-medium text-green-600">+$340.50</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Quick Chart Analysis Tab */}
+            <TabsContent value="analysis">
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Quick Chart Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Upload/Drop Zone */}
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="h-8 w-8 text-gray-400" />
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          <p className="font-medium">Paste (Ctrl/Cmd+V) or Drag & Drop chart image(s) here</p>
+                          <p className="text-xs mt-1">Supports PNG, JPG, GIF up to 10MB (Multiple files supported) • Press Ctrl/Cmd+V to paste</p>
+                        </div>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        id="quick-analysis-file-input"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => document.getElementById('quick-analysis-file-input')?.click()}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Choose Files
+                      </Button>
+                    </div>
+
+                    {/* Take Screenshot Button */}
+                    <div className="text-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white border-0"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Take Screenshot of Chart
+                      </Button>
+                    </div>
+
+                    {/* Quick Info */}
+                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                      Upload chart images to get AI-powered technical analysis with pattern recognition and trading insights
                     </div>
                   </CardContent>
                 </Card>
