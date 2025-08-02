@@ -65,6 +65,10 @@ export default function DrawingToolbar({
 
   const handleToolClick = (toolId: string) => {
     onToolSelect(toolId);
+    // Show user feedback about tool selection
+    if (toolId !== 'cursor') {
+      console.log(`${toolId} selected - Use TradingView's built-in toolbar for drawing`);
+    }
   };
 
   const groupedTools = drawingTools.reduce((groups, tool) => {
@@ -96,7 +100,7 @@ export default function DrawingToolbar({
         <CardHeader className="p-2 pb-1">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Tools
+              Drawing Tools
             </CardTitle>
             <Button
               variant="ghost"
@@ -226,6 +230,12 @@ export default function DrawingToolbar({
             >
               <Trash2 className="h-3 w-3" />
             </Button>
+          </div>
+
+          {/* Usage Instructions */}
+          <Separator className="my-2" />
+          <div className="text-xs text-gray-500 dark:text-gray-400 px-1 leading-relaxed">
+            💡 <strong>Tip:</strong> Use TradingView's toolbar above the chart for actual drawing.
           </div>
         </CardContent>
       </Card>

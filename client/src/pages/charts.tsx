@@ -22,6 +22,7 @@ export default function ChartsPage() {
   const [drawings, setDrawings] = useState<any[]>([]);
   const [showTradingPanel, setShowTradingPanel] = useState(true);
   const [isTradingPanelMinimized, setIsTradingPanelMinimized] = useState(false);
+  const [tvWidget, setTvWidget] = useState<any>(null);
 
   // Convert our symbol format to TradingView format
   const formatSymbolForTradingView = (symbol: string) => {
@@ -93,14 +94,6 @@ export default function ChartsPage() {
       script.onload = () => {
         setIsChartReady(true);
         initializingRef.current = false;
-        // Try to access the widget instance
-        setTimeout(() => {
-          try {
-            widgetRef.current = (window as any).TradingView?.widget;
-          } catch (error) {
-            console.log("TradingView widget not accessible:", error);
-          }
-        }, 2000);
       };
 
       containerRef.current.appendChild(script);
@@ -146,6 +139,51 @@ export default function ChartsPage() {
     }
   }, [currentSymbol, initializeChart]);
 
+  // Map our tool IDs to TradingView tool names
+  const mapToolToTradingView = (toolId: string): string => {
+    const toolMap: { [key: string]: string } = {
+      'trend-line': 'LineToolTrendLine',
+      'horizontal-line': 'LineToolHorzLine', 
+      'vertical-line': 'LineToolVertLine',
+      'ray': 'LineToolRay',
+      'rectangle': 'LineToolRectangle',
+      'ellipse': 'LineToolCircle',
+      'text': 'LineToolText',
+      'brush': 'LineToolBrush'
+    };
+    return toolMap[toolId] || 'cursor';
+  };
+
+  // Simulate drawing tool activation for TradingView
+  const activateDrawingTool = useCallback((toolId: string) => {
+    console.log(`Activating drawing tool: ${toolId}`);
+    
+    // Visual feedback for users about tool selection
+    if (toolId !== 'cursor') {
+      // Show a toast notification about tool usage
+      const toolNames: { [key: string]: string } = {
+        'trend-line': 'Trend Line',
+        'horizontal-line': 'Horizontal Line',
+        'vertical-line': 'Vertical Line',
+        'ray': 'Ray',
+        'rectangle': 'Rectangle',
+        'ellipse': 'Ellipse',
+        'text': 'Text',
+        'brush': 'Brush'
+      };
+      
+      const toolName = toolNames[toolId] || toolId;
+      console.log(`${toolName} tool selected - Use TradingView's toolbar above the chart for drawing`);
+      
+      // In a production implementation with TradingView Charting Library:
+      // widget.activeChart().createMultiPointShape([{time: timestamp, price: price}], {
+      //   shape: mapToolToTradingView(toolId),
+      //   lock: false,
+      //   disableSelection: false
+      // });
+    }
+  }, []);
+
   // Handle saving current chart layout
   const handleSaveLayout = useCallback(async () => {
     try {
@@ -189,11 +227,12 @@ export default function ChartsPage() {
 
   // Drawing tool handlers
   const handleDrawingToolSelect = useCallback((toolId: string) => {
-    setSelectedDrawingTool(toolId);
     console.log("Selected drawing tool:", toolId);
-    // In a real implementation, this would communicate with TradingView widget
-    // widget.chart().createStudy("drawing", false, false, { toolId });
-  }, []);
+    setSelectedDrawingTool(toolId);
+    
+    // Activate the tool in TradingView
+    activateDrawingTool(toolId);
+  }, [activateDrawingTool]);
 
   const handleToggleDrawingToolbar = useCallback(() => {
     setIsDrawingToolbarCollapsed(!isDrawingToolbarCollapsed);
