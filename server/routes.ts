@@ -189,6 +189,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/edgemaps', express.static(edgemapsDir));
   app.use('/gradientmaps', express.static(gradientmapsDir));
   app.use('/temp', express.static(tempDir));
+  
+  // Serve attached assets (background images, etc.)
+  const attachedAssetsDir = path.join(process.cwd(), 'attached_assets');
+  app.use('/attached_assets', express.static(attachedAssetsDir));
 
   // Multi-file upload route with automatic CLIP embedding
   app.post('/api/upload', upload.array('charts', 10), async (req, res) => {
