@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { X, Plus, Download, TrendingUp } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { X, Plus, Download, TrendingUp, Search, BarChart3, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -17,119 +18,66 @@ interface TradingViewImportModalProps {
 interface SelectedSymbol {
   symbol: string;
   name?: string;
-  exchange?: string;
+  category?: string;
 }
 
 export default function TradingViewImportModal({ isOpen, onClose }: TradingViewImportModalProps) {
   const { toast } = useToast();
-  const containerRef = useRef<HTMLDivElement>(null);
   const [selectedSymbols, setSelectedSymbols] = useState<SelectedSymbol[]>([]);
-  const [isChartReady, setIsChartReady] = useState(false);
   const [manualSymbol, setManualSymbol] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Common trading symbols for easy selection
-  const commonSymbols = [
-    { symbol: "NASDAQ:TSLA", name: "Tesla Inc" },
-    { symbol: "NASDAQ:AAPL", name: "Apple Inc" },
-    { symbol: "NASDAQ:GOOGL", name: "Alphabet Inc" },
-    { symbol: "NASDAQ:MSFT", name: "Microsoft Corp" },
-    { symbol: "NYSE:SPY", name: "SPDR S&P 500 ETF" },
-    { symbol: "FOREXCOM:EURUSD", name: "EUR/USD" },
-    { symbol: "FOREXCOM:GBPUSD", name: "GBP/USD" },
-    { symbol: "FOREXCOM:USDJPY", name: "USD/JPY" },
-    { symbol: "OANDA:XAUUSD", name: "Gold/USD" },
-    { symbol: "BITSTAMP:BTCUSD", name: "Bitcoin/USD" },
-    { symbol: "BITSTAMP:ETHUSD", name: "Ethereum/USD" },
-    { symbol: "PEPPERSTONE:NAS100", name: "NASDAQ 100" },
-    { symbol: "PEPPERSTONE:SPX500", name: "S&P 500" },
-    { symbol: "PEPPERSTONE:US30", name: "Dow Jones 30" }
-  ];
+  // Comprehensive trading symbols organized by category
+  const symbolCategories = {
+    "Forex Majors": [
+      { symbol: "EURUSD", name: "Euro/US Dollar" },
+      { symbol: "GBPUSD", name: "British Pound/US Dollar" },
+      { symbol: "USDJPY", name: "US Dollar/Japanese Yen" },
+      { symbol: "USDCHF", name: "US Dollar/Swiss Franc" },
+      { symbol: "AUDUSD", name: "Australian Dollar/US Dollar" },
+      { symbol: "NZDUSD", name: "New Zealand Dollar/US Dollar" },
+      { symbol: "USDCAD", name: "US Dollar/Canadian Dollar" },
+    ],
+    "US Indices": [
+      { symbol: "SPX500", name: "S&P 500 Index" },
+      { symbol: "NAS100", name: "NASDAQ 100 Index" },
+      { symbol: "US30", name: "Dow Jones 30 Index" },
+      { symbol: "US2000", name: "Russell 2000 Index" },
+    ],
+    "Commodities": [
+      { symbol: "XAUUSD", name: "Gold/US Dollar" },
+      { symbol: "XAGUSD", name: "Silver/US Dollar" },
+      { symbol: "WTIUSD", name: "WTI Crude Oil" },
+      { symbol: "XBRUSD", name: "Brent Crude Oil" },
+    ],
+    "Cryptocurrencies": [
+      { symbol: "BTCUSD", name: "Bitcoin/US Dollar" },
+      { symbol: "ETHUSD", name: "Ethereum/US Dollar" },
+      { symbol: "ADAUSD", name: "Cardano/US Dollar" },
+      { symbol: "SOLUSD", name: "Solana/US Dollar" },
+    ],
+    "Popular Stocks": [
+      { symbol: "AAPL", name: "Apple Inc" },
+      { symbol: "TSLA", name: "Tesla Inc" },
+      { symbol: "GOOGL", name: "Alphabet Inc" },
+      { symbol: "MSFT", name: "Microsoft Corp" },
+      { symbol: "AMZN", name: "Amazon.com Inc" },
+      { symbol: "NVDA", name: "NVIDIA Corp" },
+    ]
+  };
 
-  // Initialize TradingView chart with watchlist enabled
-  const initializeTradingViewChart = useCallback(() => {
-    if (!containerRef.current || !isOpen) return;
+  // Flatten all symbols for search
+  const allSymbols = Object.entries(symbolCategories).flatMap(([category, symbols]) =>
+    symbols.map(symbol => ({ ...symbol, category }))
+  );
 
-    // More gentle cleanup to avoid DOM errors
-    try {
-      if (containerRef.current.firstChild) {
-        containerRef.current.removeChild(containerRef.current.firstChild);
-      }
-    } catch (error) {
-      // Ignore DOM errors during cleanup
-      console.log('DOM cleanup handled gracefully');
-    }
-
-    // Create container div for TradingView widget
-    const widgetContainer = document.createElement('div');
-    widgetContainer.id = 'tradingview_import_chart';
-    widgetContainer.style.height = '400px';
-    widgetContainer.style.width = '100%';
-
-    // Create TradingView widget script
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    
-    const config = {
-      "autosize": true,
-      "symbol": "NASDAQ:AAPL",
-      "interval": "60",
-      "timezone": "Etc/UTC",
-      "theme": "light",
-      "style": "1",
-      "locale": "en",
-      "enable_publishing": false,
-      "allow_symbol_change": true,
-      "hide_top_toolbar": false,
-      "hide_legend": false,
-      "save_image": false,
-      "container_id": "tradingview_import_chart",
-      "support_host": "https://www.tradingview.com",
-      "width": "100%",
-      "height": "400"
-    };
-    
-    script.innerHTML = JSON.stringify(config);
-
-    script.onerror = (error) => {
-      console.error("Failed to load TradingView script:", error);
-      setIsChartReady(false);
-    };
-
-    script.onload = () => {
-      setIsChartReady(true);
-    };
-
-    // Append container and script to DOM
-    widgetContainer.appendChild(script);
-    containerRef.current.appendChild(widgetContainer);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      // Delay initialization to ensure modal is fully rendered
-      const timeoutId = setTimeout(() => {
-        initializeTradingViewChart();
-      }, 100);
-      
-      return () => {
-        clearTimeout(timeoutId);
-        // Gentle cleanup to avoid DOM errors
-        if (containerRef.current) {
-          try {
-            while (containerRef.current.firstChild) {
-              containerRef.current.removeChild(containerRef.current.firstChild);
-            }
-          } catch (error) {
-            // Ignore DOM errors during cleanup
-            console.log('DOM cleanup handled gracefully on unmount');
-          }
-        }
-        setIsChartReady(false);
-      };
-    }
-  }, [isOpen, initializeTradingViewChart]);
+  // Filter symbols based on search query
+  const filteredSymbols = searchQuery
+    ? allSymbols.filter(symbol =>
+        symbol.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        symbol.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : allSymbols;
 
   // Add symbol to selected list
   const handleAddSymbol = useCallback((symbolData: SelectedSymbol) => {
@@ -175,7 +123,7 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
     mutationFn: async (symbols: string[]) => {
       const promises = symbols.map(symbol => 
         apiRequest('POST', '/api/watchlist', { 
-          symbol: symbol.split(':').pop() || symbol // Extract just the symbol part - userId handled by server
+          symbol: symbol // Extract just the symbol part - userId handled by server
         })
       );
       
@@ -221,6 +169,7 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
   const handleClose = useCallback(() => {
     setSelectedSymbols([]);
     setManualSymbol("");
+    setSearchQuery("");
     onClose();
   }, [onClose]);
 
@@ -230,62 +179,133 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            Import TradingView Watchlist
+            Import Trading Symbols to Watchlist
           </DialogTitle>
           <div id="import-modal-description" className="sr-only">
-            Import symbols from TradingView by selecting them from the chart or using the quick add buttons
+            Select trading symbols from popular categories or search to add them to your watchlist
           </div>
         </DialogHeader>
         
         <div className="flex-1 p-6 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-            {/* Left Side - TradingView Chart */}
-            <div className="space-y-4">
-              <Card className="h-[500px]">
+            {/* Left Side - Symbol Categories */}
+            <div className="space-y-4 overflow-y-auto">
+              {/* Search symbols */}
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">TradingView Chart</CardTitle>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Search className="h-4 w-4" />
+                    Search Symbols
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0 h-[calc(100%-60px)]">
-                  <div 
-                    ref={containerRef}
-                    className="tradingview-widget-container h-full w-full"
-                    style={{ height: "100%", width: "100%" }}
-                  >
-                    {!isChartReady && (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center">
-                          <TrendingUp className="h-8 w-8 animate-pulse mx-auto mb-2 text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground">Loading TradingView chart...</p>
-                        </div>
-                      </div>
-                    )}
+                <CardContent>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search symbols (e.g., AAPL, EURUSD, Bitcoin)"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Quick Symbol Selection */}
+              {/* Manual symbol input */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">Quick Add Popular Symbols</CardTitle>
+                  <CardTitle className="text-sm">Add Custom Symbol</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-2">
-                    {commonSymbols.map((symbolData) => (
-                      <Button
-                        key={symbolData.symbol}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAddSymbol(symbolData)}
-                        className="justify-start text-left"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-xs font-medium">{symbolData.symbol.split(':').pop()}</span>
-                          <span className="text-xs text-muted-foreground truncate">{symbolData.name}</span>
-                        </div>
-                      </Button>
-                    ))}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter symbol (e.g., AAPL, EURUSD)"
+                      value={manualSymbol}
+                      onChange={(e) => setManualSymbol(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleAddManualSymbol()}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={handleAddManualSymbol}
+                      disabled={!manualSymbol.trim()}
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Symbol categories or search results */}
+              <Card className="flex-1">
+                <CardHeader>
+                  <CardTitle className="text-sm">
+                    {searchQuery ? `Search Results (${filteredSymbols.length})` : 'Popular Trading Symbols'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="max-h-[400px] overflow-y-auto">
+                  {searchQuery ? (
+                    // Search results
+                    <div className="space-y-2">
+                      {filteredSymbols.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No symbols found matching "{searchQuery}"
+                        </p>
+                      ) : (
+                        filteredSymbols.map((symbolData, index) => (
+                          <div
+                            key={`${symbolData.symbol}-${index}`}
+                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer"
+                            onClick={() => handleAddSymbol(symbolData)}
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">{symbolData.symbol}</span>
+                              <span className="text-xs text-muted-foreground">{symbolData.name}</span>
+                              {symbolData.category && (
+                                <Badge variant="outline" className="w-fit text-xs mt-1">
+                                  {symbolData.category}
+                                </Badge>
+                              )}
+                            </div>
+                            <Button variant="ghost" size="sm">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    // Category-based display
+                    <div className="space-y-4">
+                      {Object.entries(symbolCategories).map(([category, symbols]) => (
+                        <div key={category}>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                            <BarChart3 className="h-3 w-3" />
+                            {category}
+                          </h4>
+                          <div className="grid grid-cols-1 gap-2">
+                            {symbols.map((symbolData) => (
+                              <div
+                                key={symbolData.symbol}
+                                className="flex items-center justify-between p-2 border rounded hover:bg-accent cursor-pointer"
+                                onClick={() => handleAddSymbol({ ...symbolData, category })}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-xs">{symbolData.symbol}</span>
+                                  <span className="text-xs text-muted-foreground">{symbolData.name}</span>
+                                </div>
+                                <Button variant="ghost" size="sm">
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -300,47 +320,29 @@ export default function TradingViewImportModal({ isOpen, onClose }: TradingViewI
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Manual symbol input */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Enter symbol (e.g., AAPL, EURUSD)"
-                      value={manualSymbol}
-                      onChange={(e) => setManualSymbol(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleAddManualSymbol()}
-                      className="flex-1 px-3 py-2 text-sm border border-input rounded-md bg-background"
-                    />
-                    <Button 
-                      onClick={handleAddManualSymbol}
-                      disabled={!manualSymbol.trim()}
-                      size="sm"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <Separator />
-
                   {/* Selected symbols list */}
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
                     {selectedSymbols.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <Star className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No symbols selected yet</p>
-                        <p className="text-xs">Click symbols from the chart or use quick add buttons</p>
+                        <p className="text-xs">Click symbols from the left panel to add them</p>
                       </div>
                     ) : (
                       selectedSymbols.map((symbolData, index) => (
                         <div 
                           key={`${symbolData.symbol}-${index}`}
-                          className="flex items-center justify-between p-3 border rounded-lg"
+                          className="flex items-center justify-between p-3 border rounded-lg bg-accent/50"
                         >
                           <div className="flex flex-col">
-                            <span className="font-medium text-sm">
-                              {symbolData.symbol.split(':').pop() || symbolData.symbol}
-                            </span>
+                            <span className="font-medium text-sm">{symbolData.symbol}</span>
                             {symbolData.name && (
                               <span className="text-xs text-muted-foreground">{symbolData.name}</span>
+                            )}
+                            {symbolData.category && (
+                              <Badge variant="outline" className="w-fit text-xs mt-1">
+                                {symbolData.category}
+                              </Badge>
                             )}
                           </div>
                           <Button
