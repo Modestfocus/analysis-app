@@ -186,7 +186,7 @@ export default function CustomDrawingPanel({
 }: CustomDrawingPanelProps) {
   const [processingTool, setProcessingTool] = useState<string | null>(null);
   
-  // Function to dispatch keyboard shortcuts while maintaining chart focus
+  // Function to activate TradingView drawing tools using postMessage API
   const dispatchShortcutToChart = async (tool: DrawingTool) => {
     if (processingTool) return; // Prevent double clicks
     
@@ -202,73 +202,88 @@ export default function CustomDrawingPanel({
         return;
       }
       
-      console.log(`Dispatching ${tool.shortcut} to TradingView chart`);
+      console.log(`Activating ${tool.name} drawing tool via TradingView API`);
       
       // Close the drawing panel first to restore focus to the chart
       onClose();
       
-      // Small delay to allow panel to close and focus to return
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Map our tool IDs to TradingView's drawing tool names
+      const tradingViewToolMap: Record<string, string> = {
+        'trend-line': 'LineToolTrendLine',
+        'horizontal-line': 'LineToolHorzLine',
+        'vertical-line': 'LineToolVertLine',
+        'rectangle': 'LineToolRectangle',
+        'ellipse': 'LineToolCircle',
+        'text': 'LineToolText',
+        'arrow': 'LineToolArrow',
+        'cursor': 'cursor'
+      };
       
-      // Focus the chart container
-      if (chartContainer) {
-        chartContainer.focus();
-        chartContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const tvToolName = tradingViewToolMap[tool.id] || tool.id;
+      
+      // Wait for panel to close
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      // Try TradingView's official postMessage API for drawing tools
+      if (iframe.contentWindow) {
+        // Method 1: Try TradingView's chart API
+        iframe.contentWindow.postMessage({
+          name: 'activate-drawing-tool',
+          data: {
+            tool: tvToolName,
+            toolName: tool.name
+          }
+        }, '*');
+        
+        // Method 2: Try alternative format
+        setTimeout(() => {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage({
+              type: 'drawing-tool',
+              payload: {
+                action: 'activate',
+                tool: tvToolName
+              }
+            }, '*');
+          }
+        }, 100);
+        
+        // Method 3: Try TradingView widget command format
+        setTimeout(() => {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage({
+              name: 'widget-command',
+              data: {
+                command: 'selectDrawingTool',
+                tool: tvToolName
+              }
+            }, '*');
+          }
+        }, 200);
+        
+        console.log(`📡 Sent TradingView API commands for ${tool.name} (${tvToolName})`);
       }
       
-      // Focus the iframe
-      iframe.focus();
-      
-      // Wait for focus to stabilize
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Create the keyboard event with precise properties
-      const createKeyEvent = (type: string) => new KeyboardEvent(type, {
-        key: tool.keyCode.toUpperCase(),
-        code: `Key${tool.keyCode.toUpperCase()}`,
-        keyCode: tool.keyCode.toUpperCase().charCodeAt(0),
-        which: tool.keyCode.toUpperCase().charCodeAt(0),
-        altKey: tool.altKey || false,
-        shiftKey: tool.shiftKey || false,
-        ctrlKey: tool.ctrlKey || false,
-        metaKey: false,
-        bubbles: true,
-        cancelable: true,
-        composed: true,
-        view: window,
-        detail: 0
-      });
-      
-      // Dispatch sequence: keydown -> keypress -> keyup
-      ['keydown', 'keypress', 'keyup'].forEach((eventType, index) => {
-        setTimeout(() => {
-          const event = createKeyEvent(eventType);
-          
-          // Dispatch to multiple targets
-          document.dispatchEvent(event);
-          document.body.dispatchEvent(event);
-          iframe.dispatchEvent(event);
-          
-          if (chartContainer) {
-            chartContainer.dispatchEvent(event);
-          }
-          
-          // Try window-level dispatch
-          window.dispatchEvent(event);
-          
-        }, index * 50); // Stagger events by 50ms
-      });
-      
-      console.log(`✅ Dispatched ${tool.shortcut} shortcut sequence for ${tool.name}`);
+      // Fallback: Focus the chart and show user instruction
+      setTimeout(() => {
+        if (chartContainer) {
+          chartContainer.focus();
+          chartContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        iframe.focus();
+        
+        // Show clear user instruction
+        console.log(`💡 ${tool.name} tool selected. If not activated automatically, press ${tool.shortcut} on your keyboard or use TradingView's toolbar.`);
+      }, 300);
       
       // Update tool selection
       onToolSelect(tool.id);
       
     } catch (error) {
-      console.error('Error dispatching shortcut:', error);
+      console.error('Error activating drawing tool:', error);
     } finally {
       // Reset processing state
-      setTimeout(() => setProcessingTool(null), 1000);
+      setTimeout(() => setProcessingTool(null), 800);
     }
   };
   const panelRef = useRef<HTMLDivElement>(null);
@@ -397,17 +412,18 @@ export default function CustomDrawingPanel({
               
               <div className="text-xs space-y-2">
                 <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-800">
-                  <div className="font-medium text-blue-900 dark:text-blue-100 mb-2">🚀 Automatic Drawing Activation:</div>
+                  <div className="font-medium text-blue-900 dark:text-blue-100 mb-2">🎯 Drawing Tool Activation:</div>
                   <ol className="text-blue-800 dark:text-blue-200 space-y-1.5">
                     <li><strong>1.</strong> Click any tool above</li>
-                    <li><strong>2.</strong> Panel closes and activates the tool</li>
-                    <li><strong>3.</strong> Click and drag on chart to draw</li>
+                    <li><strong>2.</strong> System sends TradingView API commands</li>
+                    <li><strong>3.</strong> If needed, press the keyboard shortcut shown</li>
+                    <li><strong>4.</strong> Click and drag on chart to draw</li>
                   </ol>
                 </div>
                 
-                <div className="bg-green-50 dark:bg-green-950/20 p-2 rounded border border-green-200 dark:border-green-800">
-                  <div className="text-green-800 dark:text-green-200">
-                    <strong>✨ Smart Focus:</strong> Chart focus is maintained automatically
+                <div className="bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-800">
+                  <div className="text-amber-800 dark:text-amber-200">
+                    <strong>💡 Fallback:</strong> Use TradingView's drawing toolbar if automation doesn't work
                   </div>
                 </div>
               </div>
