@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,6 +116,7 @@ export default function TradingPanel({
   onQuickAnalysis, 
   isQuickAnalysisOpen, 
   onCloseQuickAnalysis, 
+  quickAnalysisFiles: propQuickAnalysisFiles,
   onTakeScreenshot
 }: TradingPanelProps) {
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
@@ -127,13 +128,19 @@ export default function TradingPanel({
   const [selectedTab, setSelectedTab] = useState("trading");
   
   // Quick Chart Analysis state (moved from Upload page)
-  const [quickAnalysisFiles, setQuickAnalysisFiles] = useState<File[]>([]);
+  const [internalQuickAnalysisFiles, setInternalQuickAnalysisFiles] = useState<File[]>([]);
   const [quickAnalysisTimeframes, setQuickAnalysisTimeframes] = useState<{ [fileName: string]: Timeframe }>({});
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Combine prop files with internal files
+  const quickAnalysisFiles = useMemo(() => {
+    const propFiles = propQuickAnalysisFiles || [];
+    return [...propFiles, ...internalQuickAnalysisFiles];
+  }, [propQuickAnalysisFiles, internalQuickAnalysisFiles]);
 
   const totalPnL = mockPositions.reduce((sum, pos) => sum + pos.pnl, 0);
   const accountBalance = 10000; // Mock account balance
@@ -145,6 +152,21 @@ export default function TradingPanel({
       setSelectedTab("analysis");
     }
   }, [quickAnalysisFiles]);
+
+  // Update timeframes when new prop files are received
+  useEffect(() => {
+    if (propQuickAnalysisFiles && propQuickAnalysisFiles.length > 0) {
+      const newTimeframes: { [fileName: string]: Timeframe } = {};
+      propQuickAnalysisFiles.forEach((file) => {
+        if (!quickAnalysisTimeframes[file.name]) {
+          newTimeframes[file.name] = "5M"; // Default for screenshots
+        }
+      });
+      if (Object.keys(newTimeframes).length > 0) {
+        setQuickAnalysisTimeframes(prev => ({ ...prev, ...newTimeframes }));
+      }
+    }
+  }, [propQuickAnalysisFiles, quickAnalysisTimeframes]);
 
   // Handle screenshot button - call parent handler and switch to Analysis tab
   const handleTakeScreenshot = () => {
@@ -166,7 +188,7 @@ export default function TradingPanel({
       fileArray = [files];
     }
     
-    setQuickAnalysisFiles(prev => [...prev, ...fileArray]);
+    setInternalQuickAnalysisFiles((prev: File[]) => [...prev, ...fileArray]);
     
     // Initialize timeframes for new files with default "1H"
     const newTimeframes: { [fileName: string]: Timeframe } = {};
@@ -181,12 +203,25 @@ export default function TradingPanel({
   }, []);
 
   const removeQuickAnalysisFile = useCallback((index: number) => {
-    setQuickAnalysisFiles(prev => {
-      const newFiles = prev.filter((_, i) => i !== index);
+    // Check if it's a prop file or internal file
+    const propFileCount = propQuickAnalysisFiles?.length || 0;
+    if (index < propFileCount) {
+      // Can't remove prop files - they're controlled by parent
+      toast({
+        title: "Cannot remove screenshot",
+        description: "Screenshots taken from the chart cannot be removed from here.",
+        variant: "destructive"
+      });
+      return;
+    }
+    // Remove from internal files
+    const internalIndex = index - propFileCount;
+    setInternalQuickAnalysisFiles((prev: File[]) => {
+      const newFiles = prev.filter((_: File, i: number) => i !== internalIndex);
       // Also remove timeframe for this file
-      const removedFile = prev[index];
+      const removedFile = prev[internalIndex];
       if (removedFile) {
-        setQuickAnalysisTimeframes(prevTf => {
+        setQuickAnalysisTimeframes((prevTf: { [fileName: string]: Timeframe }) => {
           const newTf = { ...prevTf };
           delete newTf[removedFile.name];
           return newTf;
@@ -194,10 +229,10 @@ export default function TradingPanel({
       }
       return newFiles;
     });
-  }, []);
+  }, [propQuickAnalysisFiles, toast]);
 
   const clearQuickAnalysisFiles = useCallback(() => {
-    setQuickAnalysisFiles([]);
+    setInternalQuickAnalysisFiles([]);
     setQuickAnalysisTimeframes({});
     // Don't clear analysis results when clearing files
   }, []);
