@@ -8,6 +8,7 @@ import ChartLayoutManager from "@/components/chart-layout-manager";
 import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
+import WorkingChartCanvas from "@/components/working-chart-canvas";
 
 
 
@@ -27,6 +28,8 @@ export default function ChartsPage() {
   const [tvWidget, setTvWidget] = useState<any>(null);
   
   const [chartBounds, setChartBounds] = useState<DOMRect | null>(null);
+  const [activeDrawings, setActiveDrawings] = useState<any[]>([]);
+  const [chartContainer, setChartContainer] = useState<HTMLElement | null>(null);
   
 
 
@@ -124,9 +127,10 @@ export default function ChartsPage() {
   useEffect(() => {
     if (isChartReady && containerRef.current) {
       const updateBounds = () => {
-        const chartContainer = containerRef.current?.querySelector('#tradingview_chart');
-        if (chartContainer) {
-          setChartBounds(chartContainer.getBoundingClientRect());
+        const chartElement = containerRef.current?.querySelector('.tradingview-widget-container__widget') as HTMLElement;
+        if (chartElement) {
+          setChartBounds(chartElement.getBoundingClientRect());
+          setChartContainer(chartElement);
         }
       };
       
@@ -314,6 +318,21 @@ export default function ChartsPage() {
     setIsTradingPanelMinimized(!isTradingPanelMinimized);
   }, [isTradingPanelMinimized]);
 
+  // Drawing handlers
+  const handleDrawingComplete = useCallback((drawing: any) => {
+    console.log('Drawing completed:', drawing);
+    setActiveDrawings(prev => [...prev, drawing]);
+  }, []);
+
+  const handleDrawingsUpdate = useCallback((drawings: any[]) => {
+    setActiveDrawings(drawings);
+  }, []);
+
+  const handleClearAllDrawings = useCallback(() => {
+    setActiveDrawings([]);
+    console.log('All drawings cleared');
+  }, []);
+
 
 
   return (
@@ -345,7 +364,7 @@ export default function ChartsPage() {
             <CardContent className="p-0 h-full relative">
               <div 
                 ref={containerRef}
-                className="tradingview-widget-container h-full w-full"
+                className="tradingview-widget-container h-full w-full relative"
                 style={{ height: "100%", width: "100%" }}
               >
                 <div className="tradingview-widget-container__widget h-full"></div>
@@ -359,6 +378,17 @@ export default function ChartsPage() {
                     Track all markets on TradingView
                   </a>
                 </div>
+
+                {/* Working Drawing Canvas Overlay */}
+                {isChartReady && chartContainer && (
+                  <WorkingChartCanvas
+                    selectedTool={selectedDrawingTool}
+                    chartContainer={chartContainer}
+                    onDrawingComplete={handleDrawingComplete}
+                    drawings={activeDrawings}
+                    onDrawingUpdate={handleDrawingsUpdate}
+                  />
+                )}
               </div>
 
 
@@ -381,10 +411,11 @@ export default function ChartsPage() {
 
         {/* Drawing Toolbar - Fixed position on left */}
         <DrawingToolbar 
-          onToolSelect={handleDrawingToolSelect}
+          onToolSelect={handleToolSelect}
           selectedTool={selectedDrawingTool}
           isCollapsed={isDrawingToolbarCollapsed}
           onToggleCollapse={handleToggleDrawingToolbar}
+          onClearAll={handleClearAllDrawings}
         />
 
 

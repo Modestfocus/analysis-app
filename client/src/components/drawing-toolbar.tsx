@@ -34,6 +34,7 @@ interface DrawingToolbarProps {
   selectedTool: string;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onClearAll?: () => void;
 }
 
 const drawingTools: DrawingTool[] = [
@@ -59,7 +60,8 @@ export default function DrawingToolbar({
   onToolSelect, 
   selectedTool, 
   isCollapsed, 
-  onToggleCollapse 
+  onToggleCollapse,
+  onClearAll
 }: DrawingToolbarProps) {
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
@@ -226,7 +228,7 @@ export default function DrawingToolbar({
               variant="ghost"
               size="sm"
               className="w-full h-8 p-2 relative group text-red-600 hover:text-red-700"
-              onClick={() => {/* Handle clear all */}}
+              onClick={onClearAll}
             >
               <Trash2 className="h-3 w-3" />
             </Button>
@@ -235,7 +237,7 @@ export default function DrawingToolbar({
           {/* Usage Instructions */}
           <Separator className="my-2" />
           <div className="text-xs text-gray-500 dark:text-gray-400 px-1 leading-relaxed">
-            💡 <strong>Tip:</strong> Use TradingView's toolbar above the chart for actual drawing.
+            💡 <strong>Working:</strong> These tools now draw directly on the chart.
           </div>
         </CardContent>
       </Card>
