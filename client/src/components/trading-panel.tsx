@@ -831,7 +831,7 @@ export default function TradingPanel({
                       {quickAnalysisMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Analyzing...
+                          Processing Visual Maps & GPT-4o Analysis...
                         </>
                       ) : (
                         <>

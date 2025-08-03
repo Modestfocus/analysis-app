@@ -25,6 +25,8 @@ export interface MultiChartData {
   depth?: string; // base64
   edge?: string; // base64  
   gradient?: string; // base64
+  embedding?: number[]; // CLIP embedding for quick analysis
+  similarCharts?: Array<{ chart: any; similarity: number }>; // Similar charts for RAG context
   metadata: {
     id: number;
     filename: string;

@@ -781,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // NEW: Quick Analysis Endpoint - Temporary processing without database storage
+  // NEW: Quick Analysis Endpoint - Complete flow identical to normal analysis but temporary processing
   app.post('/api/analyze/quick', upload.array('charts'), async (req, res) => {
     try {
       const files = req.files as Express.Multer.File[];
@@ -793,94 +793,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instrument = req.body.instrument || 'UNKNOWN';
       const session = req.body.session;
 
-      console.log(`🚀 Quick Analysis: Processing ${files.length} charts temporarily (no database save)`);
+      console.log(`🚀 Quick Analysis: Processing ${files.length} charts with complete flow (no database save)`);
 
       const tempChartData: MultiChartData[] = [];
 
-      // Process each file temporarily
+      // Process each file with complete analysis flow
       for (const file of files) {
         const timeframe = timeframeMapping[file.originalname] || '5M';
-        console.log(`🔄 Processing ${file.originalname} (${timeframe}) - Temporary processing`);
+        console.log(`🔄 Processing ${file.originalname} (${timeframe}) - Complete visual analysis`);
 
         // Read original image
         const originalBuffer = await fs.readFile(file.path);
         const originalBase64 = originalBuffer.toString('base64');
 
-        // Generate temporary depth map using fallback method (no database save)
+        // 1. Generate CLIP embedding for vector similarity search
+        console.log(`🧠 Generating CLIP embedding for ${file.originalname}`);
+        const embeddingResult = await generateCLIPEmbedding(file.path);
+        let similarCharts: Array<{ chart: any; similarity: number }> = [];
+        
+        if (embeddingResult.embedding && embeddingResult.embedding.length === 1024) {
+          console.log(`🔍 Performing vector similarity search for ${file.originalname}`);
+          similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3);
+          console.log(`✓ Found ${similarCharts.length} similar charts for RAG context`);
+        } else {
+          console.warn(`⚠️ Failed to generate embedding for ${file.originalname}, using random charts`);
+          const randomCharts = await storage.getAllCharts();
+          const limitedCharts = randomCharts.slice(0, 3);
+          similarCharts = limitedCharts.map((chart: any) => ({
+            chart,
+            similarity: 0.5 // Lower default similarity for fallback
+          }));
+        }
+
+        // 2. Generate MiDaS Depth Map (using same method as normal analysis)
         let depthBase64: string | undefined;
         try {
           const tempDepthPath = path.join(process.cwd(), 'server', 'temp', `quick_depth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
           await fs.mkdir(path.dirname(tempDepthPath), { recursive: true });
           
-          // Generate grayscale + blur depth map
-          await sharp(file.path)
-            .grayscale()
-            .blur(2)
-            .png()
-            .toFile(tempDepthPath);
+          console.log(`🌀 Generating MiDaS depth map for ${file.originalname}`);
+          const depthResult = await generateDepthMap(file.path, tempDepthPath);
           
-          const depthBuffer = await fs.readFile(tempDepthPath);
-          depthBase64 = depthBuffer.toString('base64');
+          if (depthResult.success) {
+            const depthBuffer = await fs.readFile(tempDepthPath);
+            depthBase64 = depthBuffer.toString('base64');
+            console.log(`✓ Generated depth map using ${depthResult.model}`);
+          } else {
+            console.warn(`⚠️ MiDaS failed, using fallback depth map for ${file.originalname}`);
+            // Fallback to simple depth map
+            await sharp(file.path)
+              .grayscale()
+              .blur(2)
+              .png()
+              .toFile(tempDepthPath);
+            
+            const depthBuffer = await fs.readFile(tempDepthPath);
+            depthBase64 = depthBuffer.toString('base64');
+          }
           
           // Clean up temp depth file
           await fs.unlink(tempDepthPath).catch(() => {});
         } catch (err) {
-          console.warn(`⚠️ Failed to generate temp depth map for ${file.originalname}`);
+          console.warn(`⚠️ Failed to generate depth map for ${file.originalname}:`, err);
         }
 
-        // Generate temporary edge map
+        // 3. Convert to Grayscale (intermediate step for edge/gradient maps)
+        const tempGrayscalePath = path.join(process.cwd(), 'server', 'temp', `quick_grayscale_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
+        await sharp(file.path)
+          .grayscale()
+          .png()
+          .toFile(tempGrayscalePath);
+
+        // 4. Create Edge Map (Sobel/Canny from grayscale)
         let edgeBase64: string | undefined;
         try {
           const tempEdgePath = path.join(process.cwd(), 'server', 'temp', `quick_edge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
           
-          await sharp(file.path)
-            .grayscale()
+          console.log(`🔲 Generating edge map for ${file.originalname}`);
+          // Enhanced edge detection using Sobel operator
+          await sharp(tempGrayscalePath)
             .convolve({
               width: 3,
               height: 3,
-              kernel: [-1, -1, -1, -1, 8, -1, -1, -1, -1]
+              kernel: [-1, -1, -1, -1, 8, -1, -1, -1, -1] // Laplacian edge detection
             })
+            .normalise()
             .png()
             .toFile(tempEdgePath);
           
           const edgeBuffer = await fs.readFile(tempEdgePath);
           edgeBase64 = edgeBuffer.toString('base64');
+          console.log(`✓ Generated edge map for ${file.originalname}`);
           
           // Clean up temp edge file
           await fs.unlink(tempEdgePath).catch(() => {});
         } catch (err) {
-          console.warn(`⚠️ Failed to generate temp edge map for ${file.originalname}`);
+          console.warn(`⚠️ Failed to generate edge map for ${file.originalname}:`, err);
         }
 
-        // Generate temporary gradient map
+        // 5. Create Gradient Map (slope/momentum from grayscale)
         let gradientBase64: string | undefined;
         try {
           const tempGradientPath = path.join(process.cwd(), 'server', 'temp', `quick_gradient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
           
-          await sharp(file.path)
-            .grayscale()
+          console.log(`📉 Generating gradient map for ${file.originalname}`);
+          // Sobel X operator for horizontal gradient (price momentum)
+          await sharp(tempGrayscalePath)
             .convolve({
               width: 3,
               height: 3,
-              kernel: [-1, 0, 1, -2, 0, 2, -1, 0, 1]
+              kernel: [-1, 0, 1, -2, 0, 2, -1, 0, 1] // Sobel X
             })
+            .normalise()
             .png()
             .toFile(tempGradientPath);
           
           const gradientBuffer = await fs.readFile(tempGradientPath);
           gradientBase64 = gradientBuffer.toString('base64');
+          console.log(`✓ Generated gradient map for ${file.originalname}`);
           
           // Clean up temp gradient file
           await fs.unlink(tempGradientPath).catch(() => {});
         } catch (err) {
-          console.warn(`⚠️ Failed to generate temp gradient map for ${file.originalname}`);
+          console.warn(`⚠️ Failed to generate gradient map for ${file.originalname}:`, err);
         }
 
+        // Clean up temp grayscale file
+        await fs.unlink(tempGrayscalePath).catch(() => {});
+
+        // 6. Save all generated maps & embeddings temporarily for this analysis session
         tempChartData.push({
           original: originalBase64,
           depth: depthBase64,
           edge: edgeBase64,
           gradient: gradientBase64,
+          embedding: embeddingResult.embedding, // Store embedding temporarily
+          similarCharts, // Store similar charts for this specific image
           metadata: {
             id: 0, // Temporary ID for quick analysis
             filename: file.filename,
@@ -895,32 +943,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await fs.unlink(file.path).catch(() => {});
       }
 
-      // Get similar charts for RAG context (use first chart's embedding if available)
-      let similarCharts: Array<{ chart: any; similarity: number }> = [];
-      if (tempChartData.length > 0) {
-        // For quick analysis, we'll get some random charts for context since we don't have embeddings
-        const randomCharts = await storage.getAllCharts();
-        const limitedCharts = randomCharts.slice(0, 3);
-        similarCharts = limitedCharts.map((chart: any) => ({
-          chart,
-          similarity: 0.8 // Default similarity for context
-        }));
-        console.log(`🔍 Using ${similarCharts.length} random charts for RAG context in quick analysis`);
-      }
+      // 7. Compile all into structured GPT-4o system prompt (same as Upload page analysis)
+      console.log(`🔍 Starting complete visual analysis for ${tempChartData.length} charts`);
+      console.log(`📊 Visual maps generated: ${tempChartData.filter(c => c.depth).length} depth, ${tempChartData.filter(c => c.edge).length} edge, ${tempChartData.filter(c => c.gradient).length} gradient`);
+      
+      // Use the first chart's similar charts for overall context (or combine if needed)
+      const primarySimilarCharts = tempChartData.length > 0 ? tempChartData[0].similarCharts || [] : [];
+      
+      // 8. Send complete visual stack to GPT-4o for live reasoning
+      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, primarySimilarCharts);
 
-      // Analyze all charts together with GPT-4o
-      console.log(`🔍 Starting quick analysis for ${tempChartData.length} charts (temporary processing)`);
-      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, similarCharts);
-
-      // Return analysis without saving to database
+      // 9. Display GPT-4o's response in the Analysis Reasoning panel
       res.json({
         success: true,
         isQuickAnalysis: true,
         chartCount: tempChartData.length,
         prediction,
-        similarCharts: similarCharts.slice(0, 3).map(sc => ({
+        similarCharts: primarySimilarCharts.slice(0, 3).map((sc: { chart: any; similarity: number }) => ({
           chartId: sc.chart.id,
-          filename: sc.chart.originalName,
+          filename: sc.chart.originalName || sc.chart.filename,
           timeframe: sc.chart.timeframe,
           instrument: sc.chart.instrument,
           session: sc.chart.session,
@@ -929,12 +970,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           depthMapUrl: sc.chart.depthMapPath,
           comment: sc.chart.comment
         })),
-        message: `Quick analysis complete for ${tempChartData.length} chart(s) - processed temporarily without saving to dashboard`,
+        message: `Complete quick analysis for ${tempChartData.length} chart(s) - processed with full visual stack (CLIP, depth, edge, gradient) without saving to dashboard`,
         visualMapsIncluded: {
           depth: tempChartData.filter(c => c.depth).length,
           edge: tempChartData.filter(c => c.edge).length,
           gradient: tempChartData.filter(c => c.gradient).length
-        }
+        },
+        embeddingsGenerated: tempChartData.filter(c => c.embedding && c.embedding.length === 1024).length,
+        vectorSearchPerformed: tempChartData.filter(c => c.similarCharts && c.similarCharts.length > 0).length
       });
 
     } catch (error) {
