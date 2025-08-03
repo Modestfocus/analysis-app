@@ -10,7 +10,7 @@ import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
 import ChartDrawingOverlay from "@/components/chart-drawing-overlay";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import { PanelGroup, Panel, PanelResizeHandle, ImperativePanelHandle } from "react-resizable-panels";
 
 import { captureChartScreenshot, findChartContainer } from "@/utils/screenshot";
 
@@ -20,6 +20,7 @@ export default function ChartsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
   const initializingRef = useRef<boolean>(false);
+  const tradingPanelRef = useRef<ImperativePanelHandle>(null);
   const [currentSymbol, setCurrentSymbol] = useState("NAS100");
   const [isChartReady, setIsChartReady] = useState(false);
   const [selectedDrawingTool, setSelectedDrawingTool] = useState("cursor");
@@ -337,7 +338,14 @@ export default function ChartsPage() {
   }, []);
 
   const handleToggleTradingPanelMinimize = useCallback(() => {
-    setIsTradingPanelMinimized(!isTradingPanelMinimized);
+    const newMinimizedState = !isTradingPanelMinimized;
+    setIsTradingPanelMinimized(newMinimizedState);
+    
+    // Resize the panel programmatically
+    if (tradingPanelRef.current) {
+      const newSize = newMinimizedState ? 8 : 35; // 8% when minimized, 35% when expanded
+      tradingPanelRef.current.resize(newSize);
+    }
   }, [isTradingPanelMinimized]);
 
   // Panel collapse/expand handlers
@@ -536,7 +544,7 @@ export default function ChartsPage() {
 
           {/* Trading Panel - Always visible, resizable from top */}
           {showTradingPanel && (
-            <Panel defaultSize={isTradingPanelMinimized ? 10 : 35} minSize={8} maxSize={60}>
+            <Panel ref={tradingPanelRef} defaultSize={isTradingPanelMinimized ? 10 : 35} minSize={8} maxSize={60}>
               <div className="h-full relative">
                 <TradingPanel 
                   currentSymbol={currentSymbol}
