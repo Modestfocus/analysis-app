@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -31,7 +32,8 @@ import {
   X,
   RefreshCw,
   CloudUpload,
-  CheckCircle
+  CheckCircle,
+  Eye
 } from 'lucide-react';
 
 interface Position {
@@ -134,6 +136,9 @@ export default function TradingPanel({
   const [quickAnalysisTimeframes, setQuickAnalysisTimeframes] = useState<{ [fileName: string]: Timeframe }>({});
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imagePreviewName, setImagePreviewName] = useState<string>('');
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -300,6 +305,23 @@ export default function TradingPanel({
 
   const runQuickAnalysis = () => {
     quickAnalysisMutation.mutate();
+  };
+
+  // Image preview functions
+  const openImagePreview = (file: File) => {
+    const imageUrl = URL.createObjectURL(file);
+    setImagePreviewUrl(imageUrl);
+    setImagePreviewName(file.name);
+    setIsImagePreviewOpen(true);
+  };
+
+  const closeImagePreview = () => {
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+    setImagePreviewUrl(null);
+    setImagePreviewName('');
+    setIsImagePreviewOpen(false);
   };
 
   // Screenshot drag and drop handlers
@@ -777,12 +799,18 @@ export default function TradingPanel({
                               <div key={index} className="bg-white dark:bg-gray-700 p-2 rounded border">
                                 <div className="flex items-center space-x-3 mb-2">
                                   <div className="flex-shrink-0">
-                                    <img 
-                                      src={imageUrl} 
-                                      alt={file.name}
-                                      className="w-8 h-8 object-cover rounded border"
-                                      onLoad={() => URL.revokeObjectURL(imageUrl)}
-                                    />
+                                    <div className="relative group">
+                                      <img 
+                                        src={imageUrl} 
+                                        alt={file.name}
+                                        className="w-8 h-8 object-cover rounded border cursor-pointer hover:opacity-75 transition-opacity"
+                                        onClick={() => openImagePreview(file)}
+                                        onLoad={() => URL.revokeObjectURL(imageUrl)}
+                                      />
+                                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
+                                        <Eye className="w-3 h-3 text-white" />
+                                      </div>
+                                    </div>
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <span className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate block">
@@ -1032,11 +1060,39 @@ export default function TradingPanel({
                 </Card>
               </div>
             </TabsContent>
-              </div>
-            </Tabs>
-          </div>
-        )}
-      </div>
+            </div>
+          </Tabs>
+        </div>
+      )}
+    </div>
+
+    {/* Image Preview Modal */}
+    <Dialog open={isImagePreviewOpen} onOpenChange={setIsImagePreviewOpen}>
+      <DialogContent className="max-w-4xl w-full h-[80vh] p-0">
+        <DialogHeader className="p-4 pb-2">
+          <DialogTitle className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {imagePreviewName}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 flex items-center justify-center p-4 pt-2">
+          {imagePreviewUrl && (
+            <img
+              src={imagePreviewUrl || ''}
+              alt={imagePreviewName}
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onLoad={() => {
+                // Keep the URL for the modal, don't revoke it here
+              }}
+            />
+          )}
+        </div>
+        <div className="p-4 pt-2 flex justify-end">
+          <Button variant="outline" onClick={closeImagePreview}>
+            Close
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     </div>
   );
 }
