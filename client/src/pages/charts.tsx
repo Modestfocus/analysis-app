@@ -10,7 +10,7 @@ import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
 import ChartDrawingOverlay from "@/components/chart-drawing-overlay";
-import ScreenshotSelector from "@/components/screenshot-selector";
+
 import { PanelGroup, Panel, PanelResizeHandle, ImperativePanelHandle } from "react-resizable-panels";
 
 import { captureChartScreenshot, findChartContainer } from "@/utils/screenshot";
@@ -45,7 +45,6 @@ export default function ChartsPage() {
   
   // Screenshot files for Analysis tab
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
-  const [isScreenshotSelectorOpen, setIsScreenshotSelectorOpen] = useState(false);
   const { toast } = useToast();
   
 
@@ -82,8 +81,22 @@ export default function ChartsPage() {
       
       // Clear existing content
       containerRef.current.innerHTML = '';
+      
+      // Create a div for the TradingView widget
+      const widgetDiv = document.createElement('div');
+      widgetDiv.className = 'tradingview-widget-container';
+      widgetDiv.style.height = '100%';
+      widgetDiv.style.width = '100%';
+      
+      const innerDiv = document.createElement('div');
+      innerDiv.id = 'tradingview_chart';
+      innerDiv.style.height = '100%';
+      innerDiv.style.width = '100%';
+      
+      widgetDiv.appendChild(innerDiv);
+      containerRef.current.appendChild(widgetDiv);
 
-      // Create TradingView widget script
+      // Use the original embedded widget approach but with access to the widget instance
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
@@ -120,16 +133,26 @@ export default function ChartsPage() {
         setIsChartReady(true);
         initializingRef.current = false;
         
-        // Try to capture widget reference for resizing
+        // Try to capture widget reference - check multiple possible locations
         setTimeout(() => {
-          const widget = (window as any).TradingView?.widget;
-          if (widget) {
-            setTvWidget(widget);
+          const possibleWidgets = [
+            (window as any).TradingView?.widget,
+            (window as any).tvWidget,
+            (document.querySelector('#tradingview_chart iframe') as HTMLIFrameElement)?.contentWindow?.TradingView?.widget
+          ];
+          
+          for (const widget of possibleWidgets) {
+            if (widget) {
+              console.log("Found TradingView widget instance");
+              setTvWidget(widget);
+              widgetRef.current = widget;
+              break;
+            }
           }
-        }, 1000);
+        }, 2000);
       };
 
-      containerRef.current.appendChild(script);
+      widgetDiv.appendChild(script);
     } catch (error) {
       console.error("Error initializing chart:", error);
       setIsChartReady(false);
@@ -406,27 +429,80 @@ export default function ChartsPage() {
     }
   }, []);
 
-  // Screenshot capture functionality
-  const handleTakeScreenshot = useCallback(() => {
-    // Open the fullscreen area selection overlay
-    setIsScreenshotSelectorOpen(true);
-  }, []);
+  // Screenshot capture functionality - Try TradingView API first, fallback to html2canvas
+  const handleTakeScreenshot = useCallback(async () => {
+    if (!isChartReady) {
+      toast({
+        title: "Chart Not Ready",
+        description: "Please wait for the chart to load before taking a screenshot.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  // Handle screenshot capture from area selection
-  const handleScreenshotCapture = useCallback((file: File) => {
-    // Add the screenshot to the existing files for the Trading Panel Analysis tab
-    setScreenshotFiles(prev => [...prev, file]);
-    
-    toast({
-      title: "Screenshot Captured",
-      description: "Selected area screenshot added to Analysis tab",
-    });
-  }, [toast]);
+    try {
+      toast({
+        title: "Capturing Screenshot",
+        description: "Capturing chart image...",
+      });
 
-  // Handle closing screenshot selector
-  const handleCloseScreenshotSelector = useCallback(() => {
-    setIsScreenshotSelectorOpen(false);
-  }, []);
+      let screenshotFile: File | null = null;
+
+      // First, try TradingView widget API if available
+      if (widgetRef.current && typeof widgetRef.current.activeChart === 'function') {
+        try {
+          console.log("Attempting TradingView API screenshot...");
+          const base64Image = await widgetRef.current.activeChart().takeScreenshot();
+          
+          if (base64Image) {
+            // Convert base64 to File object
+            const response = await fetch(`data:image/png;base64,${base64Image}`);
+            const blob = await response.blob();
+            const timestamp = Date.now();
+            screenshotFile = new File([blob], `tradingview-api-${timestamp}.png`, {
+              type: 'image/png',
+              lastModified: timestamp,
+            });
+            console.log("TradingView API screenshot successful");
+          }
+        } catch (apiError) {
+          console.log("TradingView API screenshot failed, trying fallback:", apiError);
+        }
+      }
+
+      // Fallback to html2canvas if TradingView API didn't work
+      if (!screenshotFile) {
+        console.log("Using html2canvas fallback...");
+        const chartElement = findChartContainer() || containerRef.current;
+        
+        if (!chartElement) {
+          throw new Error("Could not find chart area to capture");
+        }
+
+        screenshotFile = await captureChartScreenshot(chartElement);
+      }
+
+      // Add the screenshot to the files for Analysis tab
+      setScreenshotFiles(prev => [...prev, screenshotFile!]);
+      
+      toast({
+        title: "Screenshot Captured",
+        description: "Chart screenshot added to Analysis tab for Quick Analysis",
+      });
+
+    } catch (error) {
+      console.error("Screenshot capture failed:", error);
+      toast({
+        title: "Screenshot Failed",
+        description: "Could not capture chart screenshot. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [isChartReady, toast]);
+
+
+
+
 
   const handleClearScreenshots = useCallback(() => {
     setScreenshotFiles([]);
@@ -586,12 +662,7 @@ export default function ChartsPage() {
           onToggleVisibility={handleToggleDrawingVisibility}
         />
 
-        {/* Screenshot Area Selector */}
-        <ScreenshotSelector
-          isOpen={isScreenshotSelectorOpen}
-          onClose={handleCloseScreenshotSelector}
-          onScreenshotCapture={handleScreenshotCapture}
-        />
+
       </div>
     </div>
   );
