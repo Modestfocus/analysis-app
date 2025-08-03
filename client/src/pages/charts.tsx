@@ -358,14 +358,27 @@ export default function ChartsPage() {
   }, [isTradingPanelCollapsed]);
 
   // Resize handlers for TradingView chart refresh
-  const handlePanelResize = useCallback(() => {
+  const handlePanelResize = useCallback((panelSizes: number[]) => {
     // Trigger TradingView chart resize when panels are resized
     if (tvWidget && typeof tvWidget.resize === 'function') {
       setTimeout(() => {
         tvWidget.resize();
       }, 100);
     }
-  }, [tvWidget]);
+    
+    // Check if trading panel was manually resized
+    if (panelSizes.length >= 2) {
+      const tradingPanelSize = panelSizes[1]; // Trading panel is the second panel
+      
+      // If panel is manually dragged to be larger than 15%, consider it expanded
+      // If it's smaller than 15%, consider it minimized
+      const shouldBeMinimized = tradingPanelSize < 15;
+      
+      if (shouldBeMinimized !== isTradingPanelMinimized) {
+        setIsTradingPanelMinimized(shouldBeMinimized);
+      }
+    }
+  }, [tvWidget, isTradingPanelMinimized]);
 
   // Drawing handlers
   const handleDrawingComplete = useCallback((drawing: any) => {
