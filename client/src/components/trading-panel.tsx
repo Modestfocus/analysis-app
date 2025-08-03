@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -128,6 +127,11 @@ export default function TradingPanel({
   const [takeProfit, setTakeProfit] = useState('');
   const [selectedTab, setSelectedTab] = useState("trading");
   
+  // Resizable panel state
+  const [panelHeight, setPanelHeight] = useState(isMinimized ? 48 : 400);
+  const [isResizing, setIsResizing] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  
   // Quick Chart Analysis state (moved from Upload page)
   const [internalQuickAnalysisFiles, setInternalQuickAnalysisFiles] = useState<File[]>([]);
   const [quickAnalysisTimeframes, setQuickAnalysisTimeframes] = useState<{ [fileName: string]: Timeframe }>({});
@@ -176,6 +180,43 @@ export default function TradingPanel({
       onTakeScreenshot();
     }
   };
+
+  // Resizable panel handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+    
+    const newHeight = window.innerHeight - e.clientY;
+    const minHeight = 48;
+    const maxHeight = window.innerHeight * 0.8;
+    
+    setPanelHeight(Math.max(minHeight, Math.min(maxHeight, newHeight)));
+  }, [isResizing]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // Add global event listeners for mouse events during resize
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp]);
+
+  // Update panel height when minimized state changes
+  useEffect(() => {
+    setPanelHeight(isMinimized ? 48 : 400);
+  }, [isMinimized]);
 
   // Quick Chart Analysis functions (moved from Upload page)
   const handleQuickAnalysisFiles = useCallback((files: FileList | File[] | File) => {
@@ -367,20 +408,20 @@ export default function TradingPanel({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 h-auto min-h-[48px] max-h-[80vh] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-      <PanelGroup direction="vertical" className="h-full min-h-[48px]">
-        <Panel 
-          id="trading-panel-content"
-          order={1}
-          defaultSize={isMinimized ? 10 : 50}
-          minSize={10}
-          maxSize={90}
-          className="flex flex-col h-full"
-        >
-          <PanelResizeHandle className="h-2 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-400 transition-colors cursor-row-resize border-b border-gray-300 dark:border-gray-600 flex items-center justify-center group">
-            <div className="w-8 h-1 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:bg-white transition-colors"></div>
-          </PanelResizeHandle>
-          <div className="container mx-auto px-4 flex-1 overflow-y-auto">
+    <div 
+      ref={panelRef}
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex flex-col"
+      style={{ height: `${panelHeight}px` }}
+    >
+      {/* Resize Handle */}
+      <div 
+        className="h-2 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-400 transition-colors cursor-row-resize border-b border-gray-300 dark:border-gray-600 flex items-center justify-center group select-none"
+        onMouseDown={handleMouseDown}
+      >
+        <div className="w-8 h-1 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:bg-white transition-colors"></div>
+      </div>
+      
+      <div className="container mx-auto px-4 flex-1 overflow-y-auto min-h-0">
             {/* Header with toggle button */}
             <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2">
@@ -1038,9 +1079,7 @@ export default function TradingPanel({
           </div>
         </Tabs>
         )}
-          </div>
-        </Panel>
-      </PanelGroup>
+      </div>
     </div>
   );
 }
