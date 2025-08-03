@@ -247,48 +247,39 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       ctx.stroke();
     });
 
-    // Restore context
+    // Restore context after drawing candlesticks
     ctx.restore();
 
-    // Draw volume bars at bottom
-    const volumeHeight = 60;
-    const volumeArea = height - padding - volumeHeight;
-    const maxVolume = Math.max(...data.map(d => d.volume));
+    // Skip volume bars to avoid overlap with time labels
+    // Volume removed to ensure time labels are visible
     
-    data.forEach((candle, index) => {
-      const x = padding + (index * chartWidth) / data.length;
-      const barHeight = (candle.volume / maxVolume) * volumeHeight;
-      const isGreen = candle.close > candle.open;
-      
-      ctx.fillStyle = isGreen ? '#4CAF5080' : '#F4433680';
-      ctx.fillRect(x, volumeArea + volumeHeight - barHeight, candleWidth, barHeight);
-    });
-
-    // Enhanced Price Labels - Right side axis
-    ctx.fillStyle = '#666';
-    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
-    ctx.textAlign = 'left';
-    
-    // Draw price scale background
+    // Enhanced Price Labels - Right side axis (drawn without transforms)
     ctx.fillStyle = '#f8f9fa';
     ctx.fillRect(width - rightPadding, padding, rightPadding, chartHeight);
     
-    // Price labels with more intervals
     ctx.fillStyle = '#666';
-    const labelPriceIntervals = 10;
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.textAlign = 'left';
+    
+    const labelPriceIntervals = 8;
     for (let i = 0; i <= labelPriceIntervals; i++) {
       const price = minPrice + (priceRange * (labelPriceIntervals - i)) / labelPriceIntervals;
       const y = padding + (chartHeight * i) / labelPriceIntervals;
       
-      // Draw price label background
-      ctx.fillStyle = '#f8f9fa';
-      ctx.fillRect(width - rightPadding + 2, y - 8, rightPadding - 4, 16);
+      // Price background rectangle
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(width - rightPadding + 5, y - 10, rightPadding - 10, 20);
+      
+      // Border for price label
+      ctx.strokeStyle = '#e0e0e0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(width - rightPadding + 5, y - 10, rightPadding - 10, 20);
       
       // Price text
-      ctx.fillStyle = '#666';
-      ctx.fillText(price.toFixed(2), width - rightPadding + 8, y + 4);
+      ctx.fillStyle = '#333';
+      ctx.fillText(price.toFixed(2), width - rightPadding + 10, y + 4);
       
-      // Small tick mark
+      // Tick mark extending from chart
       ctx.strokeStyle = '#ccc';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -297,32 +288,43 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       ctx.stroke();
     }
 
-    // Enhanced Time Labels - Bottom axis
+    // Enhanced Time Labels - Bottom axis (drawn without transforms)
     ctx.fillStyle = '#f8f9fa';
     ctx.fillRect(padding, height - bottomPadding, width - padding - rightPadding, bottomPadding);
     
-    ctx.fillStyle = '#666';
-    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#333';
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
     ctx.textAlign = 'center';
     
-    const labelTimeIntervals = 12;
-    const currentTime = new Date();
+    const labelTimeIntervals = 8;
+    const baseChartWidthForLabels = width - padding - rightPadding;
+    
     for (let i = 0; i <= labelTimeIntervals; i++) {
-      const x = padding + (chartWidth * i) / labelTimeIntervals;
+      const x = padding + (baseChartWidthForLabels * i) / labelTimeIntervals;
       
       // Generate realistic time labels
-      const timeOffset = (i * 2); // 2-hour intervals
-      const labelTime = new Date(currentTime.getTime() - (labelTimeIntervals - i) * 2 * 60 * 60 * 1000);
-      const timeLabel = `${labelTime.getHours().toString().padStart(2, '0')}:${labelTime.getMinutes().toString().padStart(2, '0')}`;
+      const hour = 9 + (i * 2); // Start at 9:00 AM with 2-hour intervals
+      const timeLabel = `${hour.toString().padStart(2, '0')}:00`;
       
-      ctx.fillText(timeLabel, x, height - 15);
+      // Time background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x - 20, height - bottomPadding + 10, 40, 20);
       
-      // Small tick mark
+      // Border for time label
+      ctx.strokeStyle = '#e0e0e0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 20, height - bottomPadding + 10, 40, 20);
+      
+      // Time text
+      ctx.fillStyle = '#333';
+      ctx.fillText(timeLabel, x, height - bottomPadding + 24);
+      
+      // Tick mark extending from chart
       ctx.strokeStyle = '#ccc';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x, height - bottomPadding);
-      ctx.lineTo(x, height - bottomPadding + 5);
+      ctx.lineTo(x, height - bottomPadding + 10);
       ctx.stroke();
     }
 
