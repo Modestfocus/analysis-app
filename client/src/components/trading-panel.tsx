@@ -139,6 +139,7 @@ export default function TradingPanel({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imagePreviewName, setImagePreviewName] = useState<string>('');
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [fileObjectUrls, setFileObjectUrls] = useState<Map<string, string>>(new Map());
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -248,9 +249,19 @@ export default function TradingPanel({
   }, [propQuickAnalysisFiles, toast]);
 
   const clearQuickAnalysisFiles = useCallback(() => {
+    // Clean up URLs for internal files
+    internalQuickAnalysisFiles.forEach(file => {
+      const fileKey = `${file.name}_${file.size}_${file.lastModified}`;
+      const url = fileObjectUrls.get(fileKey);
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
+    });
+    
     // Clear internal files
     setInternalQuickAnalysisFiles([]);
     setQuickAnalysisTimeframes({});
+    setFileObjectUrls(new Map());
     
     // Clear screenshot files from parent component
     if (onClearScreenshots) {
@@ -316,22 +327,38 @@ export default function TradingPanel({
     quickAnalysisMutation.mutate();
   };
 
+  // Get or create object URL for a file
+  const getFileUrl = useCallback((file: File) => {
+    const fileKey = `${file.name}_${file.size}_${file.lastModified}`;
+    let url = fileObjectUrls.get(fileKey);
+    if (!url) {
+      url = URL.createObjectURL(file);
+      setFileObjectUrls(prev => new Map(prev).set(fileKey, url));
+    }
+    return url;
+  }, [fileObjectUrls]);
+
   // Image preview functions
   const openImagePreview = (file: File) => {
-    const imageUrl = URL.createObjectURL(file);
+    const imageUrl = getFileUrl(file);
     setImagePreviewUrl(imageUrl);
     setImagePreviewName(file.name);
     setIsImagePreviewOpen(true);
   };
 
   const closeImagePreview = () => {
-    if (imagePreviewUrl) {
-      URL.revokeObjectURL(imagePreviewUrl);
-    }
     setImagePreviewUrl(null);
     setImagePreviewName('');
     setIsImagePreviewOpen(false);
   };
+
+  // Cleanup URLs when files are removed
+  useEffect(() => {
+    return () => {
+      // Cleanup all URLs on unmount
+      fileObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [fileObjectUrls]);
 
   // Screenshot drag and drop handlers
   const handleDragOver = (e: React.DragEvent) => {
@@ -803,7 +830,7 @@ export default function TradingPanel({
                         </div>
                         <div className="space-y-2 max-h-32 overflow-y-auto">
                           {quickAnalysisFiles.map((file, index) => {
-                            const imageUrl = URL.createObjectURL(file);
+                            const imageUrl = getFileUrl(file);
                             return (
                               <div key={`${file.name}-${index}`} className="bg-white dark:bg-gray-700 p-2 rounded border">
                                 <div className="flex items-center space-x-3 mb-2">
@@ -813,10 +840,6 @@ export default function TradingPanel({
                                         src={imageUrl} 
                                         alt={file.name}
                                         className="w-8 h-8 object-cover rounded border hover:opacity-75 transition-opacity"
-                                        onLoad={() => {
-                                          // Clean up the URL after image loads to prevent memory leaks
-                                          setTimeout(() => URL.revokeObjectURL(imageUrl), 100);
-                                        }}
                                       />
                                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
                                         <Eye className="w-3 h-3 text-white" />
