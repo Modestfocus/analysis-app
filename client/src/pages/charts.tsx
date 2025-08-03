@@ -443,6 +443,10 @@ export default function ChartsPage() {
     }
   }, [toast]);
 
+  const handleClearScreenshots = useCallback(() => {
+    setScreenshotFiles([]);
+  }, []);
+
 
 
 
@@ -566,6 +570,7 @@ export default function ChartsPage() {
                   onToggleMinimize={handleToggleTradingPanelMinimize}
                   quickAnalysisFiles={screenshotFiles}
                   onTakeScreenshot={handleTakeScreenshot}
+                  onClearScreenshots={handleClearScreenshots}
                 />
               </div>
             </Panel>

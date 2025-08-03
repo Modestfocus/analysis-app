@@ -67,6 +67,7 @@ interface TradingPanelProps {
   onCloseQuickAnalysis?: () => void;
   quickAnalysisFiles?: File[];
   onTakeScreenshot?: () => void;
+  onClearScreenshots?: () => void;
 }
 
 // Mock data for demonstration
@@ -117,7 +118,8 @@ export default function TradingPanel({
   isQuickAnalysisOpen, 
   onCloseQuickAnalysis, 
   quickAnalysisFiles: propQuickAnalysisFiles,
-  onTakeScreenshot
+  onTakeScreenshot,
+  onClearScreenshots
 }: TradingPanelProps) {
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
@@ -232,10 +234,17 @@ export default function TradingPanel({
   }, [propQuickAnalysisFiles, toast]);
 
   const clearQuickAnalysisFiles = useCallback(() => {
+    // Clear internal files
     setInternalQuickAnalysisFiles([]);
     setQuickAnalysisTimeframes({});
+    
+    // Clear screenshot files from parent component
+    if (onClearScreenshots) {
+      onClearScreenshots();
+    }
+    
     // Don't clear analysis results when clearing files
-  }, []);
+  }, [onClearScreenshots]);
 
   // Quick Analysis mutation
   const quickAnalysisMutation = useMutation({
