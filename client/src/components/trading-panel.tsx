@@ -160,6 +160,15 @@ export default function TradingPanel({
     }
   }, [quickAnalysisFiles]);
 
+  // Cleanup image URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
+
   // Update timeframes when new prop files are received
   useEffect(() => {
     if (propQuickAnalysisFiles && propQuickAnalysisFiles.length > 0) {
@@ -794,18 +803,16 @@ export default function TradingPanel({
                         </div>
                         <div className="space-y-2 max-h-32 overflow-y-auto">
                           {quickAnalysisFiles.map((file, index) => {
-                            const imageUrl = URL.createObjectURL(file);
+                            const imageUrl = useMemo(() => URL.createObjectURL(file), [file]);
                             return (
-                              <div key={index} className="bg-white dark:bg-gray-700 p-2 rounded border">
+                              <div key={`${file.name}-${index}`} className="bg-white dark:bg-gray-700 p-2 rounded border">
                                 <div className="flex items-center space-x-3 mb-2">
                                   <div className="flex-shrink-0">
-                                    <div className="relative group">
+                                    <div className="relative group cursor-pointer" onClick={() => openImagePreview(file)}>
                                       <img 
                                         src={imageUrl} 
                                         alt={file.name}
-                                        className="w-8 h-8 object-cover rounded border cursor-pointer hover:opacity-75 transition-opacity"
-                                        onClick={() => openImagePreview(file)}
-                                        onLoad={() => URL.revokeObjectURL(imageUrl)}
+                                        className="w-8 h-8 object-cover rounded border hover:opacity-75 transition-opacity"
                                       />
                                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
                                         <Eye className="w-3 h-3 text-white" />
