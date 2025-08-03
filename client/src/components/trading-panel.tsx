@@ -127,11 +127,6 @@ export default function TradingPanel({
   const [takeProfit, setTakeProfit] = useState('');
   const [selectedTab, setSelectedTab] = useState("trading");
   
-  // Resizable panel state
-  const [panelHeight, setPanelHeight] = useState(isMinimized ? 48 : 400);
-  const [isResizing, setIsResizing] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  
   // Quick Chart Analysis state (moved from Upload page)
   const [internalQuickAnalysisFiles, setInternalQuickAnalysisFiles] = useState<File[]>([]);
   const [quickAnalysisTimeframes, setQuickAnalysisTimeframes] = useState<{ [fileName: string]: Timeframe }>({});
@@ -180,43 +175,6 @@ export default function TradingPanel({
       onTakeScreenshot();
     }
   };
-
-  // Resizable panel handlers
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  }, []);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isResizing) return;
-    
-    const newHeight = window.innerHeight - e.clientY;
-    const minHeight = 48;
-    const maxHeight = window.innerHeight * 0.8;
-    
-    setPanelHeight(Math.max(minHeight, Math.min(maxHeight, newHeight)));
-  }, [isResizing]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  // Add global event listeners for mouse events during resize
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
-
-  // Update panel height when minimized state changes
-  useEffect(() => {
-    setPanelHeight(isMinimized ? 48 : 400);
-  }, [isMinimized]);
 
   // Quick Chart Analysis functions (moved from Upload page)
   const handleQuickAnalysisFiles = useCallback((files: FileList | File[] | File) => {
@@ -408,54 +366,43 @@ export default function TradingPanel({
   };
 
   return (
-    <div 
-      ref={panelRef}
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex flex-col"
-      style={{ height: `${panelHeight}px` }}
-    >
-      {/* Resize Handle */}
-      <div 
-        className="h-2 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-400 transition-colors cursor-row-resize border-b border-gray-300 dark:border-gray-600 flex items-center justify-center group select-none"
-        onMouseDown={handleMouseDown}
-      >
-        <div className="w-8 h-1 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:bg-white transition-colors"></div>
-      </div>
-      
-      <div className="container mx-auto px-4 flex-1 overflow-y-auto min-h-0">
-            {/* Header with toggle button */}
-            <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                <span className="text-sm font-medium">Trading Panel</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggleMinimize}
-                className="h-6 w-6 p-0"
-              >
-                {isMinimized ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+    <div className="h-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="h-full px-4 flex flex-col">
+        {/* Header with toggle button */}
+        <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="text-sm font-medium">Trading Panel</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleMinimize}
+            className="h-6 w-6 p-0"
+          >
+            {isMinimized ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
 
         {!isMinimized && (
-          <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-            <TabsList className="grid grid-cols-5 w-full max-w-2xl mt-2">
-              <TabsTrigger value="trading">Trading</TabsTrigger>
-              <TabsTrigger value="positions">Positions</TabsTrigger>
-              <TabsTrigger value="orders">Orders</TabsTrigger>
-              <TabsTrigger value="account">Account</TabsTrigger>
-              <TabsTrigger value="analysis" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-700">
-                <Zap className="h-3 w-3 mr-1" />
-                Analysis
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="h-full flex flex-col">
+              <TabsList className="grid grid-cols-5 w-full max-w-2xl mt-2 flex-shrink-0">
+                <TabsTrigger value="trading">Trading</TabsTrigger>
+                <TabsTrigger value="positions">Positions</TabsTrigger>
+                <TabsTrigger value="orders">Orders</TabsTrigger>
+                <TabsTrigger value="account">Account</TabsTrigger>
+                <TabsTrigger value="analysis" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-700">
+                  <Zap className="h-3 w-3 mr-1" />
+                  Analysis
+                </TabsTrigger>
+              </TabsList>
 
-          <div className="py-4">
+              <div className="py-4 flex-1 min-h-0 overflow-y-auto">
             {/* Trading Tab */}
             <TabsContent value="trading">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1076,8 +1023,9 @@ export default function TradingPanel({
                 </Card>
               </div>
             </TabsContent>
+              </div>
+            </Tabs>
           </div>
-        </Tabs>
         )}
       </div>
     </div>
