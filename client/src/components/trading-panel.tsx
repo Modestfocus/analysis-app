@@ -220,12 +220,22 @@ export default function TradingPanel({
   }, []);
 
   const removeQuickAnalysisFile = useCallback((index: number) => {
+    console.log('🗑️ Remove file clicked - Index:', index);
+    console.log('📊 Current state:', {
+      propFileCount: propQuickAnalysisFiles?.length || 0,
+      internalFileCount: internalQuickAnalysisFiles.length,
+      totalFiles: quickAnalysisFiles.length,
+      propFiles: propQuickAnalysisFiles?.map(f => f.name) || [],
+      internalFiles: internalQuickAnalysisFiles.map(f => f.name)
+    });
+    
     const propFileCount = propQuickAnalysisFiles?.length || 0;
     const totalFiles = quickAnalysisFiles.length;
     
     // Check if it's a prop file (screenshot from chart) or internal file (uploaded)
     if (index < propFileCount) {
       // This is a screenshot from the chart - can't remove directly
+      console.log('❌ Attempting to remove prop file (screenshot)');
       toast({
         title: "Cannot remove screenshot",
         description: "Screenshots taken from the chart cannot be removed from here.",
@@ -236,12 +246,17 @@ export default function TradingPanel({
     
     // This is an uploaded file - can be removed
     const internalIndex = index - propFileCount;
+    console.log('✅ Removing internal file at index:', internalIndex);
+    
     const fileToRemove = internalQuickAnalysisFiles[internalIndex];
     
     if (!fileToRemove) {
-      console.error('File not found at internal index:', internalIndex);
+      console.error('❌ File not found at internal index:', internalIndex);
+      console.error('Available internal files:', internalQuickAnalysisFiles.map((f, i) => ({ index: i, name: f.name })));
       return;
     }
+    
+    console.log('🗑️ Removing file:', fileToRemove.name);
     
     // Clean up URL for this file
     const fileKey = `${fileToRemove.name}_${fileToRemove.size}_${fileToRemove.lastModified}`;
@@ -257,7 +272,9 @@ export default function TradingPanel({
     
     // Remove from internal files
     setInternalQuickAnalysisFiles((prev: File[]) => {
-      return prev.filter((_: File, i: number) => i !== internalIndex);
+      const newFiles = prev.filter((_: File, i: number) => i !== internalIndex);
+      console.log('📝 Files after removal:', newFiles.map(f => f.name));
+      return newFiles;
     });
     
     // Remove timeframe for this file
@@ -265,6 +282,11 @@ export default function TradingPanel({
       const newTf = { ...prevTf };
       delete newTf[fileToRemove.name];
       return newTf;
+    });
+    
+    toast({
+      title: "File removed",
+      description: `Removed ${fileToRemove.name}`,
     });
   }, [propQuickAnalysisFiles, internalQuickAnalysisFiles, fileObjectUrls, quickAnalysisFiles, toast]);
 
