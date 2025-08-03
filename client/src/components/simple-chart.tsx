@@ -52,6 +52,10 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
   const [priceChangePercent, setPriceChangePercent] = useState<number | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredCandle, setHoveredCandle] = useState<any>(null);
+  const [chartOffset, setChartOffset] = useState(0);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
 
   // Generate sample candlestick data
   const generateSampleData = useCallback(() => {
@@ -99,7 +103,7 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     return data;
   }, [symbol]);
 
-  // Draw the chart
+  // Draw the chart with pan and zoom
   const drawChart = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -114,9 +118,10 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Set up chart area
+    // Set up chart area with zoom and pan
     const padding = 40;
-    const chartWidth = width - padding * 2;
+    const baseChartWidth = width - padding * 2;
+    const chartWidth = baseChartWidth * zoomScale;
     const chartHeight = height - padding * 3; // Extra space for volume
 
     // Find price range
@@ -124,6 +129,10 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const priceRange = maxPrice - minPrice;
+
+    // Save context for transformations
+    ctx.save();
+    ctx.translate(chartOffset, 0);
 
     // Grid - TradingView style (more subtle)
     ctx.strokeStyle = '#f0f0f0';
@@ -147,8 +156,8 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       ctx.stroke();
     }
 
-    // Draw candlesticks - TradingView style (thinner)
-    const candleWidth = Math.max(2, (chartWidth / data.length) * 0.6); // Thinner candlesticks
+    // Draw candlesticks - TradingView style (thinner) with zoom
+    const candleWidth = Math.max(1, (chartWidth / data.length) * 0.6); // Adjust for zoom
     data.forEach((candle, index) => {
       const x = padding + (index * chartWidth) / data.length;
       const openY = padding + chartHeight - ((candle.open - minPrice) / priceRange) * chartHeight;
@@ -202,7 +211,7 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       ctx.setLineDash([]); // Reset line dash
     }
 
-    // Draw EMA lines
+    // Draw EMA lines with zoom
     indicators.forEach((indicator) => {
       if (!enabledIndicators[indicator.key]) return;
       
@@ -233,6 +242,9 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       
       ctx.stroke();
     });
+
+    // Restore context
+    ctx.restore();
 
     // Draw volume bars at bottom
     const volumeHeight = 60;
@@ -268,7 +280,7 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       ctx.fillText(timeLabel, x, height - 15);
     }
 
-  }, [symbol, currentTimeframe, enabledIndicators, generateSampleData]);
+  }, [symbol, currentTimeframe, enabledIndicators, generateSampleData, chartOffset, zoomScale]);
 
   // Initialize canvas and draw chart
   useEffect(() => {
@@ -298,7 +310,7 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     }));
   }, []);
 
-  // Handle mouse events for crosshair and tooltips
+  // Handle mouse events for crosshair, tooltips, and pan/zoom
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -307,24 +319,53 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
+    // Handle dragging for pan
+    if (isDragging && dragStart) {
+      const deltaX = x - dragStart.x;
+      setChartOffset(prev => prev + deltaX);
+      setDragStart({ x, y });
+      return;
+    }
+    
     setMousePosition({ x, y });
     
-    // Find hovered candle (simplified)
+    // Find hovered candle (adjusted for offset and zoom)
     const data = generateSampleData();
     const padding = 40;
-    const chartWidth = canvas.width / window.devicePixelRatio - padding * 2;
-    const candleIndex = Math.floor((x - padding) / (chartWidth / data.length));
+    const chartWidth = (canvas.width / window.devicePixelRatio - padding * 2) * zoomScale;
+    const adjustedX = (x - padding - chartOffset) / zoomScale;
+    const candleIndex = Math.floor(adjustedX / (chartWidth / data.length / zoomScale));
     
     if (candleIndex >= 0 && candleIndex < data.length) {
       setHoveredCandle({ ...data[candleIndex], index: candleIndex });
     } else {
       setHoveredCandle(null);
     }
-  }, [generateSampleData]);
+  }, [generateSampleData, isDragging, dragStart, chartOffset, zoomScale]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    setIsDragging(true);
+    setDragStart({ x, y });
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    setDragStart(null);
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoomScale(prev => Math.max(0.5, Math.min(3, prev * zoomFactor)));
+  }, []);
 
   return (
     <div className={`flex h-full ${className}`}>
-      {/* Main Chart Area */}
+      {/* Main Chart Area - Full Width */}
       <div className="flex-1 flex flex-col">
         {/* TradingView-style Compact Toolbar */}
         <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-gray-200">
@@ -418,16 +459,21 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
           </div>
         </div>
 
-        {/* Chart Canvas with TradingView style - Dense Layout */}
+        {/* Chart Canvas with Pan/Zoom - Full Width */}
         <div className="flex-1 relative bg-white">
           <canvas 
             ref={canvasRef} 
-            className="absolute inset-0 w-full h-full cursor-crosshair"
+            className={`absolute inset-0 w-full h-full ${isDragging ? 'cursor-grabbing' : 'cursor-crosshair'}`}
             style={{ width: '100%', height: '100%' }}
             onMouseMove={handleMouseMove}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onWheel={handleWheel}
             onMouseLeave={() => {
               setMousePosition(null);
               setHoveredCandle(null);
+              setIsDragging(false);
+              setDragStart(null);
             }}
           />
           
@@ -449,67 +495,37 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* TradingView-style Tight Watchlist Sidebar */}
-      <div className="w-56 bg-white border-l border-gray-200 flex flex-col">
-        <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-sm text-gray-900">Watchlist</h3>
-            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 hover:bg-gray-200">
-              <Plus className="h-3 w-3" />
+          
+          {/* Zoom/Pan Controls */}
+          <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+              onClick={() => setZoomScale(prev => Math.min(3, prev * 1.2))}
+            >
+              +
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+              onClick={() => setZoomScale(prev => Math.max(0.5, prev * 0.8))}
+            >
+              −
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+              onClick={() => {
+                setZoomScale(1);
+                setChartOffset(0);
+              }}
+            >
+              ⌂
             </Button>
           </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          {symbols.map((sym) => {
-            const isActive = sym.value === symbol;
-            const price = sym.value === 'NAS100' ? 21245.67 : 
-                         sym.value === 'SPX500' ? 5847.23 :
-                         sym.value === 'US30' ? 44987.32 :
-                         sym.value === 'EURUSD' ? 1.0856 :
-                         sym.value === 'GBPUSD' ? 1.2741 : 1000;
-            const changePercent = sym.value === 'NAS100' ? 0.59 : 
-                                 sym.value === 'SPX500' ? -0.39 :
-                                 sym.value === 'US30' ? 0.52 :
-                                 sym.value === 'EURUSD' ? 0.21 :
-                                 sym.value === 'GBPUSD' ? -0.27 : (Math.random() * 2 - 1) * 2;
-            
-            return (
-              <div
-                key={sym.value}
-                onClick={() => onSymbolChange(sym.value)}
-                className={`px-3 py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-50 transition-colors ${
-                  isActive ? 'bg-blue-600 text-white' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className={`font-semibold text-sm ${isActive ? 'text-white' : 'text-gray-900'}`}>
-                      {sym.label}
-                    </div>
-                    <div className={`text-xs ${isActive ? 'text-blue-100' : 'text-gray-500'}`}>
-                      {sym.description}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-medium text-sm ${isActive ? 'text-white' : 'text-gray-900'}`}>
-                      {price.toFixed(sym.value.includes('USD') && !sym.value.includes('JPY') ? 2 : 2)}
-                    </div>
-                    <div className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                      isActive 
-                        ? (changePercent >= 0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white')
-                        : (changePercent >= 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white')
-                    }`}>
-                      {changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>
