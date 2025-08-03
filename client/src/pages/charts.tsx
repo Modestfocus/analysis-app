@@ -452,7 +452,7 @@ export default function ChartsPage() {
       <div className="h-[calc(100vh-80px)]">
         <PanelGroup direction="vertical" onLayout={handlePanelResize}>
           {/* Main content area with horizontal panels */}
-          <Panel defaultSize={isTradingPanelCollapsed ? 100 : 65} minSize={30}>
+          <Panel defaultSize={isTradingPanelMinimized ? 90 : 65} minSize={30}>
             <PanelGroup direction="horizontal" onLayout={handlePanelResize}>
               {/* Main Chart Area */}
               <Panel defaultSize={isRightSidebarCollapsed ? 100 : 75} minSize={40}>
@@ -528,26 +528,16 @@ export default function ChartsPage() {
           </Panel>
 
           {/* Resizable Handle for Trading Panel */}
-          {!isTradingPanelCollapsed && showTradingPanel && (
+          {showTradingPanel && (
             <PanelResizeHandle className="h-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors cursor-row-resize flex items-center justify-center">
               <div className="w-12 h-1 bg-gray-400 rounded-full"></div>
             </PanelResizeHandle>
           )}
 
-          {/* Trading Panel - Resizable from top */}
-          {!isTradingPanelCollapsed && showTradingPanel && (
-            <Panel defaultSize={35} minSize={20} maxSize={60}>
+          {/* Trading Panel - Always visible, resizable from top */}
+          {showTradingPanel && (
+            <Panel defaultSize={isTradingPanelMinimized ? 10 : 35} minSize={8} maxSize={60}>
               <div className="h-full relative">
-                {/* Collapse button for trading panel */}
-                <Button
-                  onClick={handleToggleTradingPanel}
-                  className="absolute top-2 right-2 z-10 h-8 w-8 p-0"
-                  variant="outline"
-                  size="sm"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-                
                 <TradingPanel 
                   currentSymbol={currentSymbol}
                   onPlaceOrder={handlePlaceOrder}
@@ -561,16 +551,7 @@ export default function ChartsPage() {
           )}
         </PanelGroup>
 
-        {/* Floating collapse button for trading panel when collapsed */}
-        {isTradingPanelCollapsed && showTradingPanel && (
-          <Button
-            onClick={handleToggleTradingPanel}
-            className="fixed bottom-4 right-4 z-50 h-10 w-10 p-0 rounded-full shadow-lg"
-            variant="default"
-          >
-            <ChevronUp className="h-4 w-4" />
-          </Button>
-        )}
+
 
         {/* Drawing Toolbar - Fixed position on left */}
         <DrawingToolbar 
