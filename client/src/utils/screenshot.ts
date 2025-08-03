@@ -23,6 +23,14 @@ export async function captureChartScreenshot(
   } = options;
 
   try {
+    console.log('Starting html2canvas capture with options:', {
+      width: chartContainer.offsetWidth,
+      height: chartContainer.offsetHeight,
+      backgroundColor,
+      element: chartContainer.tagName,
+      className: chartContainer.className
+    });
+
     // Create canvas from the chart container
     const canvas = await html2canvas(chartContainer, {
       backgroundColor,
@@ -33,11 +41,13 @@ export async function captureChartScreenshot(
       scrollY: 0,
       width: chartContainer.offsetWidth,
       height: chartContainer.offsetHeight,
+      foreignObjectRendering: true,
+      logging: true, // Enable logging for debugging
       ignoreElements: (element) => {
         // Ignore certain UI elements that shouldn't be in the screenshot
         const classesToIgnore = [
           'trading-panel',
-          'watchlist-panel',
+          'watchlist-panel', 
           'drawing-toolbar',
           'navbar',
           'sidebar'
@@ -47,6 +57,11 @@ export async function captureChartScreenshot(
           element.classList?.contains(className)
         );
       }
+    });
+
+    console.log('html2canvas capture completed. Canvas dimensions:', {
+      width: canvas.width,
+      height: canvas.height
     });
 
     // Convert canvas to blob
@@ -76,18 +91,29 @@ export async function captureChartScreenshot(
 export function findChartContainer(): HTMLElement | null {
   // Look for common TradingView container classes/ids
   const selectors = [
+    'iframe[src*="tradingview"]',
+    '.tradingview-widget-container__widget',
     '[id*="tradingview"]',
     '.tradingview-widget-container',
-    '#tv-chart-container',
+    '#tv-chart-container', 
     '.chart-container'
   ];
 
+  console.log('Looking for chart container...');
+  
   for (const selector of selectors) {
     const element = document.querySelector(selector) as HTMLElement;
+    console.log(`Checking selector "${selector}":`, element);
     if (element && element.offsetWidth > 0 && element.offsetHeight > 0) {
+      console.log(`Found chart container with ${selector}:`, {
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+        element
+      });
       return element;
     }
   }
 
+  console.log('No suitable chart container found');
   return null;
 }

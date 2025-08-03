@@ -407,7 +407,16 @@ export default function ChartsPage() {
   // Screenshot capture functionality
   const handleTakeScreenshot = useCallback(async () => {
     try {
-      const chartElement = findChartContainer() || containerRef.current;
+      // Wait a moment to ensure chart is fully loaded
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      let chartElement = findChartContainer();
+      
+      // If we can't find the specific chart container, try the main container
+      if (!chartElement) {
+        chartElement = containerRef.current;
+        console.log('Using fallback container:', chartElement);
+      }
       
       if (!chartElement) {
         toast({
@@ -418,12 +427,34 @@ export default function ChartsPage() {
         return;
       }
 
+      // Additional validation
+      if (chartElement.offsetWidth === 0 || chartElement.offsetHeight === 0) {
+        toast({
+          title: "Screenshot Failed",
+          description: "Chart area is not visible or has no content",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Capturing Screenshot",
         description: "Please wait while we capture the chart...",
       });
 
-      const screenshotFile = await captureChartScreenshot(chartElement);
+      console.log('Capturing screenshot of:', {
+        element: chartElement,
+        width: chartElement.offsetWidth,
+        height: chartElement.offsetHeight,
+        tagName: chartElement.tagName,
+        className: chartElement.className,
+        id: chartElement.id
+      });
+
+      const screenshotFile = await captureChartScreenshot(chartElement, {
+        backgroundColor: '#ffffff',
+        quality: 1
+      });
       
       // Add the screenshot to the state for the Trading Panel Analysis tab
       setScreenshotFiles([screenshotFile]);

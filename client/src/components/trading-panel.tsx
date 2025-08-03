@@ -333,7 +333,7 @@ export default function TradingPanel({
     let url = fileObjectUrls.get(fileKey);
     if (!url) {
       url = URL.createObjectURL(file);
-      setFileObjectUrls(prev => new Map(prev).set(fileKey, url));
+      setFileObjectUrls(prev => new Map(prev).set(fileKey, url!));
     }
     return url;
   }, [fileObjectUrls]);
