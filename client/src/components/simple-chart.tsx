@@ -118,11 +118,13 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Set up chart area with zoom and pan
+    // Set up chart area with zoom and pan - adjusted for price scale
     const padding = 40;
-    const baseChartWidth = width - padding * 2;
+    const rightPadding = 100; // Extra space for price scale
+    const bottomPadding = 50; // Extra space for time scale
+    const baseChartWidth = width - padding - rightPadding;
     const chartWidth = baseChartWidth * zoomScale;
-    const chartHeight = height - padding * 3; // Extra space for volume
+    const chartHeight = height - padding - bottomPadding;
 
     // Find price range
     const prices = data.flatMap(d => [d.high, d.low]);
@@ -134,22 +136,24 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     ctx.save();
     ctx.translate(chartOffset, 0);
 
-    // Grid - TradingView style (more subtle)
-    ctx.strokeStyle = '#f0f0f0';
+    // Enhanced Grid - TradingView style with proper intervals
+    ctx.strokeStyle = '#e8e8e8';
     ctx.lineWidth = 0.5;
     
-    // Horizontal grid lines
-    for (let i = 0; i <= 5; i++) {
-      const y = padding + (chartHeight * i) / 5;
+    // Horizontal price grid lines (more intervals)
+    const gridPriceIntervals = 10;
+    for (let i = 0; i <= gridPriceIntervals; i++) {
+      const y = padding + (chartHeight * i) / gridPriceIntervals;
       ctx.beginPath();
       ctx.moveTo(padding, y);
-      ctx.lineTo(width - padding, y);
+      ctx.lineTo(width - rightPadding, y); // Leave space for price labels
       ctx.stroke();
     }
 
-    // Vertical grid lines (fewer lines for cleaner look)
-    for (let i = 0; i <= 8; i++) {
-      const x = padding + (chartWidth * i) / 8;
+    // Vertical time grid lines 
+    const gridTimeIntervals = 12;
+    for (let i = 0; i <= gridTimeIntervals; i++) {
+      const x = padding + (chartWidth * i) / gridTimeIntervals;
       ctx.beginPath();
       ctx.moveTo(x, padding);
       ctx.lineTo(x, padding + chartHeight);
@@ -260,24 +264,66 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       ctx.fillRect(x, volumeArea + volumeHeight - barHeight, candleWidth, barHeight);
     });
 
-    // Price labels - TradingView style
+    // Enhanced Price Labels - Right side axis
     ctx.fillStyle = '#666';
     ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
     ctx.textAlign = 'left';
-    for (let i = 0; i <= 5; i++) {
-      const price = minPrice + (priceRange * (5 - i)) / 5;
-      const y = padding + (chartHeight * i) / 5;
-      ctx.fillText(price.toFixed(2), width - padding + 8, y + 4);
+    
+    // Draw price scale background
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(width - rightPadding, padding, rightPadding, chartHeight);
+    
+    // Price labels with more intervals
+    ctx.fillStyle = '#666';
+    const labelPriceIntervals = 10;
+    for (let i = 0; i <= labelPriceIntervals; i++) {
+      const price = minPrice + (priceRange * (labelPriceIntervals - i)) / labelPriceIntervals;
+      const y = padding + (chartHeight * i) / labelPriceIntervals;
+      
+      // Draw price label background
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(width - rightPadding + 2, y - 8, rightPadding - 4, 16);
+      
+      // Price text
+      ctx.fillStyle = '#666';
+      ctx.fillText(price.toFixed(2), width - rightPadding + 8, y + 4);
+      
+      // Small tick mark
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(width - rightPadding, y);
+      ctx.lineTo(width - rightPadding + 5, y);
+      ctx.stroke();
     }
 
-    // Time labels at bottom
-    ctx.fillStyle = '#888';
+    // Enhanced Time Labels - Bottom axis
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(padding, height - bottomPadding, width - padding - rightPadding, bottomPadding);
+    
+    ctx.fillStyle = '#666';
     ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
     ctx.textAlign = 'center';
-    for (let i = 0; i <= 8; i++) {
-      const x = padding + (chartWidth * i) / 8;
-      const timeLabel = `${9 + i}:00`;
+    
+    const labelTimeIntervals = 12;
+    const currentTime = new Date();
+    for (let i = 0; i <= labelTimeIntervals; i++) {
+      const x = padding + (chartWidth * i) / labelTimeIntervals;
+      
+      // Generate realistic time labels
+      const timeOffset = (i * 2); // 2-hour intervals
+      const labelTime = new Date(currentTime.getTime() - (labelTimeIntervals - i) * 2 * 60 * 60 * 1000);
+      const timeLabel = `${labelTime.getHours().toString().padStart(2, '0')}:${labelTime.getMinutes().toString().padStart(2, '0')}`;
+      
       ctx.fillText(timeLabel, x, height - 15);
+      
+      // Small tick mark
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, height - bottomPadding);
+      ctx.lineTo(x, height - bottomPadding + 5);
+      ctx.stroke();
     }
 
   }, [symbol, currentTimeframe, enabledIndicators, generateSampleData, chartOffset, zoomScale]);
