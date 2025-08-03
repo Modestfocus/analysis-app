@@ -437,10 +437,19 @@ export default function ChartsPage() {
         return;
       }
 
-      toast({
-        title: "Capturing Screenshot",
-        description: "Please wait while we capture the chart...",
-      });
+      // Check if TradingView iframe is detected
+      const iframe = chartElement.querySelector('iframe[src*="tradingview"]');
+      if (iframe) {
+        toast({
+          title: "Screenshot Capture",
+          description: "TradingView chart detected. You may be prompted to share your screen for the best quality capture.",
+        });
+      } else {
+        toast({
+          title: "Capturing Screenshot",
+          description: "Please wait while we capture the chart...",
+        });
+      }
 
       console.log('Capturing screenshot of:', {
         element: chartElement,
@@ -448,7 +457,8 @@ export default function ChartsPage() {
         height: chartElement.offsetHeight,
         tagName: chartElement.tagName,
         className: chartElement.className,
-        id: chartElement.id
+        id: chartElement.id,
+        hasIframe: !!iframe
       });
 
       const screenshotFile = await captureChartScreenshot(chartElement, {
@@ -466,9 +476,21 @@ export default function ChartsPage() {
 
     } catch (error) {
       console.error("Screenshot capture failed:", error);
+      
+      // Provide specific error messaging based on the error type
+      let errorMessage = "Failed to capture chart screenshot. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('screen capture') || error.message.includes('cancelled')) {
+          errorMessage = "Screen capture was cancelled. For TradingView charts, you can also use your browser's built-in screenshot tools.";
+        } else if (error.message.includes('not support')) {
+          errorMessage = "Your browser doesn't support automatic screen capture. Please use your browser's screenshot tools instead.";
+        }
+      }
+      
       toast({
-        title: "Screenshot Failed",
-        description: "Failed to capture chart screenshot. Please try again.",
+        title: "Screenshot Capture",
+        description: errorMessage,
         variant: "destructive",
       });
     }
