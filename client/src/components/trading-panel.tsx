@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -366,27 +367,39 @@ export default function TradingPanel({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-      <div className="container mx-auto px-4">
-        {/* Header with toggle button */}
-        <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            <span className="text-sm font-medium">Trading Panel</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleMinimize}
-            className="h-6 w-6 p-0"
-          >
-            {isMinimized ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
+    <div className="fixed bottom-0 left-0 right-0 z-40 h-auto min-h-[48px] max-h-[80vh] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <PanelGroup direction="vertical" className="h-full min-h-[48px]">
+        <Panel 
+          id="trading-panel-content"
+          order={1}
+          defaultSize={isMinimized ? 10 : 50}
+          minSize={10}
+          maxSize={90}
+          className="flex flex-col h-full"
+        >
+          <PanelResizeHandle className="h-2 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-400 transition-colors cursor-row-resize border-b border-gray-300 dark:border-gray-600 flex items-center justify-center group">
+            <div className="w-8 h-1 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:bg-white transition-colors"></div>
+          </PanelResizeHandle>
+          <div className="container mx-auto px-4 flex-1 overflow-y-auto">
+            {/* Header with toggle button */}
+            <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="text-sm font-medium">Trading Panel</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleMinimize}
+                className="h-6 w-6 p-0"
+              >
+                {isMinimized ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
 
         {!isMinimized && (
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
@@ -1025,7 +1038,9 @@ export default function TradingPanel({
           </div>
         </Tabs>
         )}
-      </div>
+          </div>
+        </Panel>
+      </PanelGroup>
     </div>
   );
 }
