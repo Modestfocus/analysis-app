@@ -10,6 +10,7 @@ import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
 import ChartDrawingOverlay from "@/components/chart-drawing-overlay";
+import ScreenshotSelector from "@/components/screenshot-selector";
 import { PanelGroup, Panel, PanelResizeHandle, ImperativePanelHandle } from "react-resizable-panels";
 
 import { captureChartScreenshot, findChartContainer } from "@/utils/screenshot";
@@ -44,6 +45,7 @@ export default function ChartsPage() {
   
   // Screenshot files for Analysis tab
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
+  const [isScreenshotSelectorOpen, setIsScreenshotSelectorOpen] = useState(false);
   const { toast } = useToast();
   
 
@@ -405,43 +407,26 @@ export default function ChartsPage() {
   }, []);
 
   // Screenshot capture functionality
-  const handleTakeScreenshot = useCallback(async () => {
-    try {
-      const chartElement = findChartContainer() || containerRef.current;
-      
-      if (!chartElement) {
-        toast({
-          title: "Screenshot Failed",
-          description: "Could not find chart area to capture",
-          variant: "destructive",
-        });
-        return;
-      }
+  const handleTakeScreenshot = useCallback(() => {
+    // Open the fullscreen area selection overlay
+    setIsScreenshotSelectorOpen(true);
+  }, []);
 
-      toast({
-        title: "Capturing Screenshot",
-        description: "Please wait while we capture the chart...",
-      });
-
-      const screenshotFile = await captureChartScreenshot(chartElement);
-      
-      // Add the screenshot to the state for the Trading Panel Analysis tab
-      setScreenshotFiles([screenshotFile]);
-      
-      toast({
-        title: "Screenshot Captured",
-        description: "Chart screenshot loaded into Analysis tab",
-      });
-
-    } catch (error) {
-      console.error("Screenshot capture failed:", error);
-      toast({
-        title: "Screenshot Failed",
-        description: "Failed to capture chart screenshot. Please try again.",
-        variant: "destructive",
-      });
-    }
+  // Handle screenshot capture from area selection
+  const handleScreenshotCapture = useCallback((file: File) => {
+    // Add the screenshot to the existing files for the Trading Panel Analysis tab
+    setScreenshotFiles(prev => [...prev, file]);
+    
+    toast({
+      title: "Screenshot Captured",
+      description: "Selected area screenshot added to Analysis tab",
+    });
   }, [toast]);
+
+  // Handle closing screenshot selector
+  const handleCloseScreenshotSelector = useCallback(() => {
+    setIsScreenshotSelectorOpen(false);
+  }, []);
 
   const handleClearScreenshots = useCallback(() => {
     setScreenshotFiles([]);
@@ -599,6 +584,13 @@ export default function ChartsPage() {
           onDuplicateDrawing={handleDuplicateDrawing}
           onLockDrawing={handleLockDrawing}
           onToggleVisibility={handleToggleDrawingVisibility}
+        />
+
+        {/* Screenshot Area Selector */}
+        <ScreenshotSelector
+          isOpen={isScreenshotSelectorOpen}
+          onClose={handleCloseScreenshotSelector}
+          onScreenshotCapture={handleScreenshotCapture}
         />
       </div>
     </div>
