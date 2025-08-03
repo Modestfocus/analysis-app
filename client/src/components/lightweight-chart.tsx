@@ -144,13 +144,22 @@ export default function LightweightChart({ symbol, onSymbolChange, className }: 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
+    const containerWidth = chartContainerRef.current.clientWidth;
+    const containerHeight = chartContainerRef.current.clientHeight;
+
+    // Ensure we have valid dimensions
+    if (containerWidth === 0 || containerHeight === 0) {
+      console.log('Container dimensions not ready, waiting...');
+      return;
+    }
+
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: '#ffffff' },
         textColor: '#333',
       },
-      width: chartContainerRef.current.clientWidth,
-      height: chartContainerRef.current.clientHeight,
+      width: containerWidth,
+      height: containerHeight,
       grid: {
         vertLines: { color: '#e1e1e1' },
         horzLines: { color: '#e1e1e1' },
@@ -170,8 +179,8 @@ export default function LightweightChart({ symbol, onSymbolChange, className }: 
 
     chartRef.current = chart;
 
-    // Add candlestick series
-    const candlestickSeries = (chart as any).addCandlestickSeries({
+    // Add candlestick series using v5 addSeries API
+    const candlestickSeries = (chart as any).addSeries('Candlestick', {
       upColor: '#4CAF50',
       downColor: '#F44336',
       borderDownColor: '#F44336',
@@ -182,8 +191,8 @@ export default function LightweightChart({ symbol, onSymbolChange, className }: 
 
     candlestickSeriesRef.current = candlestickSeries;
 
-    // Add volume series
-    const volumeSeries = (chart as any).addHistogramSeries({
+    // Add volume series using v5 addSeries API
+    const volumeSeries = (chart as any).addSeries('Histogram', {
       color: '#26a69a',
       priceFormat: {
         type: 'volume',
@@ -197,9 +206,9 @@ export default function LightweightChart({ symbol, onSymbolChange, className }: 
 
     volumeSeriesRef.current = volumeSeries;
 
-    // Add EMA series
+    // Add EMA series using v5 addSeries API
     indicators.forEach((indicator) => {
-      const emaSeries = (chart as any).addLineSeries({
+      const emaSeries = (chart as any).addSeries('Line', {
         color: indicator.color,
         lineWidth: 2,
         lineStyle: LineStyle.Solid,

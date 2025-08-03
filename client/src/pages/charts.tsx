@@ -4,7 +4,7 @@ import { ArrowLeft, TrendingUp, Camera, ChevronLeft, ChevronRight } from "lucide
 import { Link } from "wouter";
 import { useRef, useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import LightweightChart from "@/components/lightweight-chart";
+import SimpleChart from "@/components/simple-chart";
 import ChartWatchlist from "@/components/chart-watchlist";
 import ChartLayoutManager from "@/components/chart-layout-manager";
 import TradingPanel from "@/components/trading-panel";
@@ -120,8 +120,8 @@ export default function ChartsPage() {
                         {isRightSidebarCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       </Button>
                       
-                      {/* Lightweight Chart Component */}
-                      <LightweightChart
+                      {/* Simple Chart Component */}
+                      <SimpleChart
                         symbol={currentSymbol}
                         onSymbolChange={handleSymbolSelect}
                         className="h-full"
