@@ -1,0 +1,56 @@
+Rebuild the Chart Panel UI layout and style to match the TradingView interface (second screenshot) as close as possible.
+
+⸻
+
+🏗 Specific Instructions:
+
+1. Toolbar Layout (Top Section)
+	•	Move Symbol Selector (US30 dropdown) to the left-most position, styled with TradingView’s search bar look.
+	•	Price display (current price, % change) should be placed right next to the Symbol Selector — styled as clean, white text with smaller % change in green/red.
+	•	Timeframe buttons (5s, 30s, 1m, etc.) should be arranged horizontally, aligned to the center, in flat button style (white background, light gray border).
+	•	Move Indicators button group (EMA 20, EMA 50, etc.) to a small indicators dropdown or side menu toggle (icon button), not directly on top of the chart.
+
+⸻
+
+2. Chart Area Styling (Candlesticks Panel)
+	•	Ensure:
+	•	Candlesticks are thinner with smaller wicks — similar to TradingView.
+	•	Add grid lines (light gray, faint).
+	•	Add crosshair cursor that snaps to data points.
+	•	Enable hover tooltip with OHLC info on mouse hover.
+	•	Add volume bars below candlesticks (optional for now).
+	•	Ensure chart area has rounded top corners (light box shadow if possible).
+
+⸻
+
+3. Watchlist Sidebar (Right Side)
+	•	Align Watchlist vertically.
+	•	Each symbol row should have:
+	•	Symbol Name (Bold)
+	•	Last Price (regular font)
+	•	% Change (green/red pill badge)
+	•	Highlight active symbol row with a colored background (light blue for US30 selection)
+	•	Ensure Watchlist width is slightly narrower and visually grouped tight like TradingView’s right panel.
+	•	Add a ”+” button at the top to simulate adding symbols.
+
+⸻
+
+4. Overall Layout Adjustments
+	•	Make sure the top toolbar and the chart canvas are in a fixed vertical alignment, just like TradingView.
+	•	Shrink overall padding/margins to create a dense, trading-dashboard feel.
+	•	Watchlist sidebar should be tight to the right edge, no gaps.
+	•	Add a small settings icon near the top-right of the chart area to simulate indicator settings.
+	•	Ensure everything is responsive and scales well on different screen sizes.
+
+⸻
+
+5. Do Not Touch:
+	•	Leave the “Take Screenshot” button where it is.
+	•	Leave the Trading Panel (bottom section) untouched.
+
+⸻
+
+✅ Final Deliverable (Frontend):
+	•	Replicate TradingView’s visual layout proportions, button placements, and chart aesthetics.
+	•	This is just UI styling & layout refinement — no backend logic is required at this step.
+	•	The goal is to make the Chart Panel look nearly identical to TradingView.

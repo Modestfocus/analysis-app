@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { ChevronDown, TrendingUp, Plus, Settings } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface SimpleChartProps {
   symbol: string;
@@ -21,15 +23,15 @@ const timeframes = [
 ];
 
 const symbols = [
-  { value: 'NAS100', label: 'NAS100' },
-  { value: 'SPX500', label: 'SPX500' },
-  { value: 'US30', label: 'US30' },
-  { value: 'EURUSD', label: 'EURUSD' },
-  { value: 'GBPUSD', label: 'GBPUSD' },
-  { value: 'USDJPY', label: 'USDJPY' },
-  { value: 'XAUUSD', label: 'XAUUSD' },
-  { value: 'BTCUSD', label: 'BTCUSD' },
-  { value: 'ETHUSD', label: 'ETHUSD' },
+  { value: 'NAS100', label: 'NAS100', description: 'NASDAQ 100' },
+  { value: 'SPX500', label: 'SPX500', description: 'S&P 500' },
+  { value: 'US30', label: 'US30', description: 'Dow Jones' },
+  { value: 'EURUSD', label: 'EURUSD', description: 'Euro / US Dollar' },
+  { value: 'GBPUSD', label: 'GBPUSD', description: 'British Pound' },
+  { value: 'USDJPY', label: 'USDJPY', description: 'US Dollar / Yen' },
+  { value: 'XAUUSD', label: 'XAUUSD', description: 'Gold / USD' },
+  { value: 'BTCUSD', label: 'BTCUSD', description: 'Bitcoin / USD' },
+  { value: 'ETHUSD', label: 'ETHUSD', description: 'Ethereum / USD' },
 ];
 
 const indicators = [
@@ -48,6 +50,8 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number | null>(null);
   const [priceChangePercent, setPriceChangePercent] = useState<number | null>(null);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredCandle, setHoveredCandle] = useState<any>(null);
 
   // Generate sample candlestick data
   const generateSampleData = useCallback(() => {
@@ -121,9 +125,9 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     const maxPrice = Math.max(...prices);
     const priceRange = maxPrice - minPrice;
 
-    // Grid
-    ctx.strokeStyle = '#e1e1e1';
-    ctx.lineWidth = 1;
+    // Grid - TradingView style (more subtle)
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 0.5;
     
     // Horizontal grid lines
     for (let i = 0; i <= 5; i++) {
@@ -134,17 +138,17 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       ctx.stroke();
     }
 
-    // Vertical grid lines
-    for (let i = 0; i <= 10; i++) {
-      const x = padding + (chartWidth * i) / 10;
+    // Vertical grid lines (fewer lines for cleaner look)
+    for (let i = 0; i <= 8; i++) {
+      const x = padding + (chartWidth * i) / 8;
       ctx.beginPath();
       ctx.moveTo(x, padding);
       ctx.lineTo(x, padding + chartHeight);
       ctx.stroke();
     }
 
-    // Draw candlesticks
-    const candleWidth = chartWidth / data.length * 0.8;
+    // Draw candlesticks - TradingView style (thinner)
+    const candleWidth = Math.max(2, (chartWidth / data.length) * 0.6); // Thinner candlesticks
     data.forEach((candle, index) => {
       const x = padding + (index * chartWidth) / data.length;
       const openY = padding + chartHeight - ((candle.open - minPrice) / priceRange) * chartHeight;
@@ -153,21 +157,50 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       const lowY = padding + chartHeight - ((candle.low - minPrice) / priceRange) * chartHeight;
 
       const isGreen = candle.close > candle.open;
+      const centerX = x + candleWidth / 2;
       
-      // Wick
-      ctx.strokeStyle = isGreen ? '#4CAF50' : '#F44336';
+      // Thin wicks - TradingView style
+      ctx.strokeStyle = isGreen ? '#26a69a' : '#ef5350';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(x + candleWidth / 2, highY);
-      ctx.lineTo(x + candleWidth / 2, lowY);
+      ctx.moveTo(centerX, highY);
+      ctx.lineTo(centerX, lowY);
       ctx.stroke();
 
-      // Body
-      ctx.fillStyle = isGreen ? '#4CAF50' : '#F44336';
-      const bodyHeight = Math.abs(closeY - openY);
+      // Thinner body - TradingView style
+      ctx.fillStyle = isGreen ? '#26a69a' : '#ef5350';
+      const bodyHeight = Math.max(1, Math.abs(closeY - openY));
       const bodyY = Math.min(openY, closeY);
-      ctx.fillRect(x, bodyY, candleWidth, bodyHeight || 1);
+      ctx.fillRect(x, bodyY, candleWidth, bodyHeight);
+      
+      // Outline for hollow candles when needed
+      if (bodyHeight > 2) {
+        ctx.strokeStyle = isGreen ? '#26a69a' : '#ef5350';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, bodyY, candleWidth, bodyHeight);
+      }
     });
+
+    // Draw crosshair if mouse is hovering
+    if (mousePosition) {
+      ctx.strokeStyle = '#999999';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      
+      // Vertical line
+      ctx.beginPath();
+      ctx.moveTo(mousePosition.x, padding);
+      ctx.lineTo(mousePosition.x, padding + chartHeight);
+      ctx.stroke();
+      
+      // Horizontal line
+      ctx.beginPath();
+      ctx.moveTo(padding, mousePosition.y);
+      ctx.lineTo(width - padding, mousePosition.y);
+      ctx.stroke();
+      
+      ctx.setLineDash([]); // Reset line dash
+    }
 
     // Draw EMA lines
     indicators.forEach((indicator) => {
@@ -215,13 +248,24 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
       ctx.fillRect(x, volumeArea + volumeHeight - barHeight, candleWidth, barHeight);
     });
 
-    // Price labels
+    // Price labels - TradingView style
     ctx.fillStyle = '#666';
-    ctx.font = '12px Arial';
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.textAlign = 'left';
     for (let i = 0; i <= 5; i++) {
       const price = minPrice + (priceRange * (5 - i)) / 5;
       const y = padding + (chartHeight * i) / 5;
-      ctx.fillText(price.toFixed(2), width - padding + 5, y + 4);
+      ctx.fillText(price.toFixed(2), width - padding + 8, y + 4);
+    }
+
+    // Time labels at bottom
+    ctx.fillStyle = '#888';
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    for (let i = 0; i <= 8; i++) {
+      const x = padding + (chartWidth * i) / 8;
+      const timeLabel = `${9 + i}:00`;
+      ctx.fillText(timeLabel, x, height - 15);
     }
 
   }, [symbol, currentTimeframe, enabledIndicators, generateSampleData]);
@@ -254,88 +298,219 @@ export default function SimpleChart({ symbol, onSymbolChange, className }: Simpl
     }));
   }, []);
 
+  // Handle mouse events for crosshair and tooltips
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    setMousePosition({ x, y });
+    
+    // Find hovered candle (simplified)
+    const data = generateSampleData();
+    const padding = 40;
+    const chartWidth = canvas.width / window.devicePixelRatio - padding * 2;
+    const candleIndex = Math.floor((x - padding) / (chartWidth / data.length));
+    
+    if (candleIndex >= 0 && candleIndex < data.length) {
+      setHoveredCandle({ ...data[candleIndex], index: candleIndex });
+    } else {
+      setHoveredCandle(null);
+    }
+  }, [generateSampleData]);
+
   return (
-    <div className={`flex flex-col h-full ${className}`}>
-      {/* Toolbar */}
-      <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-200">
-        <div className="flex items-center space-x-4">
-          {/* Symbol Selector */}
-          <Select value={symbol} onValueChange={onSymbolChange}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {symbols.map((sym) => (
-                <SelectItem key={sym.value} value={sym.value}>
-                  {sym.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className={`flex h-full ${className}`}>
+      {/* Main Chart Area */}
+      <div className="flex-1 flex flex-col">
+        {/* TradingView-style Compact Toolbar */}
+        <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            {/* Symbol Selector - TradingView style */}
+            <Select value={symbol} onValueChange={onSymbolChange}>
+              <SelectTrigger className="w-20 h-7 bg-white border border-gray-300 rounded text-sm font-medium hover:bg-gray-50">
+                <SelectValue />
+                <ChevronDown className="h-3 w-3" />
+              </SelectTrigger>
+              <SelectContent>
+                {symbols.map((sym) => (
+                  <SelectItem key={sym.value} value={sym.value}>
+                    {sym.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Current Price Info */}
-          {currentPrice && (
-            <div className="flex items-center space-x-2">
-              <span className="font-semibold text-lg">
-                {currentPrice.toFixed(symbol.includes('USD') && !symbol.includes('JPY') ? 4 : 2)}
-              </span>
-              {priceChange !== null && priceChangePercent !== null && (
-                <Badge 
-                  variant={priceChange >= 0 ? "default" : "destructive"}
-                  className={priceChange >= 0 ? "bg-green-500" : "bg-red-500"}
-                >
-                  {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
+            {/* Current Price Display - TradingView style */}
+            {currentPrice && (
+              <div className="flex items-center space-x-2">
+                <span className="text-lg font-semibold text-gray-900">
+                  {currentPrice.toFixed(symbol.includes('USD') && !symbol.includes('JPY') ? 2 : 2)}
+                </span>
+                {priceChange !== null && priceChangePercent !== null && (
+                  <div className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                    priceChange >= 0 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-red-500 text-white'
+                  }`}>
+                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-        <div className="flex items-center space-x-2">
-          {/* Timeframe Buttons */}
-          <div className="flex items-center space-x-1">
+          {/* Timeframe Buttons - Center aligned TradingView style */}
+          <div className="flex items-center space-x-0.5">
             {timeframes.map((tf) => (
               <Button
                 key={tf.value}
-                variant={currentTimeframe === tf.value ? "default" : "outline"}
+                variant="ghost"
                 size="sm"
                 onClick={() => setCurrentTimeframe(tf.value)}
-                className="px-3 py-1 h-8"
+                className={`px-2 py-1 h-7 text-xs font-medium rounded ${
+                  currentTimeframe === tf.value 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
               >
                 {tf.label}
               </Button>
             ))}
           </div>
+
+          {/* Settings and Indicators */}
+          <div className="flex items-center space-x-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Indicators
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Indicators:</h4>
+                  {indicators.map((indicator) => (
+                    <Button
+                      key={indicator.key}
+                      variant={enabledIndicators[indicator.key] ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleIndicator(indicator.key)}
+                      className="w-full justify-start text-xs h-6"
+                      style={{
+                        backgroundColor: enabledIndicators[indicator.key] ? indicator.color : undefined,
+                        borderColor: indicator.color,
+                      }}
+                    >
+                      {indicator.label}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+              <Settings className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Chart Canvas with TradingView style - Dense Layout */}
+        <div className="flex-1 relative bg-white">
+          <canvas 
+            ref={canvasRef} 
+            className="absolute inset-0 w-full h-full cursor-crosshair"
+            style={{ width: '100%', height: '100%' }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => {
+              setMousePosition(null);
+              setHoveredCandle(null);
+            }}
+          />
+          
+          {/* Crosshair Tooltip - TradingView style */}
+          {hoveredCandle && mousePosition && (
+            <div 
+              className="absolute bg-gray-800 text-white text-xs rounded px-2 py-1.5 pointer-events-none z-20 shadow-lg border border-gray-600"
+              style={{ 
+                left: mousePosition.x + 10, 
+                top: mousePosition.y - 40,
+                transform: mousePosition.x > 200 ? 'translateX(-100%)' : 'none'
+              }}
+            >
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+                <div>O: <span className="font-medium">{hoveredCandle.open.toFixed(2)}</span></div>
+                <div>H: <span className="font-medium">{hoveredCandle.high.toFixed(2)}</span></div>
+                <div>L: <span className="font-medium">{hoveredCandle.low.toFixed(2)}</span></div>
+                <div>C: <span className="font-medium">{hoveredCandle.close.toFixed(2)}</span></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Indicators Bar */}
-      <div className="flex items-center space-x-2 p-2 bg-gray-50 border-b border-gray-200">
-        <span className="text-sm font-medium text-gray-600">Indicators:</span>
-        {indicators.map((indicator) => (
-          <Button
-            key={indicator.key}
-            variant={enabledIndicators[indicator.key] ? "default" : "outline"}
-            size="sm"
-            onClick={() => toggleIndicator(indicator.key)}
-            className="px-2 py-1 h-7 text-xs"
-            style={{
-              backgroundColor: enabledIndicators[indicator.key] ? indicator.color : undefined,
-              borderColor: indicator.color,
-            }}
-          >
-            {indicator.label}
-          </Button>
-        ))}
-      </div>
-
-      {/* Chart Canvas */}
-      <div className="flex-1 relative">
-        <canvas 
-          ref={canvasRef} 
-          className="absolute inset-0 w-full h-full bg-white"
-          style={{ width: '100%', height: '100%' }}
-        />
+      {/* TradingView-style Tight Watchlist Sidebar */}
+      <div className="w-56 bg-white border-l border-gray-200 flex flex-col">
+        <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-sm text-gray-900">Watchlist</h3>
+            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 hover:bg-gray-200">
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto">
+          {symbols.map((sym) => {
+            const isActive = sym.value === symbol;
+            const price = sym.value === 'NAS100' ? 21245.67 : 
+                         sym.value === 'SPX500' ? 5847.23 :
+                         sym.value === 'US30' ? 44987.32 :
+                         sym.value === 'EURUSD' ? 1.0856 :
+                         sym.value === 'GBPUSD' ? 1.2741 : 1000;
+            const changePercent = sym.value === 'NAS100' ? 0.59 : 
+                                 sym.value === 'SPX500' ? -0.39 :
+                                 sym.value === 'US30' ? 0.52 :
+                                 sym.value === 'EURUSD' ? 0.21 :
+                                 sym.value === 'GBPUSD' ? -0.27 : (Math.random() * 2 - 1) * 2;
+            
+            return (
+              <div
+                key={sym.value}
+                onClick={() => onSymbolChange(sym.value)}
+                className={`px-3 py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-50 transition-colors ${
+                  isActive ? 'bg-blue-600 text-white' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`font-semibold text-sm ${isActive ? 'text-white' : 'text-gray-900'}`}>
+                      {sym.label}
+                    </div>
+                    <div className={`text-xs ${isActive ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {sym.description}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`font-medium text-sm ${isActive ? 'text-white' : 'text-gray-900'}`}>
+                      {price.toFixed(sym.value.includes('USD') && !sym.value.includes('JPY') ? 2 : 2)}
+                    </div>
+                    <div className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                      isActive 
+                        ? (changePercent >= 0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white')
+                        : (changePercent >= 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white')
+                    }`}>
+                      {changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
