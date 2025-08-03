@@ -366,10 +366,10 @@ export default function TradingPanel({
   };
 
   return (
-    <div className="h-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="h-full px-4 flex flex-col">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <div className="container mx-auto px-4">
         {/* Header with toggle button */}
-        <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="text-sm font-medium">Trading Panel</span>
@@ -389,20 +389,19 @@ export default function TradingPanel({
         </div>
 
         {!isMinimized && (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="h-full flex flex-col">
-              <TabsList className="grid grid-cols-5 w-full max-w-2xl mt-2 flex-shrink-0">
-                <TabsTrigger value="trading">Trading</TabsTrigger>
-                <TabsTrigger value="positions">Positions</TabsTrigger>
-                <TabsTrigger value="orders">Orders</TabsTrigger>
-                <TabsTrigger value="account">Account</TabsTrigger>
-                <TabsTrigger value="analysis" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-700">
-                  <Zap className="h-3 w-3 mr-1" />
-                  Analysis
-                </TabsTrigger>
-              </TabsList>
+          <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+            <TabsList className="grid grid-cols-5 w-full max-w-2xl mt-2">
+              <TabsTrigger value="trading">Trading</TabsTrigger>
+              <TabsTrigger value="positions">Positions</TabsTrigger>
+              <TabsTrigger value="orders">Orders</TabsTrigger>
+              <TabsTrigger value="account">Account</TabsTrigger>
+              <TabsTrigger value="analysis" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-700">
+                <Zap className="h-3 w-3 mr-1" />
+                Analysis
+              </TabsTrigger>
+            </TabsList>
 
-              <div className="py-4 flex-1 min-h-0 overflow-y-auto">
+          <div className="py-4">
             {/* Trading Tab */}
             <TabsContent value="trading">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1023,9 +1022,8 @@ export default function TradingPanel({
                 </Card>
               </div>
             </TabsContent>
-              </div>
-            </Tabs>
           </div>
+        </Tabs>
         )}
       </div>
     </div>

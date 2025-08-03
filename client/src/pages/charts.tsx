@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, Camera, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, TrendingUp, Camera } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +10,6 @@ import DrawingToolbar from "@/components/drawing-toolbar";
 import DrawingSettingsPanel from "@/components/drawing-settings-panel";
 import TradingPanel from "@/components/trading-panel";
 import ChartDrawingOverlay from "@/components/chart-drawing-overlay";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 import { captureChartScreenshot, findChartContainer } from "@/utils/screenshot";
 
@@ -30,12 +29,6 @@ export default function ChartsPage() {
   const [showTradingPanel, setShowTradingPanel] = useState(true);
   const [isTradingPanelMinimized, setIsTradingPanelMinimized] = useState(true);
   const [tvWidget, setTvWidget] = useState<any>(null);
-  
-  // Panel visibility and resize states
-  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
-  const [isTradingPanelCollapsed, setIsTradingPanelCollapsed] = useState(false);
-  const [rightSidebarWidth, setRightSidebarWidth] = useState(25); // percentage
-  const [tradingPanelHeight, setTradingPanelHeight] = useState(35); // percentage
   
   const [chartBounds, setChartBounds] = useState<DOMRect | null>(null);
   const [activeDrawings, setActiveDrawings] = useState<any[]>([]);
@@ -116,14 +109,6 @@ export default function ChartsPage() {
       script.onload = () => {
         setIsChartReady(true);
         initializingRef.current = false;
-        
-        // Try to capture widget reference for resizing
-        setTimeout(() => {
-          const widget = (window as any).TradingView?.widget;
-          if (widget) {
-            setTvWidget(widget);
-          }
-        }, 1000);
       };
 
       containerRef.current.appendChild(script);
@@ -340,25 +325,6 @@ export default function ChartsPage() {
     setIsTradingPanelMinimized(!isTradingPanelMinimized);
   }, [isTradingPanelMinimized]);
 
-  // Panel collapse/expand handlers
-  const handleToggleRightSidebar = useCallback(() => {
-    setIsRightSidebarCollapsed(!isRightSidebarCollapsed);
-  }, [isRightSidebarCollapsed]);
-
-  const handleToggleTradingPanel = useCallback(() => {
-    setIsTradingPanelCollapsed(!isTradingPanelCollapsed);
-  }, [isTradingPanelCollapsed]);
-
-  // Resize handlers for TradingView chart refresh
-  const handlePanelResize = useCallback(() => {
-    // Trigger TradingView chart resize when panels are resized
-    if (tvWidget && typeof tvWidget.resize === 'function') {
-      setTimeout(() => {
-        tvWidget.resize();
-      }, 100);
-    }
-  }, [tvWidget]);
-
   // Drawing handlers
   const handleDrawingComplete = useCallback((drawing: any) => {
     console.log('Drawing completed:', drawing);
@@ -448,129 +414,61 @@ export default function ChartsPage() {
         </div>
       </nav>
 
-      {/* Main Layout with Resizable Panels */}
-      <div className="h-[calc(100vh-80px)]">
-        <PanelGroup direction="vertical" onLayout={handlePanelResize}>
-          {/* Main content area with horizontal panels */}
-          <Panel defaultSize={isTradingPanelCollapsed ? 100 : 65} minSize={30}>
-            <PanelGroup direction="horizontal" onLayout={handlePanelResize}>
-              {/* Main Chart Area */}
-              <Panel defaultSize={isRightSidebarCollapsed ? 100 : 75} minSize={40}>
-                <div className="h-full p-4">
-                  <Card className="h-full">
-                    <CardContent className="p-0 h-full relative">
-                      {/* Collapse button for right sidebar */}
-                      <Button
-                        onClick={handleToggleRightSidebar}
-                        className="absolute top-2 right-2 z-10 h-8 w-8 p-0"
-                        variant="outline"
-                        size="sm"
-                      >
-                        {isRightSidebarCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      </Button>
-                      
-                      <div 
-                        ref={containerRef}
-                        className="tradingview-widget-container h-full w-full relative"
-                        style={{ height: "100%", width: "100%" }}
-                      >
-                        <div className="tradingview-widget-container__widget h-full"></div>
-                        <div className="tradingview-widget-copyright">
-                          <a 
-                            href="https://www.tradingview.com/" 
-                            rel="noopener nofollow" 
-                            target="_blank"
-                            className="text-xs text-gray-500"
-                          >
-                            Track all markets on TradingView
-                          </a>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+      <div className={`flex h-[calc(100vh-80px)] ${isTradingPanelMinimized ? 'pb-12' : 'pb-64'}`}>
+        {/* Main Chart Area */}
+        <div className="flex-1 p-4">
+          <Card className="h-full">
+            <CardContent className="p-0 h-full relative">
+              <div 
+                ref={containerRef}
+                className="tradingview-widget-container h-full w-full relative"
+                style={{ height: "100%", width: "100%" }}
+              >
+                <div className="tradingview-widget-container__widget h-full"></div>
+                <div className="tradingview-widget-copyright">
+                  <a 
+                    href="https://www.tradingview.com/" 
+                    rel="noopener nofollow" 
+                    target="_blank"
+                    className="text-xs text-gray-500"
+                  >
+                    Track all markets on TradingView
+                  </a>
                 </div>
-              </Panel>
 
-              {/* Resizable Handle for Right Sidebar */}
-              {!isRightSidebarCollapsed && (
-                <PanelResizeHandle className="w-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors cursor-col-resize" />
-              )}
-
-              {/* Right Sidebar - Watchlist and Layout Manager */}
-              {!isRightSidebarCollapsed && (
-                <Panel defaultSize={25} minSize={15} maxSize={40}>
-                  <div className="h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 space-y-4 overflow-y-auto">
-                    {/* Take Screenshot Button */}
-                    <div className="space-y-2">
-                      <Button
-                        onClick={handleTakeScreenshot}
-                        className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-                        size="sm"
-                      >
-                        <Camera className="mr-2 h-4 w-4" />
-                        Take Screenshot
-                      </Button>
-                    </div>
-                    
-                    <WatchlistManager 
-                      onSymbolSelect={handleSymbolSelect}
-                      currentSymbol={currentSymbol}
-                    />
-                    
-                    <ChartLayoutManager 
-                      onLayoutLoad={handleLayoutLoad}
-                      onSaveLayout={handleSaveLayout}
-                    />
-                  </div>
-                </Panel>
-              )}
-            </PanelGroup>
-          </Panel>
-
-          {/* Resizable Handle for Trading Panel */}
-          {!isTradingPanelCollapsed && showTradingPanel && (
-            <PanelResizeHandle className="h-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors cursor-row-resize flex items-center justify-center">
-              <div className="w-12 h-1 bg-gray-400 rounded-full"></div>
-            </PanelResizeHandle>
-          )}
-
-          {/* Trading Panel - Resizable from top */}
-          {!isTradingPanelCollapsed && showTradingPanel && (
-            <Panel defaultSize={35} minSize={20} maxSize={60}>
-              <div className="h-full relative">
-                {/* Collapse button for trading panel */}
-                <Button
-                  onClick={handleToggleTradingPanel}
-                  className="absolute top-2 right-2 z-10 h-8 w-8 p-0"
-                  variant="outline"
-                  size="sm"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-                
-                <TradingPanel 
-                  currentSymbol={currentSymbol}
-                  onPlaceOrder={handlePlaceOrder}
-                  isMinimized={isTradingPanelMinimized}
-                  onToggleMinimize={handleToggleTradingPanelMinimize}
-                  quickAnalysisFiles={screenshotFiles}
-                  onTakeScreenshot={handleTakeScreenshot}
-                />
+                {/* Disabled drawing overlay to prevent DOM errors */}
+                {/* Drawing functionality temporarily disabled while fixing TradingView integration */}
               </div>
-            </Panel>
-          )}
-        </PanelGroup>
 
-        {/* Floating collapse button for trading panel when collapsed */}
-        {isTradingPanelCollapsed && showTradingPanel && (
-          <Button
-            onClick={handleToggleTradingPanel}
-            className="fixed bottom-4 right-4 z-50 h-10 w-10 p-0 rounded-full shadow-lg"
-            variant="default"
-          >
-            <ChevronUp className="h-4 w-4" />
-          </Button>
-        )}
+
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Sidebar - Watchlist and Layout Manager */}
+        <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 space-y-4 overflow-y-auto">
+          {/* Take Screenshot Button */}
+          <div className="space-y-2">
+            <Button
+              onClick={handleTakeScreenshot}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+              size="sm"
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Take Screenshot
+            </Button>
+          </div>
+          
+          <WatchlistManager 
+            onSymbolSelect={handleSymbolSelect}
+            currentSymbol={currentSymbol}
+          />
+          
+          <ChartLayoutManager 
+            onLayoutLoad={handleLayoutLoad}
+            onSaveLayout={handleSaveLayout}
+          />
+        </div>
 
         {/* Drawing Toolbar - Fixed position on left */}
         <DrawingToolbar 
@@ -581,6 +479,8 @@ export default function ChartsPage() {
           onClearAll={handleClearAllDrawings}
           chartContainer={containerRef.current}
         />
+
+
 
         {/* Drawing Settings Panel - Shows when drawing is selected */}
         <DrawingSettingsPanel
@@ -593,6 +493,20 @@ export default function ChartsPage() {
           onLockDrawing={handleLockDrawing}
           onToggleVisibility={handleToggleDrawingVisibility}
         />
+
+
+
+        {/* Trading Panel - Fixed at bottom */}
+        {showTradingPanel && (
+          <TradingPanel 
+            currentSymbol={currentSymbol}
+            onPlaceOrder={handlePlaceOrder}
+            isMinimized={isTradingPanelMinimized}
+            onToggleMinimize={handleToggleTradingPanelMinimize}
+            quickAnalysisFiles={screenshotFiles}
+            onTakeScreenshot={handleTakeScreenshot}
+          />
+        )}
       </div>
     </div>
   );
