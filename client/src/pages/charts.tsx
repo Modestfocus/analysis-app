@@ -28,7 +28,7 @@ export default function ChartsPage() {
   const [isDrawingSettingsOpen, setIsDrawingSettingsOpen] = useState(false);
   const [drawings, setDrawings] = useState<any[]>([]);
   const [showTradingPanel, setShowTradingPanel] = useState(true);
-  const [isTradingPanelMinimized, setIsTradingPanelMinimized] = useState(true);
+  const [isTradingPanelMinimized, setIsTradingPanelMinimized] = useState(false);
   const [tvWidget, setTvWidget] = useState<any>(null);
   
   // Panel visibility and resize states
