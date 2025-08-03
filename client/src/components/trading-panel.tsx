@@ -234,13 +234,23 @@ export default function TradingPanel({
     
     // Check if it's a prop file (screenshot from chart) or internal file (uploaded)
     if (index < propFileCount) {
-      // This is a screenshot from the chart - can't remove directly
-      console.log('❌ Attempting to remove prop file (screenshot)');
-      toast({
-        title: "Cannot remove screenshot",
-        description: "Screenshots taken from the chart cannot be removed from here.",
-        variant: "destructive"
-      });
+      // This is a screenshot from the chart - allow removal by calling parent handler
+      console.log('🗑️ Removing screenshot via parent handler');
+      if (onClearScreenshots) {
+        // For individual screenshot removal, we'll clear all screenshots for now
+        // since the parent component manages screenshot files
+        onClearScreenshots();
+        toast({
+          title: "Screenshot removed",
+          description: "Screenshot has been removed from the analysis.",
+        });
+      } else {
+        toast({
+          title: "Cannot remove screenshot",
+          description: "Screenshot removal is not available.",
+          variant: "destructive"
+        });
+      }
       return;
     }
     
