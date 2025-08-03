@@ -220,10 +220,12 @@ export default function TradingPanel({
   }, []);
 
   const removeQuickAnalysisFile = useCallback((index: number) => {
-    // Check if it's a prop file or internal file
     const propFileCount = propQuickAnalysisFiles?.length || 0;
+    const totalFiles = quickAnalysisFiles.length;
+    
+    // Check if it's a prop file (screenshot from chart) or internal file (uploaded)
     if (index < propFileCount) {
-      // Can't remove prop files - they're controlled by parent
+      // This is a screenshot from the chart - can't remove directly
       toast({
         title: "Cannot remove screenshot",
         description: "Screenshots taken from the chart cannot be removed from here.",
@@ -231,22 +233,40 @@ export default function TradingPanel({
       });
       return;
     }
-    // Remove from internal files
+    
+    // This is an uploaded file - can be removed
     const internalIndex = index - propFileCount;
+    const fileToRemove = internalQuickAnalysisFiles[internalIndex];
+    
+    if (!fileToRemove) {
+      console.error('File not found at internal index:', internalIndex);
+      return;
+    }
+    
+    // Clean up URL for this file
+    const fileKey = `${fileToRemove.name}_${fileToRemove.size}_${fileToRemove.lastModified}`;
+    const url = fileObjectUrls.get(fileKey);
+    if (url) {
+      URL.revokeObjectURL(url);
+      setFileObjectUrls(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(fileKey);
+        return newMap;
+      });
+    }
+    
+    // Remove from internal files
     setInternalQuickAnalysisFiles((prev: File[]) => {
-      const newFiles = prev.filter((_: File, i: number) => i !== internalIndex);
-      // Also remove timeframe for this file
-      const removedFile = prev[internalIndex];
-      if (removedFile) {
-        setQuickAnalysisTimeframes((prevTf: { [fileName: string]: Timeframe }) => {
-          const newTf = { ...prevTf };
-          delete newTf[removedFile.name];
-          return newTf;
-        });
-      }
-      return newFiles;
+      return prev.filter((_: File, i: number) => i !== internalIndex);
     });
-  }, [propQuickAnalysisFiles, toast]);
+    
+    // Remove timeframe for this file
+    setQuickAnalysisTimeframes((prevTf: { [fileName: string]: Timeframe }) => {
+      const newTf = { ...prevTf };
+      delete newTf[fileToRemove.name];
+      return newTf;
+    });
+  }, [propQuickAnalysisFiles, internalQuickAnalysisFiles, fileObjectUrls, quickAnalysisFiles, toast]);
 
   const clearQuickAnalysisFiles = useCallback(() => {
     // Clean up URLs for internal files
@@ -333,7 +353,7 @@ export default function TradingPanel({
     let url = fileObjectUrls.get(fileKey);
     if (!url) {
       url = URL.createObjectURL(file);
-      setFileObjectUrls(prev => new Map(prev).set(fileKey, url));
+      setFileObjectUrls(prev => new Map(prev).set(fileKey, url!));
     }
     return url;
   }, [fileObjectUrls]);
