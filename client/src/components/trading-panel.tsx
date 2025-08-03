@@ -803,7 +803,7 @@ export default function TradingPanel({
                         </div>
                         <div className="space-y-2 max-h-32 overflow-y-auto">
                           {quickAnalysisFiles.map((file, index) => {
-                            const imageUrl = useMemo(() => URL.createObjectURL(file), [file]);
+                            const imageUrl = URL.createObjectURL(file);
                             return (
                               <div key={`${file.name}-${index}`} className="bg-white dark:bg-gray-700 p-2 rounded border">
                                 <div className="flex items-center space-x-3 mb-2">
@@ -813,6 +813,10 @@ export default function TradingPanel({
                                         src={imageUrl} 
                                         alt={file.name}
                                         className="w-8 h-8 object-cover rounded border hover:opacity-75 transition-opacity"
+                                        onLoad={() => {
+                                          // Clean up the URL after image loads to prevent memory leaks
+                                          setTimeout(() => URL.revokeObjectURL(imageUrl), 100);
+                                        }}
                                       />
                                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
                                         <Eye className="w-3 h-3 text-white" />
