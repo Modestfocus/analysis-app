@@ -58,7 +58,7 @@ export function NotesSection({ userId }: NotesSectionProps) {
   // Create note mutation
   const createNoteMutation = useMutation({
     mutationFn: async (noteData: InsertNote) => {
-      const response = await apiRequest('POST', '/api/notes', { body: noteData });
+      const response = await apiRequest('POST', '/api/notes', noteData);
       const data = await response.json();
       return data.note as Note;
     },
@@ -86,7 +86,7 @@ export function NotesSection({ userId }: NotesSectionProps) {
   // Update note mutation
   const updateNoteMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Note> }) => {
-      const response = await apiRequest('PATCH', `/api/notes/${id}`, { body: updates });
+      const response = await apiRequest('PATCH', `/api/notes/${id}`, updates);
       const data = await response.json();
       return data.note as Note;
     },
