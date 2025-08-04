@@ -676,7 +676,7 @@ export default function DashboardPage() {
                         </Button>
                         <Button
                           size="sm"
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          className="hover:bg-purple-700 text-white bg-[#706870]"
                           onClick={() => {
                             toast({
                               title: "System Prompt Saved",
