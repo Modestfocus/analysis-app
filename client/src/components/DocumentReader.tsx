@@ -22,7 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 // Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface DocumentReaderProps {
   document: DocumentType;
@@ -68,7 +68,7 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
     console.error('Error loading PDF:', error);
     toast({
       title: "Error Loading Document",
-      description: "Failed to load the PDF document. Please try again.",
+      description: `Failed to load the PDF document: ${error.message}. Please try again.`,
       variant: "destructive",
     });
   };
