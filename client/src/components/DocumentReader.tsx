@@ -21,8 +21,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure PDF.js worker with a working URL
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure PDF.js worker - disable worker for compatibility
+// This approach works better in some environments where worker loading fails
+pdfjs.GlobalWorkerOptions.workerSrc = "";
 
 interface DocumentReaderProps {
   document: DocumentType;
