@@ -264,7 +264,17 @@ export function NotesSection({ userId }: NotesSectionProps) {
       <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-end mb-3">
+          <div className="flex items-center gap-2">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search notes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-8 text-sm"
+              />
+            </div>
             <Button
               onClick={handleCreateNote}
               size="sm"
@@ -273,17 +283,6 @@ export function NotesSection({ userId }: NotesSectionProps) {
             >
               <Plus className="h-4 w-4" />
             </Button>
-          </div>
-          
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search notes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-8 text-sm"
-            />
           </div>
         </div>
 
