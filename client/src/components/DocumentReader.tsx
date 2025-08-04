@@ -21,10 +21,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure PDF.js worker - try multiple CDN options for reliability
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
-}
+// Configure PDF.js to use fallback mode without worker for compatibility
+// Setting workerSrc to empty will make PDF.js use fallback mode
+pdfjs.GlobalWorkerOptions.workerSrc = "";
 
 interface DocumentReaderProps {
   document: DocumentType;
@@ -55,20 +54,13 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
 
   // Memoize options to prevent unnecessary reloads
   const pdfOptions = useMemo(() => ({
-    disableWorker: false,
+    disableWorker: true,
     isEvalSupported: false,
     disableStream: true,
     disableAutoFetch: true,
-    cMapUrl: 'https://unpkg.com/pdfjs-dist@' + pdfjs.version + '/cmaps/',
-    cMapPacked: true,
   }), []);
 
   useEffect(() => {
-    // Ensure PDF.js worker is properly configured
-    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
-    }
-    
     // Load any existing notes or highlights for this document
     const savedNotes = localStorage.getItem(`document_notes_${document.id}`);
     const savedHighlights = localStorage.getItem(`document_highlights_${document.id}`);
