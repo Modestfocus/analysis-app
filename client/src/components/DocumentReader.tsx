@@ -21,8 +21,15 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure PDF.js worker with reliable CDN source
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure PDF.js worker with inline fallback for Vite compatibility
+if (typeof window !== 'undefined') {
+  // Create an inline worker blob as fallback for Vite environments
+  const workerSrc = `
+    importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js');
+  `;
+  const blob = new Blob([workerSrc], { type: 'application/javascript' });
+  pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+}
 
 interface DocumentReaderProps {
   document: DocumentType;
