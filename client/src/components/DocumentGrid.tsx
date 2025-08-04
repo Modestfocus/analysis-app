@@ -262,10 +262,10 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
                 <div className="flex gap-2 pt-2">
                   <Button 
                     size="sm" 
+                    variant="outline"
                     className="flex-1"
                     onClick={() => setSelectedDocumentForViewing(document)}
                   >
-                    <FileText className="h-3 w-3 mr-1" />
                     View
                   </Button>
                   <Button 
