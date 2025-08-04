@@ -424,7 +424,7 @@ export function NotesSection({ userId }: NotesSectionProps) {
                   </h1>
                   <Separator />
                   <div className="prose prose-gray dark:prose-invert max-w-none">
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed dark:text-gray-300 bg-[#e6e8ec75] text-[#2a2c37]">
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed dark:text-gray-300 text-[#2a2c37] bg-[#e6e8ec00]">
                       {selectedNote.content || "This note is empty."}
                     </pre>
                   </div>
