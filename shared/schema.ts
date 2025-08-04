@@ -70,7 +70,7 @@ export const analysisResults = pgTable("analysis_results", {
 
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: text("user_id").notNull(), // Changed from uuid to text to handle demo-user-id
   filename: text("filename").notNull(),
   originalName: text("original_name").notNull(),
   fileType: text("file_type").notNull(), // "pdf", "doc", "docx", "txt", etc.
