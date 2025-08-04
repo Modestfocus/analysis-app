@@ -264,8 +264,7 @@ export function NotesSection({ userId }: NotesSectionProps) {
       <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notes</h3>
+          <div className="flex items-center justify-end mb-3">
             <Button
               onClick={handleCreateNote}
               size="sm"
