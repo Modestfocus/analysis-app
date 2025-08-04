@@ -410,11 +410,12 @@ export function NotesSection({ userId }: NotesSectionProps) {
                     className="text-xl font-semibold border-none shadow-none p-0 focus-visible:ring-0 bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
                   />
                   <Separator />
-                  <Textarea
+                  <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     placeholder="Start writing your note..."
-                    className="min-h-[400px] border-none shadow-none p-0 resize-none focus-visible:ring-0 text-sm leading-relaxed bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                    className="w-full min-h-[400px] border-none outline-none resize-none text-sm leading-relaxed bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 font-sans"
+                    style={{ background: 'transparent' }}
                   />
                 </div>
               ) : (
