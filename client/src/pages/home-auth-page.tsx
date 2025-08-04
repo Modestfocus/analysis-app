@@ -111,45 +111,73 @@ export default function HomeAuthPage() {
       // Check if Phantom wallet is installed
       const { solana } = window as any;
       
-      if (solana && solana.isPhantom) {
-        // Connect to Phantom
-        const response = await solana.connect();
-        const walletAddr = response.publicKey.toString();
-        setWalletAddress(walletAddr);
-        setWalletConnected(true);
-
-        // Authenticate with backend
-        const authResponse = await apiRequest("POST", "/api/auth/wallet-login", {
-          walletAddress: walletAddr,
-          walletType: "phantom"
-        });
-        const data = await authResponse.json();
-
-        if (data.success) {
-          toast({
-            title: "Wallet connected successfully",
-            description: `Connected to ${walletAddr.slice(0, 8)}...${walletAddr.slice(-8)}`,
-          });
-          setLocation("/dashboard");
-        } else {
-          throw new Error(data.error || "Wallet authentication failed");
-        }
-      } else {
+      if (!solana) {
         toast({
           title: "Phantom Wallet not found",
           description: "Please install Phantom Wallet to continue",
           variant: "destructive",
         });
-        // Open Phantom website
         window.open("https://phantom.app/", "_blank");
+        return;
+      }
+
+      if (!solana.isPhantom) {
+        toast({
+          title: "Phantom Wallet not detected",
+          description: "Please make sure Phantom is properly installed",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Request connection to Phantom
+      console.log("Requesting connection to Phantom wallet...");
+      const response = await solana.connect({ onlyIfTrusted: false });
+      
+      if (!response || !response.publicKey) {
+        throw new Error("Failed to connect to Phantom wallet");
+      }
+
+      const walletAddr = response.publicKey.toString();
+      console.log("Connected to wallet:", walletAddr);
+      
+      setWalletAddress(walletAddr);
+      setWalletConnected(true);
+
+      // Authenticate with backend
+      console.log("Authenticating with backend...");
+      const authResponse = await apiRequest("POST", "/api/auth/wallet-login", {
+        walletAddress: walletAddr,
+        walletType: "phantom"
+      });
+      
+      if (!authResponse.ok) {
+        const errorText = await authResponse.text();
+        console.error("Backend authentication failed:", errorText);
+        throw new Error(`Authentication failed: ${authResponse.status}`);
+      }
+
+      const data = await authResponse.json();
+      console.log("Backend response:", data);
+
+      if (data.success) {
+        toast({
+          title: "Wallet connected successfully",
+          description: `Connected to ${walletAddr.slice(0, 8)}...${walletAddr.slice(-8)}`,
+        });
+        setLocation("/dashboard");
+      } else {
+        throw new Error(data.error || "Wallet authentication failed");
       }
     } catch (error: any) {
+      console.error("Phantom connection error:", error);
       toast({
         title: "Connection failed",
         description: error.message || "Failed to connect wallet",
         variant: "destructive",
       });
       setWalletConnected(false);
+      setWalletAddress("");
     } finally {
       setIsLoading(false);
     }

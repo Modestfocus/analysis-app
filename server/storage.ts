@@ -426,6 +426,20 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.walletAddress, walletAddress));
+    return user || undefined;
+  }
+
+  async linkWalletToUser(userId: string, walletAddress: string, walletType: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ walletAddress, walletType })
+      .where(eq(users.id, userId))
+      .returning();
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
