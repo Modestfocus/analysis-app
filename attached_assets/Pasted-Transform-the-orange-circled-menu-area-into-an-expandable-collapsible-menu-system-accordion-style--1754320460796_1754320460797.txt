@@ -1,0 +1,63 @@
+Transform the orange-circled menu area into an expandable/collapsible menu system (accordion style) as shown in the hand-drawn wireframe (second screenshot).
+
+⸻
+
+🏗 Implementation Instructions:
+
+1. Main Menu Items (Accordion Headers)
+	•	Replace the current static menu section with an accordion menu component.
+	•	Main Menu Items (Accordion Headers):
+	•	Charts Dashboard (current default dashboard)
+	•	Docs
+	•	Notes
+	•	Rules
+	•	System Prompt
+	•	Each of these headers should have a click-to-toggle expand/collapse function.
+	•	Use smooth transitions for expand/collapse animation.
+	•	Add a small arrow icon that rotates when expanding/collapsing.
+
+⸻
+
+2. Nested Sub-Menus (Content Sections)
+	•	When a Main Menu Item is expanded, display its corresponding sub-content section directly below it.
+	•	For now, just show a placeholder clean page under each section (blank canvas with a title like “Docs Page” etc.).
+	•	The Charts Dashboard will display the current chart cards as it does now.
+	•	Docs, Notes, Rules, and System Prompt will display empty states until content is added.
+
+⸻
+
+3. Behavioral Rules:
+	•	Only one Main Menu section can be expanded at a time.
+	•	Expanding a new section automatically collapses the previously opened section.
+	•	Default state on page load: Charts Dashboard expanded.
+	•	Clicking on an already expanded section collapses it back down.
+	•	This should feel like a smooth accordion toggle experience.
+
+⸻
+
+4. Styling Instructions:
+	•	Keep the design clean and aligned with the current platform’s styling (white background, soft borders, modern UI).
+	•	Main Menu headers should have:
+	•	Slight background shade on hover.
+	•	Bold label (e.g., “Docs”, “Rules”).
+	•	A chevron icon (arrow) that rotates on toggle.
+	•	Ensure the menu width aligns perfectly with the current layout — do not shift the dashboard’s card layout structure.
+	•	When a section is expanded, the content below should feel like it’s part of the same page (no page reload).
+
+⸻
+
+5. Keep Existing Components Intact:
+	•	Do not touch the existing Chart Cards, GPT-4o Analysis Panel, or Top Nav Tabs.
+	•	This change applies only to the orange-circled menu area to introduce collapsible sections.
+
+⸻
+
+✅ Deliverable:
+	•	Fully functional Expandable Accordion Menu Navigation with sections:
+	•	Charts Dashboard (default open)
+	•	Docs
+	•	Notes
+	•	Rules
+	•	System Prompt
+	•	Clicking each toggles an expanded content area directly below.
+	•	Clean, modern UI transitions with arrow animations.
