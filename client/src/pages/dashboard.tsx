@@ -14,6 +14,7 @@ import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
 import { DocumentGrid } from "@/components/DocumentGrid";
 import { DocumentReader } from "@/components/DocumentReader";
 import { NotesSection } from "@/components/NotesSection";
+import { TradingRulesSection } from "@/components/TradingRulesSection";
 import type { Chart, Timeframe, ChartBundle, BundleMetadata, Document } from "@shared/schema";
 
 export default function DashboardPage() {
@@ -628,13 +629,7 @@ export default function DashboardPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
-                    <div className="py-8 text-center">
-                      <Shield className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Trading Rules</h3>
-                      <p className="text-gray-500">
-                        Your trading rules and strategies will be displayed here.
-                      </p>
-                    </div>
+                    <TradingRulesSection userId={userId} />
                   </AccordionContent>
                 </AccordionItem>
 

@@ -7,6 +7,7 @@ import {
   chartLayouts,
   documents,
   notes,
+  tradingRules,
   type User, 
   type InsertUser, 
   type Chart, 
@@ -22,7 +23,9 @@ import {
   type Document,
   type InsertDocument,
   type Note,
-  type InsertNote
+  type InsertNote,
+  type TradingRule,
+  type InsertTradingRule
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -88,6 +91,14 @@ export interface IStorage {
   updateNote(id: string, updates: Partial<Note>): Promise<Note | undefined>;
   deleteNote(id: string): Promise<boolean>;
   
+  // Trading Rules operations
+  createTradingRule(rule: InsertTradingRule): Promise<TradingRule>;
+  getTradingRule(id: string): Promise<TradingRule | undefined>;
+  getUserTradingRules(userId: string): Promise<TradingRule[]>;
+  updateTradingRule(id: string, updates: Partial<TradingRule>): Promise<TradingRule | undefined>;
+  deleteTradingRule(id: string): Promise<boolean>;
+  reorderTradingRules(userId: string, orderedIds: string[]): Promise<boolean>;
+  
   // Similarity search
   findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>>;
 }
@@ -101,6 +112,7 @@ export class MemStorage implements IStorage {
   private chartLayouts: Map<string, ChartLayout>;
   private documents: Map<number, Document>;
   private notes: Map<string, Note>;
+  private tradingRules: Map<string, TradingRule>;
   private currentChartId: number;
   private currentAnalysisId: number;
   private currentDocumentId: number;
@@ -114,6 +126,7 @@ export class MemStorage implements IStorage {
     this.chartLayouts = new Map();
     this.documents = new Map();
     this.notes = new Map();
+    this.tradingRules = new Map();
     this.currentChartId = 1;
     this.currentAnalysisId = 1;
     this.currentDocumentId = 1;

@@ -90,6 +90,15 @@ export const notes = pgTable("notes", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const tradingRules = pgTable("trading_rules", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  content: text("content").notNull(),
+  order: integer("order").notNull().default(0), // For ordering rules
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -131,6 +140,12 @@ export const insertNoteSchema = createInsertSchema(notes).omit({
   updatedAt: true,
 });
 
+export const insertTradingRuleSchema = createInsertSchema(tradingRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWatchlist = z.infer<typeof insertWatchlistSchema>;
@@ -147,6 +162,8 @@ export type Document = typeof documents.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Note = typeof notes.$inferSelect;
 export type InsertNote = z.infer<typeof insertNoteSchema>;
+export type TradingRule = typeof tradingRules.$inferSelect;
+export type InsertTradingRule = z.infer<typeof insertTradingRuleSchema>;
 
 // Bundle metadata interface
 export interface BundleMetadata {
