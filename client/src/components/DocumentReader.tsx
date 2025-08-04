@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Document as DocumentType } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,12 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
   const { toast } = useToast();
 
   const documentUrl = `/documents/${document.filename}`;
+
+  // Memoize options to prevent unnecessary reloads
+  const pdfOptions = useMemo(() => ({
+    cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+    cMapPacked: true,
+  }), []);
 
   useEffect(() => {
     // Load any existing notes or highlights for this document
@@ -235,17 +241,11 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
                   file={documentUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
-                  options={{
-                    disableWorker: false,
-                    disableAutoFetch: false,
-                    disableStream: false,
-                    cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
-                    cMapPacked: true,
-                  }}
+                  options={pdfOptions}
                   loading={
-                    <div className="flex items-center justify-center p-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      <span className="ml-2">Loading PDF...</span>
+                    <div className="flex items-center justify-center p-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                      <span className="ml-2 text-sm">Loading PDF...</span>
                     </div>
                   }
                   error={
