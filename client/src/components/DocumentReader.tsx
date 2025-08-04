@@ -21,8 +21,17 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure PDF.js worker with proper CDN URL
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure PDF.js worker with fallback approach for better compatibility
+try {
+  // Try to use the worker from npm package first
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.js',
+    import.meta.url
+  ).toString();
+} catch {
+  // Fallback to CDN if local import fails
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+}
 
 interface DocumentReaderProps {
   document: DocumentType;
@@ -47,9 +56,28 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
   const [notes, setNotes] = useState("");
   const [documentTitle, setDocumentTitle] = useState(document.originalName);
   const [isHighlightMode, setIsHighlightMode] = useState(false);
+  const [documentExists, setDocumentExists] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const documentUrl = `/documents/${document.filename}`;
+
+  // Validate document exists before rendering
+  useEffect(() => {
+    const validateDocument = async () => {
+      try {
+        const response = await fetch(documentUrl, { method: 'HEAD' });
+        setDocumentExists(response.ok);
+        if (!response.ok) {
+          console.error('Document not accessible:', documentUrl, response.status);
+        }
+      } catch (error) {
+        console.error('Error validating document:', error);
+        setDocumentExists(false);
+      }
+    };
+    
+    validateDocument();
+  }, [documentUrl]);
 
   // Memoize options to prevent unnecessary reloads
   const pdfOptions = useMemo(() => ({
@@ -228,38 +256,58 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
         <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900 p-4">
           <div className="flex justify-center">
             {document.fileType.toLowerCase() === 'pdf' ? (
-              <div className="bg-white shadow-lg">
-                <Document
-                  file={documentUrl}
-                  onLoadSuccess={onDocumentLoadSuccess}
-                  onLoadError={onDocumentLoadError}
-                  options={pdfOptions}
-                  loading={
-                    <div className="flex items-center justify-center p-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                      <span className="ml-2 text-sm">Loading PDF...</span>
-                    </div>
-                  }
-                  error={
-                    <div className="flex flex-col items-center justify-center p-8 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
-                      <FileText className="h-12 w-12 mb-2" />
-                      <p className="text-lg font-semibold">Failed to load PDF</p>
-                      <p className="text-sm">Please check if the file is valid and try again.</p>
-                    </div>
-                  }
-                >
-                  <Page
-                    pageNumber={currentPage}
-                    scale={scale}
-                    rotate={rotation}
+              documentExists === null ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  <span className="ml-2 text-sm">Validating document...</span>
+                </div>
+              ) : documentExists === false ? (
+                <Card className="max-w-2xl">
+                  <CardContent className="p-8 text-center">
+                    <FileText className="h-16 w-16 mx-auto mb-4 text-red-500" />
+                    <h3 className="text-lg font-semibold mb-2 text-red-700">Document Not Found</h3>
+                    <p className="text-muted-foreground mb-4">
+                      The PDF file could not be found or is not accessible. Please try reuploading the document.
+                    </p>
+                    <Button variant="outline" onClick={onClose}>
+                      Close Viewer
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="bg-white shadow-lg">
+                  <Document
+                    file={documentUrl}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={onDocumentLoadError}
+                    options={pdfOptions}
                     loading={
                       <div className="flex items-center justify-center p-4">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        <span className="ml-2 text-sm">Loading PDF...</span>
                       </div>
                     }
-                  />
-                </Document>
-              </div>
+                    error={
+                      <div className="flex flex-col items-center justify-center p-8 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
+                        <FileText className="h-12 w-12 mb-2" />
+                        <p className="text-lg font-semibold">Failed to load PDF</p>
+                        <p className="text-sm">Please check if the file is valid and try again.</p>
+                      </div>
+                    }
+                  >
+                    <Page
+                      pageNumber={currentPage}
+                      scale={scale}
+                      rotate={rotation}
+                      loading={
+                        <div className="flex items-center justify-center p-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        </div>
+                      }
+                    />
+                  </Document>
+                </div>
+              )
             ) : (
               <Card className="max-w-2xl">
                 <CardContent className="p-8 text-center">
