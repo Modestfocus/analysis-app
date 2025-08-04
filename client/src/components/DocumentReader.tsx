@@ -21,9 +21,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure PDF.js to use fallback mode without worker for compatibility
-// Setting workerSrc to empty will make PDF.js use fallback mode
-pdfjs.GlobalWorkerOptions.workerSrc = "";
+// Configure PDF.js worker with proper CDN URL
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface DocumentReaderProps {
   document: DocumentType;
@@ -54,10 +53,7 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
 
   // Memoize options to prevent unnecessary reloads
   const pdfOptions = useMemo(() => ({
-    disableWorker: true,
     isEvalSupported: false,
-    disableStream: true,
-    disableAutoFetch: true,
   }), []);
 
   useEffect(() => {
