@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const [selectedCharts, setSelectedCharts] = useState<Set<number>>(new Set());
   const [analysisResults, setAnalysisResults] = useState(null);
   const [showView, setShowView] = useState<"charts" | "bundles" | "analyses">("charts");
-  const [activeAccordionSection, setActiveAccordionSection] = useState<string>("charts-dashboard");
+  const [activeAccordionSection, setActiveAccordionSection] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

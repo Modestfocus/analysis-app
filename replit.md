@@ -8,6 +8,7 @@ This is a full-stack chart analysis application that combines React frontend wit
 
 Preferred communication style: Simple, everyday language.
 Trading panel: Minimized by default for optimal chart viewing.
+Dashboard default view: Condensed accordion layout with all sections closed by default.
 
 ## Recent Changes (January 2025)
 
