@@ -194,7 +194,7 @@ export function TradingRulesSection({ userId }: TradingRulesSectionProps) {
           <Button 
             onClick={handleAddRule}
             size="sm"
-            className="px-3"
+            className="px-3 bg-purple-600 hover:bg-purple-700 text-white"
           >
             <Plus className="h-4 w-4 mr-1" />
             Add
