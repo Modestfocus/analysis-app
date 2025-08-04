@@ -21,17 +21,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure PDF.js worker with fallback approach for better compatibility
-try {
-  // Try to use the worker from npm package first
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.js',
-    import.meta.url
-  ).toString();
-} catch {
-  // Fallback to CDN if local import fails
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-}
+// Configure PDF.js worker with reliable CDN source
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface DocumentReaderProps {
   document: DocumentType;
@@ -61,11 +52,22 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
 
   const documentUrl = `/documents/${document.filename}`;
 
+  // Debug logging for troubleshooting
+  useEffect(() => {
+    console.log('DocumentReader - Debug Info:');
+    console.log('Document object:', document);
+    console.log('Document filename:', document.filename);
+    console.log('Generated URL:', documentUrl);
+    console.log('Document file type:', document.fileType);
+  }, [document, documentUrl]);
+
   // Validate document exists before rendering
   useEffect(() => {
     const validateDocument = async () => {
       try {
+        console.log('Validating document at URL:', documentUrl);
         const response = await fetch(documentUrl, { method: 'HEAD' });
+        console.log('Document validation response:', response.status, response.ok);
         setDocumentExists(response.ok);
         if (!response.ok) {
           console.error('Document not accessible:', documentUrl, response.status);
@@ -76,8 +78,13 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
       }
     };
     
-    validateDocument();
-  }, [documentUrl]);
+    if (document.filename && document.filename.trim()) {
+      validateDocument();
+    } else {
+      console.error('Invalid document filename:', document.filename);
+      setDocumentExists(false);
+    }
+  }, [documentUrl, document.filename]);
 
   // Memoize options to prevent unnecessary reloads
   const pdfOptions = useMemo(() => ({
@@ -276,36 +283,55 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
                 </Card>
               ) : (
                 <div className="bg-white shadow-lg">
-                  <Document
-                    file={documentUrl}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    onLoadError={onDocumentLoadError}
-                    options={pdfOptions}
-                    loading={
-                      <div className="flex items-center justify-center p-4">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                        <span className="ml-2 text-sm">Loading PDF...</span>
-                      </div>
-                    }
-                    error={
-                      <div className="flex flex-col items-center justify-center p-8 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
-                        <FileText className="h-12 w-12 mb-2" />
-                        <p className="text-lg font-semibold">Failed to load PDF</p>
-                        <p className="text-sm">Please check if the file is valid and try again.</p>
-                      </div>
-                    }
-                  >
-                    <Page
-                      pageNumber={currentPage}
-                      scale={scale}
-                      rotate={rotation}
-                      loading={
-                        <div className="flex items-center justify-center p-4">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  {(() => {
+                    console.log('About to render Document component with file:', documentUrl);
+                    console.log('Document filename check:', document.filename);
+                    console.log('Is filename valid?', !!document.filename && document.filename.trim().length > 0);
+                    
+                    if (!document.filename || document.filename.trim().length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center p-8 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
+                          <FileText className="h-12 w-12 mb-2" />
+                          <p className="text-lg font-semibold">Invalid Document</p>
+                          <p className="text-sm">Document filename is missing or invalid.</p>
                         </div>
-                      }
-                    />
-                  </Document>
+                      );
+                    }
+                    
+                    return (
+                      <Document
+                        file={documentUrl}
+                        onLoadSuccess={onDocumentLoadSuccess}
+                        onLoadError={onDocumentLoadError}
+                        options={pdfOptions}
+                        loading={
+                          <div className="flex items-center justify-center p-4">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            <span className="ml-2 text-sm">Loading PDF...</span>
+                          </div>
+                        }
+                        error={
+                          <div className="flex flex-col items-center justify-center p-8 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
+                            <FileText className="h-12 w-12 mb-2" />
+                            <p className="text-lg font-semibold">Failed to load PDF</p>
+                            <p className="text-sm">Please check if the file is valid and try again.</p>
+                            <p className="text-xs mt-2 opacity-70">URL: {documentUrl}</p>
+                          </div>
+                        }
+                      >
+                        <Page
+                          pageNumber={currentPage}
+                          scale={scale}
+                          rotate={rotation}
+                          loading={
+                            <div className="flex items-center justify-center p-4">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            </div>
+                          }
+                        />
+                      </Document>
+                    );
+                  })()}
                 </div>
               )
             ) : (
