@@ -337,7 +337,6 @@ export function NotesSection({ userId }: NotesSectionProps) {
           )}
         </div>
       </div>
-
       {/* Main Panel - Note Editor */}
       <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
         {selectedNote ? (
@@ -425,7 +424,7 @@ export function NotesSection({ userId }: NotesSectionProps) {
                   </h1>
                   <Separator />
                   <div className="prose prose-gray dark:prose-invert max-w-none">
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed dark:text-gray-300 bg-[#e6e8ec75] text-[#2a2c37]">
                       {selectedNote.content || "This note is empty."}
                     </pre>
                   </div>
