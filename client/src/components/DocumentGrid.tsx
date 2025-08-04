@@ -31,7 +31,8 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
 
   const deleteDocumentMutation = useMutation({
     mutationFn: async (documentId: number) => {
-      return await apiRequest(`/api/documents/${documentId}`, { method: 'DELETE' });
+      const response = await apiRequest('DELETE', `/api/documents/${documentId}`);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents/user', userId] });
@@ -50,13 +51,11 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
   });
 
   const handleGetUploadParameters = async () => {
-    const response = await apiRequest('/api/documents/upload', { 
-      method: 'POST',
-      body: JSON.stringify({ filename: 'document' }) 
-    });
+    const response = await apiRequest('POST', '/api/documents/upload', { filename: 'document' });
+    const data = await response.json();
     return {
       method: 'PUT' as const,
-      url: (response as any).uploadURL,
+      url: data.uploadURL,
     };
   };
 
@@ -76,18 +75,15 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
           // Normalize the path from the upload URL
           const normalizedPath = uploadURL.split('?')[0].split('/').pop();
           
-          await apiRequest('/api/documents', {
-            method: 'POST',
-            body: JSON.stringify({
-              userId,
-              filename: normalizedPath,
-              originalName: fileName,
-              fileType,
-              fileSize,
-              filePath: `/documents/${normalizedPath}`,
-              description: description || null,
-              tags: tags.length > 0 ? tags : null,
-            }),
+          await apiRequest('POST', '/api/documents', {
+            userId,
+            filename: normalizedPath,
+            originalName: fileName,
+            fileType,
+            fileSize,
+            filePath: `/documents/${normalizedPath}`,
+            description: description || null,
+            tags: tags.length > 0 ? tags : null,
           });
         } catch (error) {
           console.error('Error creating document record:', error);
