@@ -11,7 +11,9 @@ import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp, FileText, Stic
 import ChartCard from "@/components/chart-card";
 import BundleCard from "@/components/bundle-card";
 import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
-import type { Chart, Timeframe, ChartBundle, BundleMetadata } from "@shared/schema";
+import { DocumentGrid } from "@/components/DocumentGrid";
+import { DocumentReader } from "@/components/DocumentReader";
+import type { Chart, Timeframe, ChartBundle, BundleMetadata, Document } from "@shared/schema";
 
 export default function DashboardPage() {
   const [location] = useLocation();
@@ -20,8 +22,12 @@ export default function DashboardPage() {
   const [analysisResults, setAnalysisResults] = useState(null);
   const [showView, setShowView] = useState<"charts" | "bundles" | "analyses">("charts");
   const [activeAccordionSection, setActiveAccordionSection] = useState<string>("");
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Mock user ID for demo - in real app this would come from auth context
+  const userId = "demo-user-id";
 
   const { data: chartsData, isLoading: isLoadingCharts, refetch } = useQuery({
     queryKey: ['charts', selectedTimeframe],
@@ -569,12 +575,23 @@ export default function DashboardPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
-                    <div className="py-8 text-center">
-                      <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Documentation</h3>
-                      <p className="text-gray-500">
-                        Documentation content will be available here soon.
-                      </p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
+                      {/* Document Grid - Left Side */}
+                      <div className="overflow-y-auto">
+                        <DocumentGrid
+                          userId={userId}
+                          onDocumentSelect={setSelectedDocument}
+                          selectedDocument={selectedDocument}
+                        />
+                      </div>
+                      
+                      {/* Document Reader - Right Side */}
+                      <div className="overflow-hidden">
+                        <DocumentReader
+                          document={selectedDocument}
+                          onClose={() => setSelectedDocument(null)}
+                        />
+                      </div>
                     </div>
                   </AccordionContent>
                 </AccordionItem>

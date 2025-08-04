@@ -5,6 +5,7 @@ import {
   chartBundles, 
   watchlists,
   chartLayouts,
+  documents,
   type User, 
   type InsertUser, 
   type Chart, 
@@ -16,7 +17,9 @@ import {
   type Watchlist,
   type InsertWatchlist,
   type ChartLayout,
-  type InsertChartLayout
+  type InsertChartLayout,
+  type Document,
+  type InsertDocument
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -67,6 +70,13 @@ export interface IStorage {
   getUserChartLayout(userId: string): Promise<ChartLayout | undefined>;
   saveChartLayout(layout: InsertChartLayout): Promise<ChartLayout>;
   
+  // Document operations
+  createDocument(document: InsertDocument): Promise<Document>;
+  getDocument(id: number): Promise<Document | undefined>;
+  getUserDocuments(userId: string): Promise<Document[]>;
+  updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined>;
+  deleteDocument(id: number): Promise<boolean>;
+  
   // Similarity search
   findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>>;
 }
@@ -78,8 +88,10 @@ export class MemStorage implements IStorage {
   private bundles: Map<string, ChartBundle>;
   private watchlists: Map<string, Watchlist[]>;
   private chartLayouts: Map<string, ChartLayout>;
+  private documents: Map<number, Document>;
   private currentChartId: number;
   private currentAnalysisId: number;
+  private currentDocumentId: number;
 
   constructor() {
     this.users = new Map();
@@ -88,8 +100,10 @@ export class MemStorage implements IStorage {
     this.bundles = new Map();
     this.watchlists = new Map();
     this.chartLayouts = new Map();
+    this.documents = new Map();
     this.currentChartId = 1;
     this.currentAnalysisId = 1;
+    this.currentDocumentId = 1;
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -310,6 +324,42 @@ export class MemStorage implements IStorage {
     
     this.chartLayouts.set(insertLayout.userId, layout);
     return layout;
+  }
+
+  // Document operations (MemStorage implementation)
+  private documents: Map<number, Document> = new Map();
+
+  async createDocument(insertDocument: InsertDocument): Promise<Document> {
+    const id = Math.max(...Array.from(this.documents.keys()), 0) + 1;
+    const document: Document = {
+      ...insertDocument,
+      id,
+      uploadedAt: new Date(),
+      tags: insertDocument.tags || null,
+      description: insertDocument.description || null
+    };
+    this.documents.set(id, document);
+    return document;
+  }
+
+  async getDocument(id: number): Promise<Document | undefined> {
+    return this.documents.get(id);
+  }
+
+  async getUserDocuments(userId: string): Promise<Document[]> {
+    return Array.from(this.documents.values()).filter(doc => doc.userId === userId);
+  }
+
+  async updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined> {
+    const document = this.documents.get(id);
+    if (!document) return undefined;
+    const updatedDocument = { ...document, ...updates };
+    this.documents.set(id, updatedDocument);
+    return updatedDocument;
+  }
+
+  async deleteDocument(id: number): Promise<boolean> {
+    return this.documents.delete(id);
   }
 
   async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {
@@ -688,6 +738,40 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return layout;
     }
+  }
+
+  // Document operations (DatabaseStorage implementation)
+  async createDocument(insertDocument: InsertDocument): Promise<Document> {
+    const [document] = await db
+      .insert(documents)
+      .values([insertDocument])
+      .returning();
+    return document;
+  }
+
+  async getDocument(id: number): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    return document || undefined;
+  }
+
+  async getUserDocuments(userId: string): Promise<Document[]> {
+    return await db.select().from(documents)
+      .where(eq(documents.userId, userId))
+      .orderBy(desc(documents.uploadedAt));
+  }
+
+  async updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined> {
+    const [document] = await db
+      .update(documents)
+      .set(updates)
+      .where(eq(documents.id, id))
+      .returning();
+    return document || undefined;
+  }
+
+  async deleteDocument(id: number): Promise<boolean> {
+    const result = await db.delete(documents).where(eq(documents.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {

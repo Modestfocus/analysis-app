@@ -9,8 +9,9 @@ import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
-import { insertChartSchema, insertAnalysisSchema, type Chart } from "@shared/schema";
+import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, type Chart, type Document } from "@shared/schema";
 import debugRoutes from './debug-routes';
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
@@ -178,6 +179,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register debug routes
   app.use('/debug', debugRoutes);
+
+  // Document Management API Routes
+  const objectStorageService = new ObjectStorageService();
+
+  // Get upload URL for documents
+  app.post('/api/documents/upload', async (req, res) => {
+    try {
+      const { filename } = req.body;
+      const uploadURL = await objectStorageService.getDocumentUploadURL(filename);
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error('Error getting document upload URL:', error);
+      res.status(500).json({ error: 'Failed to get upload URL' });
+    }
+  });
+
+  // Create document record after upload
+  app.post('/api/documents', async (req, res) => {
+    try {
+      const documentData = insertDocumentSchema.parse(req.body);
+      const document = await storage.createDocument(documentData);
+      res.json({ success: true, document });
+    } catch (error) {
+      console.error('Error creating document:', error);
+      res.status(500).json({ error: 'Failed to create document' });
+    }
+  });
+
+  // Get user documents
+  app.get('/api/documents/user/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const documents = await storage.getUserDocuments(userId);
+      res.json({ documents });
+    } catch (error) {
+      console.error('Error fetching user documents:', error);
+      res.status(500).json({ error: 'Failed to fetch documents' });
+    }
+  });
+
+  // Get specific document
+  app.get('/api/documents/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      res.json({ document });
+    } catch (error) {
+      console.error('Error fetching document:', error);
+      res.status(500).json({ error: 'Failed to fetch document' });
+    }
+  });
+
+  // Serve documents
+  app.get('/documents/:filePath(*)', async (req, res) => {
+    try {
+      const filePath = req.params.filePath;
+      const documentFile = await objectStorageService.getDocumentFile(`/documents/${filePath}`);
+      objectStorageService.downloadObject(documentFile, res);
+    } catch (error) {
+      console.error('Error serving document:', error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Update document
+  app.patch('/api/documents/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      const document = await storage.updateDocument(id, updates);
+      if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      res.json({ success: true, document });
+    } catch (error) {
+      console.error('Error updating document:', error);
+      res.status(500).json({ error: 'Failed to update document' });
+    }
+  });
+
+  // Delete document
+  app.delete('/api/documents/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteDocument(id);
+      if (!success) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      res.status(500).json({ error: 'Failed to delete document' });
+    }
+  });
 
   // Serve uploaded files and generated maps
   app.use('/uploads', (req, res, next) => {

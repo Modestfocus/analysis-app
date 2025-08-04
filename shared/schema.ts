@@ -68,6 +68,19 @@ export const analysisResults = pgTable("analysis_results", {
   createdAt: text("created_at").notNull(),
 });
 
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  fileType: text("file_type").notNull(), // "pdf", "doc", "docx", "txt", etc.
+  fileSize: integer("file_size").notNull(), // in bytes
+  filePath: text("file_path").notNull(), // path to stored file
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  tags: text("tags").array(), // optional tags for organization
+  description: text("description"), // optional description
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -98,6 +111,11 @@ export const insertBundleSchema = createInsertSchema(chartBundles).omit({
   createdAt: true,
 });
 
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  uploadedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWatchlist = z.infer<typeof insertWatchlistSchema>;
@@ -110,6 +128,8 @@ export type AnalysisResult = typeof analysisResults.$inferSelect;
 export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
 export type ChartBundle = typeof chartBundles.$inferSelect;
 export type InsertBundle = z.infer<typeof insertBundleSchema>;
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 
 // Bundle metadata interface
 export interface BundleMetadata {
