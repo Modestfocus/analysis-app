@@ -6,6 +6,7 @@ import {
   watchlists,
   chartLayouts,
   documents,
+  notes,
   type User, 
   type InsertUser, 
   type Chart, 
@@ -19,7 +20,9 @@ import {
   type ChartLayout,
   type InsertChartLayout,
   type Document,
-  type InsertDocument
+  type InsertDocument,
+  type Note,
+  type InsertNote
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -78,6 +81,13 @@ export interface IStorage {
   updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
   
+  // Note operations
+  createNote(note: InsertNote): Promise<Note>;
+  getNote(id: string): Promise<Note | undefined>;
+  getUserNotes(userId: string): Promise<Note[]>;
+  updateNote(id: string, updates: Partial<Note>): Promise<Note | undefined>;
+  deleteNote(id: string): Promise<boolean>;
+  
   // Similarity search
   findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>>;
 }
@@ -90,6 +100,7 @@ export class MemStorage implements IStorage {
   private watchlists: Map<string, Watchlist[]>;
   private chartLayouts: Map<string, ChartLayout>;
   private documents: Map<number, Document>;
+  private notes: Map<string, Note>;
   private currentChartId: number;
   private currentAnalysisId: number;
   private currentDocumentId: number;
@@ -102,6 +113,7 @@ export class MemStorage implements IStorage {
     this.watchlists = new Map();
     this.chartLayouts = new Map();
     this.documents = new Map();
+    this.notes = new Map();
     this.currentChartId = 1;
     this.currentAnalysisId = 1;
     this.currentDocumentId = 1;
@@ -790,6 +802,41 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDocument(id: number): Promise<boolean> {
     const result = await db.delete(documents).where(eq(documents.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Note operations
+  async createNote(insertNote: InsertNote): Promise<Note> {
+    const now = new Date();
+    const [note] = await db
+      .insert(notes)
+      .values([{ ...insertNote, createdAt: now, updatedAt: now }])
+      .returning();
+    return note;
+  }
+
+  async getNote(id: string): Promise<Note | undefined> {
+    const [note] = await db.select().from(notes).where(eq(notes.id, id));
+    return note || undefined;
+  }
+
+  async getUserNotes(userId: string): Promise<Note[]> {
+    return await db.select().from(notes)
+      .where(eq(notes.userId, userId))
+      .orderBy(desc(notes.updatedAt));
+  }
+
+  async updateNote(id: string, updates: Partial<Note>): Promise<Note | undefined> {
+    const [note] = await db
+      .update(notes)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(notes.id, id))
+      .returning();
+    return note || undefined;
+  }
+
+  async deleteNote(id: string): Promise<boolean> {
+    const result = await db.delete(notes).where(eq(notes.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 

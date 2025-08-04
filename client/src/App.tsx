@@ -7,6 +7,7 @@ import HomeAuthPage from "@/pages/home-auth-page";
 import UploadPage from "@/pages/upload";
 import DashboardPage from "@/pages/dashboard";
 import ChartsPage from "@/pages/charts";
+import NotesPage from "@/pages/notes";
 
 function Router() {
   return (
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/upload" component={UploadPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/charts" component={ChartsPage} />
+      <Route path="/notes" component={NotesPage} />
       <Route>404 - Page Not Found</Route>
     </Switch>
   );

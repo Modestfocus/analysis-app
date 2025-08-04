@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
-import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, type Chart, type Document } from "@shared/schema";
+import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, insertNoteSchema, type Chart, type Document } from "@shared/schema";
 import debugRoutes from './debug-routes';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
@@ -278,6 +278,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting document:', error);
       res.status(500).json({ error: 'Failed to delete document' });
+    }
+  });
+
+  // Notes API routes
+  // Create a new note
+  app.post('/api/notes', async (req, res) => {
+    try {
+      const noteData = insertNoteSchema.parse(req.body);
+      const note = await storage.createNote(noteData);
+      res.json({ success: true, note });
+    } catch (error) {
+      console.error('Error creating note:', error);
+      res.status(500).json({ error: 'Failed to create note' });
+    }
+  });
+
+  // Get user notes
+  app.get('/api/notes/user/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const notes = await storage.getUserNotes(userId);
+      res.json({ notes });
+    } catch (error) {
+      console.error('Error fetching user notes:', error);
+      res.status(500).json({ error: 'Failed to fetch notes' });
+    }
+  });
+
+  // Get specific note
+  app.get('/api/notes/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const note = await storage.getNote(id);
+      if (!note) {
+        return res.status(404).json({ error: 'Note not found' });
+      }
+      res.json({ note });
+    } catch (error) {
+      console.error('Error fetching note:', error);
+      res.status(500).json({ error: 'Failed to fetch note' });
+    }
+  });
+
+  // Update note
+  app.patch('/api/notes/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const note = await storage.updateNote(id, updates);
+      if (!note) {
+        return res.status(404).json({ error: 'Note not found' });
+      }
+      res.json({ success: true, note });
+    } catch (error) {
+      console.error('Error updating note:', error);
+      res.status(500).json({ error: 'Failed to update note' });
+    }
+  });
+
+  // Delete note
+  app.delete('/api/notes/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteNote(id);
+      if (!success) {
+        return res.status(404).json({ error: 'Note not found' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      res.status(500).json({ error: 'Failed to delete note' });
     }
   });
 
