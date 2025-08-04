@@ -6,7 +6,7 @@ import { DocumentReader } from "./DocumentReader";
 import { ObjectUploader } from "./ObjectUploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, FileText, Search } from "lucide-react";
+import { Plus, FileText, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -26,8 +26,20 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
   const { data: documentsResponse, isLoading } = useQuery({
     queryKey: ['/api/documents/user', userId],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/documents/user/${userId}`);
+      return await response.json();
+    },
     enabled: !!userId,
   });
 
@@ -214,13 +226,59 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDocuments.map((document: Document) => (
-            <DocumentViewer
-              key={document.id}
-              document={document}
-              onView={(doc) => setSelectedDocumentForViewing(doc)}
-              onDelete={(id) => deleteDocumentMutation.mutate(id)}
-              isSelected={selectedDocument?.id === document.id}
-            />
+            <Card key={document.id} className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium truncate" title={document.originalName}>
+                  {document.originalName}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <Badge variant="secondary">{document.fileType.toUpperCase()}</Badge>
+                  <span>{formatFileSize(document.fileSize)}</span>
+                </div>
+                
+                {document.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {document.description}
+                  </p>
+                )}
+                
+                {document.tags && document.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {document.tags.slice(0, 3).map((tag, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                    {document.tags.length > 3 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{document.tags.length - 3}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => setSelectedDocumentForViewing(document)}
+                  >
+                    <FileText className="h-3 w-3 mr-1" />
+                    View
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => deleteDocumentMutation.mutate(document.id)}
+                    disabled={deleteDocumentMutation.isPending}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
