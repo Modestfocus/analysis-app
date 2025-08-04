@@ -278,7 +278,7 @@ export function NotesSection({ userId }: NotesSectionProps) {
             <Button
               onClick={handleCreateNote}
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 bg-[#6b6565]"
               disabled={createNoteMutation.isPending}
             >
               <Plus className="h-4 w-4" />
