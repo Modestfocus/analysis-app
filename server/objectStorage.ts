@@ -113,15 +113,29 @@ export class ObjectStorageService {
     }
 
     const filename = documentPath.replace("/documents/", "");
+    console.log('Looking for document:', filename);
+    
     let privateDir = this.getPrivateObjectDir();
     if (!privateDir.endsWith("/")) {
       privateDir = `${privateDir}/`;
     }
-    const fullPath = `${privateDir}uploads/${filename}`;
+    
+    // Check if the filename includes 'uploads/' already
+    const fullPath = filename.includes('uploads/') 
+      ? `${privateDir}${filename}` 
+      : `${privateDir}uploads/${filename}`;
+      
+    console.log('Full object path:', fullPath);
+    
     const { bucketName, objectName } = parseObjectPath(fullPath);
+    console.log('Bucket:', bucketName, 'Object:', objectName);
+    
     const bucket = objectStorageClient.bucket(bucketName);
     const documentFile = bucket.file(objectName);
     const [exists] = await documentFile.exists();
+    
+    console.log('File exists:', exists);
+    
     if (!exists) {
       throw new ObjectNotFoundError();
     }

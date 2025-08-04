@@ -21,18 +21,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure PDF.js worker with a fallback that works in all environments
-if (typeof window !== 'undefined') {
-  // Use a minimal inline worker to avoid CDN dependencies
-  const workerBlob = new Blob([`
-    // Minimal PDF.js worker implementation
-    self.onmessage = function(e) {
-      self.postMessage({data: 'Worker ready'});
-    };
-  `], { type: 'application/javascript' });
-  
-  pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
-}
+// Configure PDF.js worker with a working URL
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface DocumentReaderProps {
   document: DocumentType;
@@ -63,8 +53,8 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
 
   // Memoize options to prevent unnecessary reloads
   const pdfOptions = useMemo(() => ({
-    cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
-    cMapPacked: true,
+    disableWorker: true,
+    isEvalSupported: false,
   }), []);
 
   useEffect(() => {
@@ -77,14 +67,17 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
   }, [document.id]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    console.log('PDF loaded successfully, pages:', numPages);
     setNumPages(numPages);
   };
 
   const onDocumentLoadError = (error: Error) => {
     console.error('Error loading PDF:', error);
+    console.error('PDF URL:', documentUrl);
+    console.error('Document object:', document);
     toast({
-      title: "Error Loading Document",
-      description: `Failed to load the PDF document: ${error.message}. Please try again.`,
+      title: "Error Loading Document", 
+      description: `Failed to load the PDF document. Please check if the file exists and try again.`,
       variant: "destructive",
     });
   };

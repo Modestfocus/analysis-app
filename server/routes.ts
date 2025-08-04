@@ -234,10 +234,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve documents
-  app.get('/documents/:filePath(*)', async (req, res) => {
+  app.get('/documents/:filename', async (req, res) => {
     try {
-      const filePath = req.params.filePath;
-      const documentFile = await objectStorageService.getDocumentFile(`/documents/${filePath}`);
+      const filename = req.params.filename;
+      console.log('Serving document with filename:', filename);
+      
+      const documentFile = await objectStorageService.getDocumentFile(`/documents/${filename}`);
       objectStorageService.downloadObject(documentFile, res);
     } catch (error) {
       console.error('Error serving document:', error);

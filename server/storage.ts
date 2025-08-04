@@ -73,6 +73,7 @@ export interface IStorage {
   // Document operations
   createDocument(document: InsertDocument): Promise<Document>;
   getDocument(id: number): Promise<Document | undefined>;
+  getDocumentByFilename(filename: string): Promise<Document | undefined>;
   getUserDocuments(userId: string): Promise<Document[]>;
   updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
@@ -344,6 +345,10 @@ export class MemStorage implements IStorage {
 
   async getDocument(id: number): Promise<Document | undefined> {
     return this.documents.get(id);
+  }
+
+  async getDocumentByFilename(filename: string): Promise<Document | undefined> {
+    return Array.from(this.documents.values()).find(doc => doc.filename === filename);
   }
 
   async getUserDocuments(userId: string): Promise<Document[]> {
