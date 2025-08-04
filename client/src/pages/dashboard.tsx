@@ -3,10 +3,11 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp } from "lucide-react";
+import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp, FileText, StickyNote, Shield, Settings } from "lucide-react";
 import ChartCard from "@/components/chart-card";
 import BundleCard from "@/components/bundle-card";
 import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
@@ -18,6 +19,7 @@ export default function DashboardPage() {
   const [selectedCharts, setSelectedCharts] = useState<Set<number>>(new Set());
   const [analysisResults, setAnalysisResults] = useState(null);
   const [showView, setShowView] = useState<"charts" | "bundles" | "analyses">("charts");
+  const [activeAccordionSection, setActiveAccordionSection] = useState<string>("charts-dashboard");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -231,314 +233,411 @@ export default function DashboardPage() {
 
         {/* Dashboard Content */}
         <div className="flex-1 p-6">
-          {/* Dashboard Header */}
+          {/* Accordion Menu System */}
           <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                    <ChartBar className="text-primary-500 mr-2 h-5 w-5" />
-                    {showView === "charts" ? "Charts Dashboard" : showView === "bundles" ? "Chart Bundles Dashboard" : "Quick Analysis Results"}
-                  </h2>
-                  {showView === "charts" && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      {isLoadingCharts ? (
-                        "Loading charts..."
-                      ) : (
-                        selectedTimeframe === "All" 
-                          ? `Showing all ${charts.length} charts`
-                          : charts.length === 0
-                          ? `No charts found for ${selectedTimeframe} timeframe`
-                          : `Showing ${charts.length} charts filtered by ${selectedTimeframe} timeframe`
-                      )}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant={showView === "charts" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowView("charts")}
-                  >
-                    Individual Charts
-                  </Button>
-                  <Button
-                    variant={showView === "bundles" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowView("bundles")}
-                  >
-                    Chart Bundles
-                  </Button>
-                  <Button
-                    variant={showView === "analyses" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowView("analyses")}
-                  >
-                    Quick Analysis
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  {showView === "charts" && (
-                    <label className="flex items-center text-sm font-medium text-gray-700">
-                      <Filter className={`mr-2 h-4 w-4 ${selectedTimeframe !== "All" ? "text-primary-500" : ""}`} />
-                      Filter by timeframe:
-                      <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                        <SelectTrigger className={`ml-2 w-32 ${selectedTimeframe !== "All" ? "border-primary-500 bg-primary-50" : ""}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="All">All</SelectItem>
-                          <SelectItem value="5M">5M</SelectItem>
-                          <SelectItem value="15M">15M</SelectItem>
-                          <SelectItem value="1H">1H</SelectItem>
-                          <SelectItem value="4H">4H</SelectItem>
-                          <SelectItem value="Daily">Daily</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {selectedTimeframe !== "All" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedTimeframe("All")}
-                          className="ml-2 text-xs"
-                        >
-                          Clear Filter
-                        </Button>
-                      )}
-                    </label>
-                  )}
-                </div>
-                {showView === "charts" && (
-                  <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleCreateBundle}
-                      disabled={selectedCharts.size < 2 || createBundleMutation.isPending}
-                    >
-                      {createBundleMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                          Creating Bundle...
-                        </>
-                      ) : (
-                        <>
-                          <ChartLine className="mr-2 h-4 w-4" />
-                          Create Bundle ({selectedCharts.size})
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={handleDeleteSelected}
-                      disabled={selectedCharts.size === 0 || deleteSelectedMutation.isPending}
-                    >
-                      {deleteSelectedMutation.isPending ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Selected ({selectedCharts.size})
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Content Grid */}
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-4">
-                    <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : showView === "charts" ? (
-            charts.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <ChartBar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Charts Found</h3>
-                  <p className="text-gray-500 mb-4">
-                    {selectedTimeframe === "All" 
-                      ? "You haven't uploaded any charts yet."
-                      : `No charts found for ${selectedTimeframe} timeframe. Try selecting "All" to see your charts or upload charts for this timeframe.`
-                    }
-                  </p>
-                  <Button asChild>
-                    <Link href="/upload">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Your First Chart
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {charts.map((chart: Chart) => (
-                  <ChartCard
-                    key={chart.id}
-                    chart={chart}
-                    selected={selectedCharts.has(chart.id)}
-                    onSelect={(selected) => handleChartSelect(chart.id, selected)}
-                    onAnalyze={(results) => setAnalysisResults(results)}
-                  />
-                ))}
-              </div>
-            )
-          ) : showView === "bundles" ? (
-            bundles.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <ChartLine className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Chart Bundles Found</h3>
-                  <p className="text-gray-500 mb-4">
-                    You haven't created any chart bundles yet. Bundle multiple charts of the same instrument for comprehensive multi-timeframe analysis.
-                  </p>
-                  <Button asChild>
-                    <Link href="/dashboard">
-                      <ChartBar className="mr-2 h-4 w-4" />
-                      View Individual Charts
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {bundles.map((bundle) => (
-                  <BundleCard
-                    key={bundle.id}
-                    bundle={bundle}
-                    onAnalyze={(results) => setAnalysisResults(results)}
-                  />
-                ))}
-              </div>
-            )
-          ) : (
-            analyses.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <ChartBar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Quick Analysis Results</h3>
-                  <p className="text-gray-500 mb-4">
-                    You haven't run any Quick Analysis yet. Upload a chart and run analysis to see results here.
-                  </p>
-                  <Button asChild>
-                    <Link href="/upload">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload & Analyze Charts
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {analyses.map((analysis: any) => (
-                  <Card key={analysis.id} className="p-6">
-                    <div className="flex items-start space-x-4">
-                      {analysis.chart && (
-                        <div className="flex-shrink-0">
-                          <img 
-                            src={analysis.chart.filePath} 
-                            alt={analysis.chart.originalName}
-                            className="w-32 h-24 object-cover rounded-lg border"
-                          />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {analysis.chart?.originalName || `Analysis #${analysis.id}`}
-                          </h3>
-                          <div className="flex items-center space-x-2">
-                            {analysis.chart && (
-                              <>
-                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                                  {analysis.chart.timeframe}
-                                </span>
-                                <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded">
-                                  {analysis.chart.instrument}
-                                </span>
-                                {analysis.chart.session && (
-                                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
-                                    {analysis.chart.session}
-                                  </span>
-                                )}
-                              </>
+            <CardContent className="p-0">
+              <Accordion 
+                type="single" 
+                collapsible 
+                value={activeAccordionSection} 
+                onValueChange={setActiveAccordionSection}
+                className="w-full"
+              >
+                {/* Charts Dashboard Section */}
+                <AccordionItem value="charts-dashboard" className="border-b-0">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                    <div className="flex items-center">
+                      <ChartBar className="text-primary-500 mr-3 h-5 w-5" />
+                      <span className="font-semibold text-gray-900">Charts Dashboard</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    {/* Chart Dashboard Content */}
+                    <div className="space-y-4">
+                      {/* Dashboard Header Controls */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            {isLoadingCharts ? (
+                              "Loading charts..."
+                            ) : (
+                              selectedTimeframe === "All" 
+                                ? `Showing all ${charts.length} charts`
+                                : charts.length === 0
+                                ? `No charts found for ${selectedTimeframe} timeframe`
+                                : `Showing ${charts.length} charts filtered by ${selectedTimeframe} timeframe`
                             )}
-                          </div>
+                          </p>
                         </div>
-                        
-                        {analysis.prediction && (
-                          <div className="mb-4">
-                            <div className="grid grid-cols-3 gap-4 mb-3">
-                              <div>
-                                <span className="text-sm font-medium text-gray-600">Prediction:</span>
-                                <p className={`text-lg font-bold ${analysis.prediction.prediction?.toLowerCase() === 'up' ? 'text-green-600' : analysis.prediction.prediction?.toLowerCase() === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
-                                  {analysis.prediction.prediction}
-                                </p>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-gray-600">Session:</span>
-                                <p className="text-lg font-semibold text-gray-900">{analysis.prediction.session}</p>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-gray-600">Confidence:</span>
-                                <p className={`text-lg font-semibold ${analysis.prediction.confidence === 'High' ? 'text-green-600' : analysis.prediction.confidence === 'Medium' ? 'text-yellow-600' : 'text-red-600'}`}>
-                                  {analysis.prediction.confidence}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="mb-3">
-                              <span className="text-sm font-medium text-gray-600">Analysis:</span>
-                              <p className="text-sm text-gray-700 leading-relaxed mt-1">
-                                {analysis.prediction.reasoning}
-                              </p>
-                            </div>
-                            
-                            {analysis.similarCharts && analysis.similarCharts.length > 0 && (
-                              <div>
-                                <span className="text-sm font-medium text-gray-600">
-                                  Similar Charts ({analysis.similarCharts.length}):
-                                </span>
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                  {analysis.similarCharts.map((similar: any, idx: number) => (
-                                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
-                                      {similar.filename} ({(similar.similarity * 100).toFixed(1)}%)
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        <div className="text-xs text-gray-500">
-                          Created: {new Date(analysis.createdAt).toLocaleString()}
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant={showView === "charts" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setShowView("charts")}
+                          >
+                            Individual Charts
+                          </Button>
+                          <Button
+                            variant={showView === "bundles" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setShowView("bundles")}
+                          >
+                            Chart Bundles
+                          </Button>
+                          <Button
+                            variant={showView === "analyses" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setShowView("analyses")}
+                          >
+                            Quick Analysis
+                          </Button>
                         </div>
                       </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          {showView === "charts" && (
+                            <label className="flex items-center text-sm font-medium text-gray-700">
+                              <Filter className={`mr-2 h-4 w-4 ${selectedTimeframe !== "All" ? "text-primary-500" : ""}`} />
+                              Filter by timeframe:
+                              <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                                <SelectTrigger className={`ml-2 w-32 ${selectedTimeframe !== "All" ? "border-primary-500 bg-primary-50" : ""}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="All">All</SelectItem>
+                                  <SelectItem value="5M">5M</SelectItem>
+                                  <SelectItem value="15M">15M</SelectItem>
+                                  <SelectItem value="1H">1H</SelectItem>
+                                  <SelectItem value="4H">4H</SelectItem>
+                                  <SelectItem value="Daily">Daily</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {selectedTimeframe !== "All" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSelectedTimeframe("All")}
+                                  className="ml-2 text-xs"
+                                >
+                                  Clear Filter
+                                </Button>
+                              )}
+                            </label>
+                          )}
+                        </div>
+                        {showView === "charts" && (
+                          <div className="flex items-center space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={handleCreateBundle}
+                              disabled={selectedCharts.size < 2 || createBundleMutation.isPending}
+                            >
+                              {createBundleMutation.isPending ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                                  Creating Bundle...
+                                </>
+                              ) : (
+                                <>
+                                  <ChartLine className="mr-2 h-4 w-4" />
+                                  Create Bundle ({selectedCharts.size})
+                                </>
+                              )}
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={handleDeleteSelected}
+                              disabled={selectedCharts.size === 0 || deleteSelectedMutation.isPending}
+                            >
+                              {deleteSelectedMutation.isPending ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Selected ({selectedCharts.size})
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Charts Content */}
+                      {activeAccordionSection === "charts-dashboard" && (
+                        <div className="mt-6">
+                          {isLoading ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              {[...Array(6)].map((_, i) => (
+                                <Card key={i} className="animate-pulse">
+                                  <CardContent className="p-4">
+                                    <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
+                                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          ) : showView === "charts" ? (
+                            charts.length === 0 ? (
+                              <Card>
+                                <CardContent className="p-12 text-center">
+                                  <ChartBar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Charts Found</h3>
+                                  <p className="text-gray-500 mb-4">
+                                    {selectedTimeframe === "All" 
+                                      ? "You haven't uploaded any charts yet."
+                                      : `No charts found for ${selectedTimeframe} timeframe. Try selecting "All" to see your charts or upload charts for this timeframe.`
+                                    }
+                                  </p>
+                                  <Button asChild>
+                                    <Link href="/upload">
+                                      <Upload className="mr-2 h-4 w-4" />
+                                      Upload Your First Chart
+                                    </Link>
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {charts.map((chart: Chart) => (
+                                  <ChartCard
+                                    key={chart.id}
+                                    chart={chart}
+                                    selected={selectedCharts.has(chart.id)}
+                                    onSelect={(selected) => handleChartSelect(chart.id, selected)}
+                                    onAnalyze={(results) => setAnalysisResults(results)}
+                                  />
+                                ))}
+                              </div>
+                            )
+                          ) : showView === "bundles" ? (
+                            bundles.length === 0 ? (
+                              <Card>
+                                <CardContent className="p-12 text-center">
+                                  <ChartLine className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Chart Bundles Found</h3>
+                                  <p className="text-gray-500 mb-4">
+                                    You haven't created any chart bundles yet. Bundle multiple charts of the same instrument for comprehensive multi-timeframe analysis.
+                                  </p>
+                                  <Button asChild>
+                                    <Link href="/dashboard">
+                                      <ChartBar className="mr-2 h-4 w-4" />
+                                      View Individual Charts
+                                    </Link>
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {bundles.map((bundle) => (
+                                  <BundleCard
+                                    key={bundle.id}
+                                    bundle={bundle}
+                                    onAnalyze={(results) => setAnalysisResults(results)}
+                                  />
+                                ))}
+                              </div>
+                            )
+                          ) : (
+                            analyses.length === 0 ? (
+                              <Card>
+                                <CardContent className="p-12 text-center">
+                                  <ChartBar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Quick Analysis Results</h3>
+                                  <p className="text-gray-500 mb-4">
+                                    You haven't run any Quick Analysis yet. Upload a chart and run analysis to see results here.
+                                  </p>
+                                  <Button asChild>
+                                    <Link href="/upload">
+                                      <Upload className="mr-2 h-4 w-4" />
+                                      Upload & Analyze Charts
+                                    </Link>
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            ) : (
+                              <div className="space-y-4">
+                                {analyses.map((analysis: any) => (
+                                  <Card key={analysis.id} className="p-6">
+                                    <div className="flex items-start space-x-4">
+                                      {analysis.chart && (
+                                        <div className="flex-shrink-0">
+                                          <img 
+                                            src={analysis.chart.filePath} 
+                                            alt={analysis.chart.originalName}
+                                            className="w-32 h-24 object-cover rounded-lg border"
+                                          />
+                                        </div>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <h3 className="text-lg font-semibold text-gray-900">
+                                            {analysis.chart?.originalName || `Analysis #${analysis.id}`}
+                                          </h3>
+                                          <div className="flex items-center space-x-2">
+                                            {analysis.chart && (
+                                              <>
+                                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                                  {analysis.chart.timeframe}
+                                                </span>
+                                                <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded">
+                                                  {analysis.chart.instrument}
+                                                </span>
+                                                {analysis.chart.session && (
+                                                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                                                    {analysis.chart.session}
+                                                  </span>
+                                                )}
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                        
+                                        {analysis.prediction && (
+                                          <div className="mb-4">
+                                            <div className="grid grid-cols-3 gap-4 mb-3">
+                                              <div>
+                                                <span className="text-sm font-medium text-gray-600">Prediction:</span>
+                                                <p className={`text-lg font-bold ${analysis.prediction.prediction?.toLowerCase() === 'up' ? 'text-green-600' : analysis.prediction.prediction?.toLowerCase() === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
+                                                  {analysis.prediction.prediction}
+                                                </p>
+                                              </div>
+                                              <div>
+                                                <span className="text-sm font-medium text-gray-600">Session:</span>
+                                                <p className="text-lg font-semibold text-gray-900">{analysis.prediction.session}</p>
+                                              </div>
+                                              <div>
+                                                <span className="text-sm font-medium text-gray-600">Confidence:</span>
+                                                <p className={`text-lg font-semibold ${analysis.prediction.confidence === 'High' ? 'text-green-600' : analysis.prediction.confidence === 'Medium' ? 'text-yellow-600' : 'text-red-600'}`}>
+                                                  {analysis.prediction.confidence}
+                                                </p>
+                                              </div>
+                                            </div>
+                                            
+                                            <div className="mb-3">
+                                              <span className="text-sm font-medium text-gray-600">Analysis:</span>
+                                              <p className="text-sm text-gray-700 leading-relaxed mt-1">
+                                                {analysis.prediction.reasoning}
+                                              </p>
+                                            </div>
+                                            
+                                            {analysis.similarCharts && analysis.similarCharts.length > 0 && (
+                                              <div>
+                                                <span className="text-sm font-medium text-gray-600">
+                                                  Similar Charts ({analysis.similarCharts.length}):
+                                                </span>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                  {analysis.similarCharts.map((similar: any, idx: number) => (
+                                                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                                                      {similar.filename} ({(similar.similarity * 100).toFixed(1)}%)
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                        
+                                        <div className="text-xs text-gray-500">
+                                          Created: {new Date(analysis.createdAt).toLocaleString()}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </Card>
+                                ))}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </Card>
-                ))}
-              </div>
-            )
-          )}
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Docs Section */}
+                <AccordionItem value="docs" className="border-b-0">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                    <div className="flex items-center">
+                      <FileText className="text-primary-500 mr-3 h-5 w-5" />
+                      <span className="font-semibold text-gray-900">Docs</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="py-8 text-center">
+                      <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Documentation</h3>
+                      <p className="text-gray-500">
+                        Documentation content will be available here soon.
+                      </p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Notes Section */}
+                <AccordionItem value="notes" className="border-b-0">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                    <div className="flex items-center">
+                      <StickyNote className="text-primary-500 mr-3 h-5 w-5" />
+                      <span className="font-semibold text-gray-900">Notes</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="py-8 text-center">
+                      <StickyNote className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Notes</h3>
+                      <p className="text-gray-500">
+                        Your notes and annotations will appear here.
+                      </p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Rules Section */}
+                <AccordionItem value="rules" className="border-b-0">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                    <div className="flex items-center">
+                      <Shield className="text-primary-500 mr-3 h-5 w-5" />
+                      <span className="font-semibold text-gray-900">Rules</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="py-8 text-center">
+                      <Shield className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Trading Rules</h3>
+                      <p className="text-gray-500">
+                        Your trading rules and strategies will be displayed here.
+                      </p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* System Prompt Section */}
+                <AccordionItem value="system-prompt" className="border-b-0">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                    <div className="flex items-center">
+                      <Settings className="text-primary-500 mr-3 h-5 w-5" />
+                      <span className="font-semibold text-gray-900">System Prompt</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="py-8 text-center">
+                      <Settings className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">System Prompt</h3>
+                      <p className="text-gray-500">
+                        AI system configuration and prompts will be managed here.
+                      </p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
