@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Disable PDF.js worker to avoid CDN dependency issues
+pdfjs.GlobalWorkerOptions.workerSrc = '';
 
 interface DocumentReaderProps {
   document: DocumentType;
@@ -225,6 +225,11 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
                   file={documentUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
+                  options={{
+                    disableWorker: true,
+                    disableAutoFetch: false,
+                    disableStream: false,
+                  }}
                   loading={
                     <div className="flex items-center justify-center p-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
