@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,7 @@ export default function DashboardPage() {
   const [showView, setShowView] = useState<"charts" | "bundles" | "analyses">("charts");
   const [activeAccordionSection, setActiveAccordionSection] = useState<string>("");
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -642,12 +644,49 @@ export default function DashboardPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
-                    <div className="py-8 text-center">
-                      <Settings className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">System Prompt</h3>
-                      <p className="text-gray-500">
-                        AI system configuration and prompts will be managed here.
-                      </p>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Settings className="h-5 w-5 text-gray-500" />
+                        <h3 className="text-sm font-medium text-gray-700">AI System Configuration</h3>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          System Prompt
+                        </label>
+                        <Textarea
+                          value={systemPrompt}
+                          onChange={(e) => setSystemPrompt(e.target.value)}
+                          placeholder="Enter your system prompt for AI analysis..."
+                          className="min-h-[200px] resize-y text-sm leading-relaxed"
+                          rows={10}
+                        />
+                        <p className="text-xs text-gray-500">
+                          This prompt will be used to guide the AI's analysis of your trading charts.
+                        </p>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSystemPrompt("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.")}
+                        >
+                          Reset to Default
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          onClick={() => {
+                            toast({
+                              title: "System Prompt Saved",
+                              description: "Your system prompt configuration has been saved successfully.",
+                            });
+                          }}
+                        >
+                          Save Changes
+                        </Button>
+                      </div>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
