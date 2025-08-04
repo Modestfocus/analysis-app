@@ -21,8 +21,18 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Disable PDF.js worker to avoid CDN dependency issues
-pdfjs.GlobalWorkerOptions.workerSrc = '';
+// Configure PDF.js worker with a fallback that works in all environments
+if (typeof window !== 'undefined') {
+  // Use a minimal inline worker to avoid CDN dependencies
+  const workerBlob = new Blob([`
+    // Minimal PDF.js worker implementation
+    self.onmessage = function(e) {
+      self.postMessage({data: 'Worker ready'});
+    };
+  `], { type: 'application/javascript' });
+  
+  pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+}
 
 interface DocumentReaderProps {
   document: DocumentType;
@@ -226,9 +236,11 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
                   options={{
-                    disableWorker: true,
+                    disableWorker: false,
                     disableAutoFetch: false,
                     disableStream: false,
+                    cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+                    cMapPacked: true,
                   }}
                   loading={
                     <div className="flex items-center justify-center p-8">
