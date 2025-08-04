@@ -106,47 +106,19 @@ export class ObjectStorageService {
     return dir;
   }
 
-  // Gets the upload URL for a document.
-  async getDocumentUploadURL(filename: string): Promise<string> {
-    const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-
-    const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/documents/${objectId}`;
-
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
-  }
-
   // Gets the document file from the object path.
-  async getDocumentFile(objectPath: string): Promise<File> {
-    if (!objectPath.startsWith("/documents/")) {
+  async getDocumentFile(documentPath: string): Promise<File> {
+    if (!documentPath.startsWith("/documents/")) {
       throw new ObjectNotFoundError();
     }
 
-    const parts = objectPath.slice(1).split("/");
-    if (parts.length < 2) {
-      throw new ObjectNotFoundError();
+    const filename = documentPath.replace("/documents/", "");
+    let privateDir = this.getPrivateObjectDir();
+    if (!privateDir.endsWith("/")) {
+      privateDir = `${privateDir}/`;
     }
-
-    const docId = parts.slice(1).join("/");
-    let entityDir = this.getPrivateObjectDir();
-    if (!entityDir.endsWith("/")) {
-      entityDir = `${entityDir}/`;
-    }
-    const documentEntityPath = `${entityDir}documents/${docId}`;
-    const { bucketName, objectName } = parseObjectPath(documentEntityPath);
+    const fullPath = `${privateDir}uploads/${filename}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
     const bucket = objectStorageClient.bucket(bucketName);
     const documentFile = bucket.file(objectName);
     const [exists] = await documentFile.exists();
@@ -186,57 +158,6 @@ export class ObjectStorageService {
         res.status(500).json({ error: "Error downloading file" });
       }
     }
-  }
-
-  // Gets the upload URL for a document.
-  async getDocumentUploadURL(fileName: string): Promise<string> {
-    const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-
-    const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/documents/${objectId}`;
-
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-
-    // Sign URL for PUT method with TTL
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
-  }
-
-  // Gets the document file from the object path.
-  async getDocumentFile(objectPath: string): Promise<File> {
-    if (!objectPath.startsWith("/documents/")) {
-      throw new ObjectNotFoundError();
-    }
-
-    const parts = objectPath.slice(1).split("/");
-    if (parts.length < 2) {
-      throw new ObjectNotFoundError();
-    }
-
-    const documentId = parts.slice(1).join("/");
-    let documentDir = this.getPrivateObjectDir();
-    if (!documentDir.endsWith("/")) {
-      documentDir = `${documentDir}/`;
-    }
-    const documentPath = `${documentDir}${objectPath.slice(1)}`;
-    const { bucketName, objectName } = parseObjectPath(documentPath);
-    const bucket = objectStorageClient.bucket(bucketName);
-    const documentFile = bucket.file(objectName);
-    const [exists] = await documentFile.exists();
-    if (!exists) {
-      throw new ObjectNotFoundError();
-    }
-    return documentFile;
   }
 
   normalizeDocumentPath(rawPath: string): string {

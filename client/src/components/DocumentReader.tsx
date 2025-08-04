@@ -1,36 +1,110 @@
-import { useState } from "react";
-import { Document } from "@shared/schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import { Document as DocumentType } from "@shared/schema";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, ExternalLink, Eye, EyeOff } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { 
+  ZoomIn, 
+  ZoomOut, 
+  RotateCcw, 
+  Download, 
+  FileText, 
+  ChevronLeft, 
+  ChevronRight,
+  Highlighter,
+  Edit3,
+  Save,
+  X
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface DocumentReaderProps {
-  document: Document | null;
-  onClose?: () => void;
+  document: DocumentType;
+  onClose: () => void;
+}
+
+interface Highlight {
+  id: string;
+  pageNumber: number;
+  text: string;
+  color: string;
+  position: { x: number; y: number; width: number; height: number };
 }
 
 export function DocumentReader({ document, onClose }: DocumentReaderProps) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [scale, setScale] = useState(1.2);
+  const [rotation, setRotation] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [notes, setNotes] = useState("");
+  const [documentTitle, setDocumentTitle] = useState(document.originalName);
+  const [isHighlightMode, setIsHighlightMode] = useState(false);
+  const { toast } = useToast();
 
-  if (!document) {
-    return (
-      <Card className="h-full">
-        <CardContent className="flex items-center justify-center h-full text-center">
-          <div className="space-y-4">
-            <FileText className="h-16 w-16 mx-auto text-muted-foreground" />
-            <div>
-              <h3 className="text-lg font-medium mb-2">No document selected</h3>
-              <p className="text-muted-foreground">
-                Select a document from the list to view it here
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const documentUrl = `/documents/${document.filename}`;
+
+  useEffect(() => {
+    // Load any existing notes or highlights for this document
+    const savedNotes = localStorage.getItem(`document_notes_${document.id}`);
+    const savedHighlights = localStorage.getItem(`document_highlights_${document.id}`);
+    
+    if (savedNotes) setNotes(savedNotes);
+    if (savedHighlights) setHighlights(JSON.parse(savedHighlights));
+  }, [document.id]);
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+  };
+
+  const onDocumentLoadError = (error: Error) => {
+    console.error('Error loading PDF:', error);
+    toast({
+      title: "Error Loading Document",
+      description: "Failed to load the PDF document. Please try again.",
+      variant: "destructive",
+    });
+  };
+
+  const handleZoomIn = () => setScale(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5));
+  const handleRotate = () => setRotation(prev => (prev + 90) % 360);
+
+  const handlePageChange = (direction: 'next' | 'prev') => {
+    if (direction === 'next' && currentPage < (numPages || 1)) {
+      setCurrentPage(prev => prev + 1);
+    } else if (direction === 'prev' && currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  const handleSave = () => {
+    // Save notes and highlights to localStorage
+    localStorage.setItem(`document_notes_${document.id}`, notes);
+    localStorage.setItem(`document_highlights_${document.id}`, JSON.stringify(highlights));
+    
+    toast({
+      title: "Changes Saved",
+      description: "Your notes and highlights have been saved.",
+    });
+    setIsEditing(false);
+  };
+
+  const handleDownload = () => {
+    const link = window.document.createElement('a');
+    link.href = documentUrl;
+    link.download = document.originalName;
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+  };
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -40,147 +114,214 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getFileTypeColor = (fileType: string) => {
-    switch (fileType.toLowerCase()) {
-      case 'pdf':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'doc':
-      case 'docx':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'txt':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-      default:
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-    }
-  };
-
-  const isPdfFile = document.fileType.toLowerCase() === 'pdf';
-  const documentUrl = `/documents/${document.filePath.replace('/documents/', '')}`;
-
   return (
-    <Card className={`h-full ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2 min-w-0 flex-1">
-            <CardTitle className="text-lg truncate" title={document.originalName}>
-              {document.originalName}
-            </CardTitle>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="secondary" className={getFileTypeColor(document.fileType)}>
-                {document.fileType.toUpperCase()}
-              </Badge>
-              <span>{formatFileSize(document.fileSize)}</span>
-              <span>•</span>
-              <span>
-                {formatDistanceToNow(document.uploadedAt ? new Date(document.uploadedAt) : new Date(), { addSuffix: true })}
+    <div className="fixed inset-0 bg-background z-50 flex flex-col">
+      {/* Header */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {isEditing ? (
+                <Input
+                  value={documentTitle}
+                  onChange={(e) => setDocumentTitle(e.target.value)}
+                  className="max-w-md"
+                />
+              ) : (
+                <h1 className="text-lg font-semibold">{documentTitle}</h1>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{document.fileType.toUpperCase()}</Badge>
+              <span className="text-sm text-muted-foreground">
+                {formatFileSize(document.fileSize)}
               </span>
             </div>
           </div>
-          
-          <div className="flex gap-1 ml-4">
+
+          <div className="flex items-center gap-2">
+            {/* Zoom Controls */}
+            <Button variant="ghost" size="sm" onClick={handleZoomOut}>
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="text-sm min-w-[4rem] text-center">
+              {Math.round(scale * 100)}%
+            </span>
+            <Button variant="ghost" size="sm" onClick={handleZoomIn}>
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            {/* Page Navigation */}
+            {numPages && (
+              <>
+                <div className="h-4 w-px bg-border mx-2" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handlePageChange('prev')}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm min-w-[4rem] text-center">
+                  {currentPage} / {numPages}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handlePageChange('next')}
+                  disabled={currentPage >= numPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+
+            <div className="h-4 w-px bg-border mx-2" />
+
+            {/* Tools */}
             <Button
-              variant="ghost"
+              variant={isHighlightMode ? "default" : "ghost"}
               size="sm"
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              onClick={() => setIsHighlightMode(!isHighlightMode)}
             >
-              {isFullscreen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              <Highlighter className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleRotate}>
+              <RotateCcw className="h-4 w-4" />
             </Button>
             <Button
-              variant="ghost"
+              variant={isEditing ? "default" : "ghost"}
               size="sm"
-              onClick={() => window.open(documentUrl, '_blank')}
-              title="Open in new tab"
+              onClick={() => setIsEditing(!isEditing)}
             >
-              <ExternalLink className="h-4 w-4" />
+              <Edit3 className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const link = window.document.createElement('a');
-                link.href = documentUrl;
-                link.download = document.originalName;
-                link.click();
-              }}
-              title="Download"
-            >
+            <Button variant="ghost" size="sm" onClick={handleDownload}>
               <Download className="h-4 w-4" />
             </Button>
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                title="Close"
-              >
-                ×
+
+            {isEditing && (
+              <Button variant="default" size="sm" onClick={handleSave}>
+                <Save className="h-4 w-4" />
               </Button>
             )}
           </div>
         </div>
-        
-        {document.description && (
-          <p className="text-sm text-muted-foreground mt-2">
-            {document.description}
-          </p>
-        )}
-        
-        {document.tags && document.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {document.tags.map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* PDF Viewer */}
+        <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900 p-4">
+          <div className="flex justify-center">
+            {document.fileType.toLowerCase() === 'pdf' ? (
+              <div className="bg-white shadow-lg">
+                <Document
+                  file={documentUrl}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  onLoadError={onDocumentLoadError}
+                  loading={
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <span className="ml-2">Loading PDF...</span>
+                    </div>
+                  }
+                  error={
+                    <div className="flex flex-col items-center justify-center p-8 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
+                      <FileText className="h-12 w-12 mb-2" />
+                      <p className="text-lg font-semibold">Failed to load PDF</p>
+                      <p className="text-sm">Please check if the file is valid and try again.</p>
+                    </div>
+                  }
+                >
+                  <Page
+                    pageNumber={currentPage}
+                    scale={scale}
+                    rotate={rotation}
+                    loading={
+                      <div className="flex items-center justify-center p-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                      </div>
+                    }
+                  />
+                </Document>
+              </div>
+            ) : (
+              <Card className="max-w-2xl">
+                <CardContent className="p-8 text-center">
+                  <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">Document Preview Not Available</h3>
+                  <p className="text-muted-foreground mb-4">
+                    This file type cannot be previewed directly. You can download it to view the content.
+                  </p>
+                  <Button onClick={handleDownload}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download File
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Side Panel for Notes */}
+        {isEditing && (
+          <div className="w-80 border-l bg-background p-4 overflow-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Notes & Annotations</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Document Notes
+                  </label>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add your notes about this document..."
+                    className="mt-1 min-h-[200px]"
+                  />
+                </div>
+
+                {highlights.length > 0 && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Highlights ({highlights.length})
+                    </label>
+                    <div className="mt-2 space-y-2">
+                      {highlights.map((highlight) => (
+                        <div
+                          key={highlight.id}
+                          className="p-2 bg-yellow-50 dark:bg-yellow-950 rounded text-xs"
+                        >
+                          <div className="font-medium">Page {highlight.pageNumber}</div>
+                          <div className="text-muted-foreground truncate">
+                            {highlight.text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs text-muted-foreground">
+                  {isHighlightMode ? (
+                    <p>📝 Highlight mode is ON. Select text in the PDF to highlight it.</p>
+                  ) : (
+                    <p>💡 Turn on highlight mode to select and highlight text.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
-      </CardHeader>
-      
-      <CardContent className="p-0 flex-1">
-        <div className="h-full w-full">
-          {isPdfFile ? (
-            <iframe
-              src={documentUrl}
-              className="w-full h-full border-none"
-              title={document.originalName}
-              style={{ minHeight: '500px' }}
-            />
-          ) : (
-            <div className="p-6 h-full flex items-center justify-center">
-              <div className="text-center space-y-4">
-                <FileText className="h-16 w-16 mx-auto text-muted-foreground" />
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Preview not available</h3>
-                  <p className="text-muted-foreground mb-4">
-                    This file type doesn't support inline preview
-                  </p>
-                  <div className="space-x-2">
-                    <Button
-                      onClick={() => window.open(documentUrl, '_blank')}
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Open in new tab
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const link = window.document.createElement('a');
-                        link.href = documentUrl;
-                        link.download = document.originalName;
-                        link.click();
-                      }}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

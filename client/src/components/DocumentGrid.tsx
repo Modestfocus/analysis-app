@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Document } from "@shared/schema";
 import { DocumentViewer } from "./DocumentViewer";
+import { DocumentReader } from "./DocumentReader";
 import { ObjectUploader } from "./ObjectUploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,9 @@ interface DocumentGridProps {
 
 export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: DocumentGridProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [uploadDescription, setUploadDescription] = useState("");
+  const [uploadTags, setUploadTags] = useState("");
+  const [selectedDocumentForViewing, setSelectedDocumentForViewing] = useState<Document | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -213,12 +217,20 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
             <DocumentViewer
               key={document.id}
               document={document}
-              onView={onDocumentSelect}
+              onView={(doc) => setSelectedDocumentForViewing(doc)}
               onDelete={(id) => deleteDocumentMutation.mutate(id)}
               isSelected={selectedDocument?.id === document.id}
             />
           ))}
         </div>
+      )}
+
+      {/* Document Reader Modal */}
+      {selectedDocumentForViewing && (
+        <DocumentReader
+          document={selectedDocumentForViewing}
+          onClose={() => setSelectedDocumentForViewing(null)}
+        />
       )}
     </div>
   );
