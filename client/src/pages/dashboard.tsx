@@ -220,6 +220,7 @@ export default function DashboardPage() {
                   variant={location === "/dashboard" ? "default" : "secondary"}
                   size="sm"
                   asChild
+                  className={location === "/dashboard" ? "bg-[#756e6e]" : ""}
                 >
                   <Link href="/dashboard">
                     <ChartBar className="mr-2 h-4 w-4" />
