@@ -8,6 +8,8 @@ import {
   documents,
   notes,
   tradingRules,
+  chartAnalysisSessions,
+  userPromptsHistory,
   type User, 
   type InsertUser, 
   type Chart, 
@@ -25,7 +27,11 @@ import {
   type Note,
   type InsertNote,
   type TradingRule,
-  type InsertTradingRule
+  type InsertTradingRule,
+  type ChartAnalysisSession,
+  type InsertChartAnalysisSession,
+  type UserPromptsHistory,
+  type InsertUserPromptsHistory
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -98,6 +104,15 @@ export interface IStorage {
   updateTradingRule(id: string, updates: Partial<TradingRule>): Promise<TradingRule | undefined>;
   deleteTradingRule(id: string): Promise<boolean>;
   reorderTradingRules(userId: string, orderedIds: string[]): Promise<boolean>;
+  
+  // Chart Analysis Sessions operations
+  createAnalysisSession(session: InsertChartAnalysisSession): Promise<ChartAnalysisSession>;
+  getAnalysisSession(id: string): Promise<ChartAnalysisSession | undefined>;
+  getUserAnalysisSessions(userId: string): Promise<ChartAnalysisSession[]>;
+  
+  // User Prompts History operations
+  createPromptHistory(prompt: InsertUserPromptsHistory): Promise<UserPromptsHistory>;
+  getUserPromptHistory(userId: string): Promise<UserPromptsHistory[]>;
   
   // Similarity search
   findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>>;
@@ -353,7 +368,6 @@ export class MemStorage implements IStorage {
   }
 
   // Document operations (MemStorage implementation)
-  private documents: Map<number, Document> = new Map();
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
     const id = Math.max(...Array.from(this.documents.keys()), 0) + 1;
@@ -439,20 +453,6 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
-  }
-
-  async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.walletAddress, walletAddress));
-    return user || undefined;
-  }
-
-  async linkWalletToUser(userId: string, walletAddress: string, walletType: string): Promise<User | undefined> {
-    const [user] = await db
-      .update(users)
-      .set({ walletAddress, walletType })
-      .where(eq(users.id, userId))
-      .returning();
     return user || undefined;
   }
 
@@ -818,6 +818,11 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
+  async getDocumentByFilename(filename: string): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.filename, filename));
+    return document || undefined;
+  }
+
   // Note operations
   async createNote(insertNote: InsertNote): Promise<Note> {
     const now = new Date();
@@ -851,6 +856,97 @@ export class DatabaseStorage implements IStorage {
   async deleteNote(id: string): Promise<boolean> {
     const result = await db.delete(notes).where(eq(notes.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Trading Rules operations
+  async createTradingRule(insertRule: InsertTradingRule): Promise<TradingRule> {
+    const [rule] = await db
+      .insert(tradingRules)
+      .values([insertRule])
+      .returning();
+    return rule;
+  }
+
+  async getTradingRule(id: string): Promise<TradingRule | undefined> {
+    const [rule] = await db.select().from(tradingRules).where(eq(tradingRules.id, id));
+    return rule || undefined;
+  }
+
+  async getUserTradingRules(userId: string): Promise<TradingRule[]> {
+    return await db.select().from(tradingRules)
+      .where(eq(tradingRules.userId, userId))
+      .orderBy(tradingRules.order);
+  }
+
+  async updateTradingRule(id: string, updates: Partial<TradingRule>): Promise<TradingRule | undefined> {
+    const [rule] = await db
+      .update(tradingRules)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tradingRules.id, id))
+      .returning();
+    return rule || undefined;
+  }
+
+  async deleteTradingRule(id: string): Promise<boolean> {
+    const result = await db.delete(tradingRules).where(eq(tradingRules.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async reorderTradingRules(userId: string, orderedIds: string[]): Promise<boolean> {
+    try {
+      for (let i = 0; i < orderedIds.length; i++) {
+        await db
+          .update(tradingRules)
+          .set({ order: i })
+          .where(and(eq(tradingRules.id, orderedIds[i]), eq(tradingRules.userId, userId)));
+      }
+      return true;
+    } catch (error) {
+      console.error('Error reordering trading rules:', error);
+      return false;
+    }
+  }
+
+  // Chart Analysis Sessions operations
+  async createAnalysisSession(insertSession: InsertChartAnalysisSession): Promise<ChartAnalysisSession> {
+    const [session] = await db
+      .insert(chartAnalysisSessions)
+      .values([insertSession])
+      .returning();
+    return session;
+  }
+
+  async getAnalysisSession(id: string): Promise<ChartAnalysisSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(chartAnalysisSessions)
+      .where(eq(chartAnalysisSessions.id, id));
+    return session || undefined;
+  }
+
+  async getUserAnalysisSessions(userId: string): Promise<ChartAnalysisSession[]> {
+    return await db
+      .select()
+      .from(chartAnalysisSessions)
+      .where(eq(chartAnalysisSessions.userId, userId))
+      .orderBy(desc(chartAnalysisSessions.createdAt));
+  }
+
+  // User Prompts History operations
+  async createPromptHistory(insertPrompt: InsertUserPromptsHistory): Promise<UserPromptsHistory> {
+    const [prompt] = await db
+      .insert(userPromptsHistory)
+      .values([insertPrompt])
+      .returning();
+    return prompt;
+  }
+
+  async getUserPromptHistory(userId: string): Promise<UserPromptsHistory[]> {
+    return await db
+      .select()
+      .from(userPromptsHistory)
+      .where(eq(userPromptsHistory.userId, userId))
+      .orderBy(desc(userPromptsHistory.createdAt));
   }
 
   async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {

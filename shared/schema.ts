@@ -99,6 +99,29 @@ export const tradingRules = pgTable("trading_rules", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Chart Analysis Sessions - stores past GPT-4o analysis sessions
+export const chartAnalysisSessions = pgTable("chart_analysis_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  systemPrompt: text("system_prompt").notNull(), // The exact prompt sent for this analysis
+  chartImageUrl: text("chart_image_url").notNull(), // URL or base64 reference of chart image
+  depthMapUrl: text("depth_map_url"), // URL/base64 of depth map image
+  edgeMapUrl: text("edge_map_url"), // URL/base64 of edge map
+  gradientMapUrl: text("gradient_map_url"), // URL/base64 of gradient map
+  vectorMatches: jsonb("vector_matches"), // List of top 3 matched charts & metadata
+  gptResponse: text("gpt_response").notNull(), // GPT-4o reply
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User Prompts History - stores user's historical prompt versions
+export const userPromptsHistory = pgTable("user_prompts_history", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  promptType: text("prompt_type").notNull().default("default"), // 'default', 'custom', 'injected'
+  promptContent: text("prompt_content").notNull(), // Full prompt string
+  createdAt: timestamp("created_at").defaultNow(), // When this prompt version was created/used
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -146,6 +169,16 @@ export const insertTradingRuleSchema = createInsertSchema(tradingRules).omit({
   updatedAt: true,
 });
 
+export const insertChartAnalysisSessionSchema = createInsertSchema(chartAnalysisSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserPromptsHistorySchema = createInsertSchema(userPromptsHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWatchlist = z.infer<typeof insertWatchlistSchema>;
@@ -164,6 +197,10 @@ export type Note = typeof notes.$inferSelect;
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type TradingRule = typeof tradingRules.$inferSelect;
 export type InsertTradingRule = z.infer<typeof insertTradingRuleSchema>;
+export type ChartAnalysisSession = typeof chartAnalysisSessions.$inferSelect;
+export type InsertChartAnalysisSession = z.infer<typeof insertChartAnalysisSessionSchema>;
+export type UserPromptsHistory = typeof userPromptsHistory.$inferSelect;
+export type InsertUserPromptsHistory = z.infer<typeof insertUserPromptsHistorySchema>;
 
 // Bundle metadata interface
 export interface BundleMetadata {

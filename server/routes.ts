@@ -54,6 +54,37 @@ const upload = multer({
   }
 });
 
+// Helper function to extract instrument from GPT response  
+function extractInstrumentFromResponse(gptResponse: string): string | null {
+  try {
+    const parsed = JSON.parse(gptResponse);
+    return parsed.instrument || parsed.symbol || null;
+  } catch {
+    // Fallback to text parsing if JSON parse fails
+    const instruments = ["XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF", 
+                        "AUDUSD", "NZDUSD", "USDCAD", "EURJPY", "GBPJPY", "EURGBP",
+                        "BTCUSD", "ETHUSD", "SPX500", "NAS100", "US30"];
+    
+    for (const instrument of instruments) {
+      if (gptResponse.toUpperCase().includes(instrument)) {
+        return instrument;
+      }
+    }
+    return null;
+  }
+}
+
+// Helper function to generate summary from GPT response
+function generateSummaryFromGptResponse(gptResponse: string): string {
+  try {
+    const parsed = JSON.parse(gptResponse);
+    return parsed.prediction || parsed.summary || parsed.analysis?.slice(0, 100) + '...' || 'Analysis complete';
+  } catch {
+    // Fallback to first 100 characters if JSON parse fails
+    return gptResponse.slice(0, 100) + (gptResponse.length > 100 ? '...' : '');
+  }
+}
+
 // Helper function to extract instrument from filename
 function extractInstrumentFromFilename(filename: string): string {
   const upperFilename = filename.toUpperCase();
@@ -1955,6 +1986,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: 'Failed to save chart layout: ' + (error as Error).message 
+      });
+    }
+  });
+
+  // ===== NEW: Chart Analysis History & Prompt History API Routes =====
+
+  // GET /api/analysis-history → Fetches user's past chart analysis sessions
+  app.get('/api/analysis-history', async (req, res) => {
+    try {
+      // For now, use demo user id - in production this would come from authentication
+      const userId = 'demo-user-id'; // TODO: Replace with actual user authentication
+      
+      const sessions = await storage.getUserAnalysisSessions(userId);
+      
+      // Transform sessions for frontend consumption
+      const transformedSessions = sessions.map(session => ({
+        id: session.id,
+        timestamp: session.createdAt,
+        instrument: extractInstrumentFromResponse(session.gptResponse) || 'UNKNOWN',
+        summary: generateSummaryFromGptResponse(session.gptResponse),
+        chartImageUrl: session.chartImageUrl,
+        depthMapUrl: session.depthMapUrl,
+        edgeMapUrl: session.edgeMapUrl,
+        gradientMapUrl: session.gradientMapUrl,
+        vectorMatches: session.vectorMatches,
+        gptResponse: session.gptResponse,
+        systemPrompt: session.systemPrompt
+      }));
+
+      res.json({
+        success: true,
+        sessions: transformedSessions
+      });
+    } catch (error) {
+      console.error('Get analysis history error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to get analysis history: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
+    }
+  });
+
+  // GET /api/prompt-history → Fetches user's historical prompts
+  app.get('/api/prompt-history', async (req, res) => {
+    try {
+      // For now, use demo user id - in production this would come from authentication
+      const userId = 'demo-user-id'; // TODO: Replace with actual user authentication
+      
+      const prompts = await storage.getUserPromptHistory(userId);
+      
+      // Transform prompts for frontend consumption
+      const transformedPrompts = prompts.map(prompt => ({
+        id: prompt.id,
+        timestamp: prompt.createdAt,
+        promptType: prompt.promptType,
+        promptContent: prompt.promptContent,
+        previewText: prompt.promptContent.slice(0, 100) + (prompt.promptContent.length > 100 ? '...' : '')
+      }));
+
+      res.json({
+        success: true,
+        prompts: transformedPrompts
+      });
+    } catch (error) {
+      console.error('Get prompt history error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to get prompt history: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
+    }
+  });
+
+  // POST /api/save-analysis-session → Saves new analysis session after GPT-4o response
+  app.post('/api/save-analysis-session', async (req, res) => {
+    try {
+      const { 
+        systemPrompt,
+        chartImageUrl,
+        depthMapUrl,
+        edgeMapUrl,
+        gradientMapUrl,
+        vectorMatches,
+        gptResponse
+      } = req.body;
+
+      if (!systemPrompt || !chartImageUrl || !gptResponse) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Missing required fields: systemPrompt, chartImageUrl, gptResponse' 
+        });
+      }
+
+      // For now, use demo user id - in production this would come from authentication  
+      const userId = 'demo-user-id'; // TODO: Replace with actual user authentication
+
+      const session = await storage.createAnalysisSession({
+        userId,
+        systemPrompt,
+        chartImageUrl,
+        depthMapUrl: depthMapUrl || null,
+        edgeMapUrl: edgeMapUrl || null,
+        gradientMapUrl: gradientMapUrl || null,
+        vectorMatches: vectorMatches || null,
+        gptResponse
+      });
+
+      res.json({
+        success: true,
+        sessionId: session.id,
+        message: 'Analysis session saved successfully'
+      });
+    } catch (error) {
+      console.error('Save analysis session error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to save analysis session: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
+    }
+  });
+
+  // POST /api/save-prompt-version → Saves a prompt version when user customizes/injects
+  app.post('/api/save-prompt-version', async (req, res) => {
+    try {
+      const { promptType, promptContent } = req.body;
+
+      if (!promptType || !promptContent) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Missing required fields: promptType, promptContent' 
+        });
+      }
+
+      // Validate prompt type
+      const validPromptTypes = ['default', 'custom', 'injected'];
+      if (!validPromptTypes.includes(promptType)) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Invalid promptType. Must be one of: default, custom, injected' 
+        });
+      }
+
+      // For now, use demo user id - in production this would come from authentication
+      const userId = 'demo-user-id'; // TODO: Replace with actual user authentication
+
+      const prompt = await storage.createPromptHistory({
+        userId,
+        promptType,
+        promptContent
+      });
+
+      res.json({
+        success: true,
+        promptId: prompt.id,
+        message: 'Prompt version saved successfully'
+      });
+    } catch (error) {
+      console.error('Save prompt version error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to save prompt version: ' + (error instanceof Error ? error.message : 'Unknown error') 
       });
     }
   });
