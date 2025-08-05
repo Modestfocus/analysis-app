@@ -7,6 +7,7 @@ This full-stack application provides AI-powered analysis of trading charts. User
 Preferred communication style: Simple, everyday language.
 Trading panel: Minimized by default for optimal chart viewing.
 Dashboard default view: Condensed accordion layout with all sections closed by default.
+System Prompt Interface: Three-view toggle interface (Inject, Current Prompt, Default Prompt) with dynamic AI integration.
 
 ## System Architecture
 ### Frontend Architecture
@@ -40,9 +41,10 @@ Dashboard default view: Condensed accordion layout with all sections closed by d
 1.  **Image Upload**: Supports single and multi-file uploads.
 2.  **Embedding Generation**: OpenCLIP ViT-H/14 generates 1024-dimensional vector embeddings for similarity search.
 3.  **Advanced Image Processing**: Automatic generation of Depth Maps (MiDaS), Edge Maps (Sobel), and Gradient Maps (price slope analysis).
-4.  **GPT Analysis**: OpenAI GPT-4o analyzes charts with comprehensive visual data and technical insights.
-5.  **Bundle Analysis**: Multi-timeframe GPT-4o analysis for structured predictions.
-6.  **Similarity Search**: Cosine similarity search using 1024D vectors.
+4.  **Dynamic System Prompts**: Three-view interface allowing custom prompt injection with real-time GPT-4o integration.
+5.  **GPT Analysis**: OpenAI GPT-4o analyzes charts with comprehensive visual data and technical insights using customizable system prompts.
+6.  **Bundle Analysis**: Multi-timeframe GPT-4o analysis for structured predictions with prompt customization.
+7.  **Similarity Search**: Cosine similarity search using 1024D vectors.
 
 ## External Dependencies
 ### AI Services

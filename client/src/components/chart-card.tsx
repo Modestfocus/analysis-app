@@ -15,9 +15,10 @@ interface ChartCardProps {
   selected: boolean;
   onSelect: (selected: boolean) => void;
   onAnalyze: (results: any) => void;
+  systemPrompt?: string;
 }
 
-export default function ChartCard({ chart, selected, onSelect, onAnalyze }: ChartCardProps) {
+export default function ChartCard({ chart, selected, onSelect, onAnalyze, systemPrompt }: ChartCardProps) {
   const [comment, setComment] = useState(chart.comment || "");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -69,6 +70,9 @@ export default function ChartCard({ chart, selected, onSelect, onAnalyze }: Char
       const formData = new FormData();
       formData.append('chartId', chart.id.toString());
       formData.append('quickAnalysis', 'false');
+      if (systemPrompt) {
+        formData.append('system_prompt', systemPrompt);
+      }
       const response = await apiRequest('POST', '/api/analyze', formData);
       return response.json();
     },

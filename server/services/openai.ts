@@ -42,7 +42,8 @@ export async function analyzeMultipleChartsWithAllMaps(
   similarCharts: Array<{ 
     chart: any; 
     similarity: number;
-  }> = []
+  }> = [],
+  customSystemPrompt?: string
 ): Promise<ChartPrediction> {
   try {
     console.log(`🔍 Starting multi-chart analysis for ${charts.length} charts`);
@@ -59,8 +60,8 @@ export async function analyzeMultipleChartsWithAllMaps(
       });
     }
 
-    // Build comprehensive multi-chart prompt
-    const systemPrompt = `You are a professional forex and trading chart analyst with expertise in multi-timeframe analysis. 
+    // Build comprehensive multi-chart prompt - use custom prompt if provided
+    const baseSystemPrompt = customSystemPrompt || `You are a professional forex and trading chart analyst with expertise in multi-timeframe analysis. 
 
 You will receive multiple trading charts with their complete visual processing pipeline:
 - Original chart images (price action, candlesticks, indicators)
@@ -76,7 +77,9 @@ Key Analysis Points:
 3. **Volume/Momentum**: Analyze gradient maps for momentum shifts
 4. **Structure Analysis**: Use edge maps for key support/resistance levels
 5. **Depth Perception**: Use depth maps for pattern strength assessment
-6. **Session Timing**: Consider optimal trading session for the setup
+6. **Session Timing**: Consider optimal trading session for the setup`;
+
+    const systemPrompt = `${baseSystemPrompt}
 
 ${ragContext}
 
@@ -221,7 +224,8 @@ export async function analyzeChartWithRAG(
     chart: any; 
     similarity: number;
     depthMapPath?: string;
-  }> = []
+  }> = [],
+  customSystemPrompt?: string
 ): Promise<ChartPrediction> {
   try {
     console.log("🔍 Starting analyzeChartWithRAG function");
@@ -257,8 +261,8 @@ export async function analyzeChartWithRAG(
       });
     }
 
-    // Build the comprehensive prompt with full visual stack
-    let systemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
+    // Build the comprehensive prompt with full visual stack - use custom prompt if provided
+    const baseSystemPrompt = customSystemPrompt || `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
 
 - 🧠 CLIP Embeddings: High-level semantic pattern matching
 - 🌀 Depth Map: Structural geometry and layer analysis
@@ -296,7 +300,9 @@ ${ragContext}
 - Compression → expansion signatures
 - Gradient slope direction + strength
 - Similar patterns and outcomes in historical/bundled charts
-- Session impact patterns (e.g., NY breakouts after London coil)
+- Session impact patterns (e.g., NY breakouts after London coil)`;
+
+    let systemPrompt = `${baseSystemPrompt}
 
 ---
 
@@ -795,7 +801,8 @@ Respond ONLY in this exact JSON format:
 // Multi-timeframe bundle analysis with structured prompt and RAG
 export async function analyzeBundleWithGPT(
   chartData: Array<{ chart: any; base64Image: string; depthMapBase64?: string }>,
-  bundleMetadata: any
+  bundleMetadata: any,
+  customSystemPrompt?: string
 ): Promise<AnalysisResult & { prediction?: string; session?: string; confidence_level?: string; rationale?: string }> {
   try {
     const { instrument, chart_ids, timeframes, session } = bundleMetadata;
@@ -819,8 +826,8 @@ export async function analyzeBundleWithGPT(
       chartDescriptions += "\n";
     });
 
-    // Build the comprehensive prompt with full visual stack
-    let systemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
+    // Build the comprehensive prompt with full visual stack - use custom prompt if provided
+    const baseSystemPrompt = customSystemPrompt || `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
 
 - 🧠 CLIP Embeddings: High-level semantic pattern matching
 - 🌀 Depth Map: Structural geometry and layer analysis
@@ -859,7 +866,9 @@ For each similar chart, you will be provided context from historical patterns an
 - Compression → expansion signatures
 - Gradient slope direction + strength
 - Multi-timeframe confluence and alignment
-- Session impact patterns (e.g., NY breakouts after London coil)
+- Session impact patterns (e.g., NY breakouts after London coil)`;
+
+    let systemPrompt = `${baseSystemPrompt}
 
 ---
 

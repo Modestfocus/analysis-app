@@ -965,6 +965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeframeMapping = req.body.timeframeMapping ? JSON.parse(req.body.timeframeMapping) : {};
       const instrument = req.body.instrument || 'UNKNOWN';
       const session = req.body.session;
+      const customSystemPrompt = req.body.system_prompt;
 
       console.log(`🚀 Quick Analysis: Processing ${files.length} charts with complete flow (no database save)`);
 
@@ -1124,7 +1125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const primarySimilarCharts = tempChartData.length > 0 ? tempChartData[0].similarCharts || [] : [];
       
       // 8. Send complete visual stack to GPT-4o for live reasoning
-      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, primarySimilarCharts);
+      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, primarySimilarCharts, customSystemPrompt);
 
       // 9. Display GPT-4o's response in the Analysis Reasoning panel
       res.json({
@@ -1166,6 +1167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/analyze/:chartId', async (req, res) => {
     try {
       const chartId = parseInt(req.params.chartId);
+      const customSystemPrompt = req.body.system_prompt;
       
       if (isNaN(chartId)) {
         return res.status(400).json({ message: 'Invalid chart ID' });
@@ -1192,8 +1194,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 3. Prepare depth map path
       const depthMapPath = chart.depthMapPath;
 
-      // 4. Call GPT-4o with RAG context
-      const prediction = await analyzeChartWithRAG(chartImagePath, depthMapPath, similarCharts);
+      // 4. Call GPT-4o with RAG context and custom system prompt
+      const prediction = await analyzeChartWithRAG(chartImagePath, depthMapPath, similarCharts, customSystemPrompt);
 
       // 5. Save analysis result to database
       const analysisData = {
@@ -1512,6 +1514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/analyze/bundle/:bundleId', async (req, res) => {
     try {
       const bundleId = req.params.bundleId;
+      const customSystemPrompt = req.body.system_prompt;
       const bundle = await storage.getBundle(bundleId);
       
       if (!bundle) {
@@ -1547,9 +1550,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
 
-      // Generate bundle analysis using multi-timeframe context
+      // Generate bundle analysis using multi-timeframe context and custom system prompt
       const bundleMetadata = JSON.parse(bundle.metadata);
-      const analysis = await analyzeBundleWithGPT(chartData, bundleMetadata);
+      const analysis = await analyzeBundleWithGPT(chartData, bundleMetadata, customSystemPrompt);
 
       // Save bundle analysis
       const analysisData = {

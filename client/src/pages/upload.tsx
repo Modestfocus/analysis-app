@@ -25,6 +25,19 @@ export default function UploadPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Load system prompt from localStorage
+  const [defaultPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
+  const [injectText, setInjectText] = useState<string>('');
+  const currentPrompt = `${defaultPrompt}${injectText ? `\n\n${injectText}` : ''}`;
+
+  // Load saved prompts from localStorage on component mount
+  useState(() => {
+    const savedInject = localStorage.getItem('systemPrompt_inject');
+    if (savedInject) {
+      setInjectText(savedInject);
+    }
+  });
+
   // Helper functions for file timeframe management
   const updateFileTimeframe = (fileName: string, timeframe: Timeframe) => {
     setFileTimeframes(prev => ({
@@ -297,6 +310,9 @@ export default function UploadPage() {
       }
       if (selectedSession) {
         formData.append('session', selectedSession);
+      }
+      if (currentPrompt) {
+        formData.append('system_prompt', currentPrompt);
       }
 
       // Use Quick Analysis endpoint - processes temporarily without saving to dashboard

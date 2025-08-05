@@ -12,9 +12,10 @@ import BundleAnalysisPanel from "./bundle-analysis-panel";
 interface BundleCardProps {
   bundle: ChartBundle & { parsedMetadata: BundleMetadata };
   onAnalyze?: (results: any) => void;
+  systemPrompt?: string;
 }
 
-export default function BundleCard({ bundle, onAnalyze }: BundleCardProps) {
+export default function BundleCard({ bundle, onAnalyze, systemPrompt }: BundleCardProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [analysisResults, setAnalysisResults] = useState<any>(null);
@@ -22,7 +23,8 @@ export default function BundleCard({ bundle, onAnalyze }: BundleCardProps) {
 
   const analyzeBundleMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', `/api/analyze/bundle/${bundle.id}`);
+      const payload = systemPrompt ? { system_prompt: systemPrompt } : {};
+      const response = await apiRequest('POST', `/api/analyze/bundle/${bundle.id}`, payload);
       return response.json();
     },
     onSuccess: (data) => {

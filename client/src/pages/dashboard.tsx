@@ -444,6 +444,7 @@ export default function DashboardPage() {
                                     selected={selectedCharts.has(chart.id)}
                                     onSelect={(selected) => handleChartSelect(chart.id, selected)}
                                     onAnalyze={(results) => setAnalysisResults(results)}
+                                    systemPrompt={currentPrompt}
                                   />
                                 ))}
                               </div>
@@ -472,6 +473,7 @@ export default function DashboardPage() {
                                     key={bundle.id}
                                     bundle={bundle}
                                     onAnalyze={(results) => setAnalysisResults(results)}
+                                    systemPrompt={currentPrompt}
                                   />
                                 ))}
                               </div>
