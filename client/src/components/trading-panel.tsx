@@ -70,6 +70,7 @@ interface TradingPanelProps {
   quickAnalysisFiles?: File[];
   onTakeScreenshot?: () => void;
   onClearScreenshots?: () => void;
+  currentPrompt?: string;
 }
 
 // Mock data for demonstration
@@ -121,7 +122,8 @@ export default function TradingPanel({
   onCloseQuickAnalysis, 
   quickAnalysisFiles: propQuickAnalysisFiles,
   onTakeScreenshot,
-  onClearScreenshots
+  onClearScreenshots,
+  currentPrompt
 }: TradingPanelProps) {
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop'>('market');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
@@ -342,6 +344,11 @@ export default function TradingPanel({
       });
       
       formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
+      
+      // Add current prompt to the request
+      if (currentPrompt) {
+        formData.append('system_prompt', currentPrompt);
+      }
 
       const response = await fetch('/api/analyze/quick', {
         method: 'POST',

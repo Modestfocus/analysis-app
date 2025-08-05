@@ -14,13 +14,15 @@ interface QuickChartAnalysisProps {
   onClose: () => void;
   initialFiles?: File[];
   className?: string;
+  currentPrompt?: string;
 }
 
 export function QuickChartAnalysis({ 
   isOpen, 
   onClose, 
   initialFiles = [], 
-  className = "" 
+  className = "",
+  currentPrompt
 }: QuickChartAnalysisProps) {
   const [quickAnalysisFiles, setQuickAnalysisFiles] = useState<File[]>(initialFiles);
   const [selectedTimeframes, setSelectedTimeframes] = useState<{ [key: number]: string }>({});
@@ -30,12 +32,13 @@ export function QuickChartAnalysis({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle file selection from drag & drop or file input
-  const handleQuickAnalysisFiles = useCallback((files: File[]) => {
-    setQuickAnalysisFiles(prev => [...prev, ...files]);
+  const handleQuickAnalysisFiles = useCallback((files: FileList | File[]) => {
+    const fileArray = Array.isArray(files) ? files : Array.from(files);
+    setQuickAnalysisFiles(prev => [...prev, ...fileArray]);
     
     // Initialize timeframes for new files
     const newTimeframes: { [key: number]: string } = {};
-    files.forEach((_, index) => {
+    fileArray.forEach((_, index) => {
       const fileIndex = quickAnalysisFiles.length + index;
       newTimeframes[fileIndex] = "1H"; // Default timeframe
     });
@@ -82,7 +85,12 @@ export function QuickChartAnalysis({
         formData.append(`timeframe_${index}`, selectedTimeframes[index] || "1H");
       });
 
-      return apiRequest('POST', '/api/quick-analysis', formData);
+      // Add current prompt to the request
+      if (currentPrompt) {
+        formData.append('system_prompt', currentPrompt);
+      }
+
+      return apiRequest('POST', '/api/analyze/quick', formData);
     },
     onSuccess: (data: any) => {
       setAnalysisResults(data.analyses || []);

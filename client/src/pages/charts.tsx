@@ -48,6 +48,25 @@ export default function ChartsPage() {
   const [isScreenshotSelectorOpen, setIsScreenshotSelectorOpen] = useState(false);
   const { toast } = useToast();
   
+  // System prompt state for quick analysis
+  const [defaultPrompt, setDefaultPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
+  const [injectText, setInjectText] = useState<string>('');
+  const currentPrompt = `${defaultPrompt}${injectText ? `\n\n${injectText}` : ''}`;
+  
+  // Load saved prompts from localStorage on component mount
+  useEffect(() => {
+    const savedDefault = localStorage.getItem('systemPrompt_default');
+    const savedInject = localStorage.getItem('systemPrompt_inject');
+    
+    if (savedDefault) {
+      setDefaultPrompt(savedDefault);
+    }
+    
+    if (savedInject) {
+      setInjectText(savedInject);
+    }
+  }, []);
+  
 
 
   // Convert our symbol format to TradingView format
@@ -556,6 +575,7 @@ export default function ChartsPage() {
                   quickAnalysisFiles={screenshotFiles}
                   onTakeScreenshot={handleTakeScreenshot}
                   onClearScreenshots={handleClearScreenshots}
+                  currentPrompt={currentPrompt}
                 />
               </div>
             </Panel>
