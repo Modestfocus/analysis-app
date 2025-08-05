@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp, FileText, StickyNote, Shield, Settings } from "lucide-react";
+import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp, FileText, StickyNote, Shield, Settings, ChevronDown, ChevronRight } from "lucide-react";
 import ChartCard from "@/components/chart-card";
 import BundleCard from "@/components/bundle-card";
 import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [injectText, setInjectText] = useState<string>('');
   const [savedDefaultPrompt, setSavedDefaultPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
   const [savedInjectText, setSavedInjectText] = useState<string>('');
+  const [showDefaultPromptInfo, setShowDefaultPromptInfo] = useState<boolean>(false);
   const currentPrompt = `${defaultPrompt}${injectText ? `\n\n${injectText}` : ''}`;
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -760,9 +761,27 @@ export default function DashboardPage() {
 
                         {viewMode === 'default' && (
                           <>
-                            <label className="text-sm font-medium text-gray-700">
-                              Default System Prompt
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm font-medium text-gray-700">
+                                Default System Prompt
+                              </label>
+                              <button
+                                onClick={() => setShowDefaultPromptInfo(!showDefaultPromptInfo)}
+                                className="flex items-center text-xs text-gray-500 hover:text-blue-600 underline transition-colors duration-200"
+                              >
+                                {showDefaultPromptInfo ? (
+                                  <>
+                                    <ChevronDown className="w-3 h-3 mr-1" />
+                                    Hide Info
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronRight className="w-3 h-3 mr-1" />
+                                    What is this?
+                                  </>
+                                )}
+                              </button>
+                            </div>
                             <Textarea
                               value={defaultPrompt}
                               onChange={(e) => setDefaultPrompt(e.target.value)}
@@ -770,6 +789,23 @@ export default function DashboardPage() {
                               className="min-h-[200px] resize-y text-sm leading-relaxed"
                               rows={10}
                             />
+                            {showDefaultPromptInfo && (
+                              <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg transition-all duration-300 ease-in-out">
+                                <div className="text-xs text-gray-700 leading-relaxed space-y-2">
+                                  <p className="font-medium text-gray-800">
+                                    This is the complete system prompt that gets dynamically populated with:
+                                  </p>
+                                  <div className="space-y-1 ml-2">
+                                    <p><strong>1. Visual layers</strong> from the uploaded chart (original + depth + edge + gradient maps)</p>
+                                    <p><strong>2. RAG-retrieved similar charts</strong> with their metadata and historical outcomes</p>
+                                    <p><strong>3. Bundle context</strong> when similar charts are part of multi-timeframe analysis bundles</p>
+                                  </div>
+                                  <p className="mt-3">
+                                    The prompt instructs GPT-4o to analyze all visual processing layers comprehensively and return structured JSON with session prediction, direction bias, confidence level, and detailed reasoning based on pattern matching with historical chart data.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                             <p className="text-xs text-gray-500">
                               Edit the base system prompt that serves as the foundation for AI analysis.
                             </p>
