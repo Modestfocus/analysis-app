@@ -29,12 +29,30 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<'default' | 'inject' | 'current'>('current');
   const [defaultPrompt, setDefaultPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
   const [injectText, setInjectText] = useState<string>('');
+  const [savedDefaultPrompt, setSavedDefaultPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
+  const [savedInjectText, setSavedInjectText] = useState<string>('');
   const currentPrompt = `${defaultPrompt}${injectText ? `\n\n${injectText}` : ''}`;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Mock user ID for demo - in real app this would come from auth context
   const userId = "demo-user-id";
+
+  // Load saved prompts from localStorage on component mount
+  useEffect(() => {
+    const savedDefault = localStorage.getItem('systemPrompt_default');
+    const savedInject = localStorage.getItem('systemPrompt_inject');
+    
+    if (savedDefault) {
+      setDefaultPrompt(savedDefault);
+      setSavedDefaultPrompt(savedDefault);
+    }
+    
+    if (savedInject) {
+      setInjectText(savedInject);
+      setSavedInjectText(savedInject);
+    }
+  }, []);
 
   const { data: chartsData, isLoading: isLoadingCharts, refetch } = useQuery({
     queryKey: ['charts', selectedTimeframe],
@@ -715,12 +733,25 @@ export default function DashboardPage() {
                             </label>
                             <Textarea
                               value={currentPrompt}
-                              readOnly
-                              className="min-h-[200px] resize-y text-sm leading-relaxed bg-gray-50"
+                              onChange={(e) => {
+                                // When editing current prompt, we need to parse it back
+                                const newValue = e.target.value;
+                                if (newValue.includes(defaultPrompt)) {
+                                  // Extract inject text by removing default prompt
+                                  const extractedInject = newValue.replace(defaultPrompt, '').replace(/^\n\n/, '').replace(/^\n/, '');
+                                  setInjectText(extractedInject);
+                                } else {
+                                  // If default prompt was modified, update default prompt
+                                  setDefaultPrompt(newValue);
+                                  setInjectText('');
+                                }
+                              }}
+                              placeholder="Edit the combined prompt (Default + Inject)..."
+                              className="min-h-[200px] resize-y text-sm leading-relaxed"
                               rows={10}
                             />
                             <p className="text-xs text-gray-500">
-                              This is the final prompt that will be used for AI analysis (read-only).
+                              Edit the final prompt that will be used for AI analysis. Changes will be parsed back to Default and Inject sections.
                             </p>
                           </>
                         )}
@@ -732,12 +763,13 @@ export default function DashboardPage() {
                             </label>
                             <Textarea
                               value={defaultPrompt}
-                              readOnly
-                              className="min-h-[200px] resize-y text-sm leading-relaxed bg-gray-50"
+                              onChange={(e) => setDefaultPrompt(e.target.value)}
+                              placeholder="Enter the base system prompt..."
+                              className="min-h-[200px] resize-y text-sm leading-relaxed"
                               rows={10}
                             />
                             <p className="text-xs text-gray-500">
-                              This is the base system prompt (read-only).
+                              Edit the base system prompt that serves as the foundation for AI analysis.
                             </p>
                           </>
                         )}
@@ -749,11 +781,20 @@ export default function DashboardPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
+                            const originalDefault = "You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.";
+                            setDefaultPrompt(originalDefault);
                             setInjectText('');
+                            setSavedDefaultPrompt(originalDefault);
+                            setSavedInjectText('');
                             setViewMode('default');
+                            
+                            // Clear localStorage
+                            localStorage.removeItem('systemPrompt_default');
+                            localStorage.removeItem('systemPrompt_inject');
+                            
                             toast({
                               title: "Reset Complete",
-                              description: "Inject text cleared and view switched to Default Prompt.",
+                              description: "All prompts reset to original defaults and saved state cleared.",
                             });
                           }}
                         >
@@ -763,6 +804,14 @@ export default function DashboardPage() {
                           size="sm"
                           className="hover:bg-purple-700 text-white bg-[#706870]"
                           onClick={() => {
+                            // Save current state
+                            setSavedDefaultPrompt(defaultPrompt);
+                            setSavedInjectText(injectText);
+                            
+                            // Store in localStorage for persistence
+                            localStorage.setItem('systemPrompt_default', defaultPrompt);
+                            localStorage.setItem('systemPrompt_inject', injectText);
+                            
                             toast({
                               title: "System Prompt Saved",
                               description: "Your system prompt configuration has been saved successfully.",
