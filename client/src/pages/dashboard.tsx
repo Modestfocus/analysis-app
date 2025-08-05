@@ -26,7 +26,10 @@ export default function DashboardPage() {
   const [showView, setShowView] = useState<"charts" | "bundles" | "analyses">("charts");
   const [activeAccordionSection, setActiveAccordionSection] = useState<string>("");
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-  const [systemPrompt, setSystemPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
+  const [viewMode, setViewMode] = useState<'default' | 'inject' | 'current'>('current');
+  const [defaultPrompt, setDefaultPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
+  const [injectText, setInjectText] = useState<string>('');
+  const currentPrompt = `${defaultPrompt}${injectText ? `\n\n${injectText}` : ''}`;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -651,27 +654,108 @@ export default function DashboardPage() {
                         <h3 className="text-sm font-medium text-gray-700">AI System Configuration</h3>
                       </div>
                       
+                      {/* Toggle Buttons */}
+                      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                        <Button
+                          size="sm"
+                          variant={viewMode === 'inject' ? 'default' : 'ghost'}
+                          onClick={() => setViewMode('inject')}
+                          className={`flex-1 ${viewMode === 'inject' 
+                            ? 'bg-white text-gray-900 shadow-sm' 
+                            : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                          Inject
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={viewMode === 'current' ? 'default' : 'ghost'}
+                          onClick={() => setViewMode('current')}
+                          className={`flex-1 ${viewMode === 'current' 
+                            ? 'bg-white text-gray-900 shadow-sm' 
+                            : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                          Current Prompt
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={viewMode === 'default' ? 'default' : 'ghost'}
+                          onClick={() => setViewMode('default')}
+                          className={`flex-1 ${viewMode === 'default' 
+                            ? 'bg-white text-gray-900 shadow-sm' 
+                            : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                          Default Prompt
+                        </Button>
+                      </div>
+
+                      {/* Content Area */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
-                          System Prompt
-                        </label>
-                        <Textarea
-                          value={systemPrompt}
-                          onChange={(e) => setSystemPrompt(e.target.value)}
-                          placeholder="Enter your system prompt for AI analysis..."
-                          className="min-h-[200px] resize-y text-sm leading-relaxed"
-                          rows={10}
-                        />
-                        <p className="text-xs text-gray-500">
-                          This prompt will be used to guide the AI's analysis of your trading charts.
-                        </p>
+                        {viewMode === 'inject' && (
+                          <>
+                            <label className="text-sm font-medium text-gray-700">
+                              Inject Text
+                            </label>
+                            <Textarea
+                              value={injectText}
+                              onChange={(e) => setInjectText(e.target.value)}
+                              placeholder="Enter custom injection content to add to your prompt..."
+                              className="min-h-[200px] resize-y text-sm leading-relaxed"
+                              rows={10}
+                            />
+                            <p className="text-xs text-gray-500">
+                              This text will be appended to the default prompt when analyzing charts.
+                            </p>
+                          </>
+                        )}
+
+                        {viewMode === 'current' && (
+                          <>
+                            <label className="text-sm font-medium text-gray-700">
+                              Current Prompt (Default + Inject)
+                            </label>
+                            <Textarea
+                              value={currentPrompt}
+                              readOnly
+                              className="min-h-[200px] resize-y text-sm leading-relaxed bg-gray-50"
+                              rows={10}
+                            />
+                            <p className="text-xs text-gray-500">
+                              This is the final prompt that will be used for AI analysis (read-only).
+                            </p>
+                          </>
+                        )}
+
+                        {viewMode === 'default' && (
+                          <>
+                            <label className="text-sm font-medium text-gray-700">
+                              Default System Prompt
+                            </label>
+                            <Textarea
+                              value={defaultPrompt}
+                              readOnly
+                              className="min-h-[200px] resize-y text-sm leading-relaxed bg-gray-50"
+                              rows={10}
+                            />
+                            <p className="text-xs text-gray-500">
+                              This is the base system prompt (read-only).
+                            </p>
+                          </>
+                        )}
                       </div>
                       
+                      {/* Action Buttons */}
                       <div className="flex justify-end space-x-2 pt-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSystemPrompt("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.")}
+                          onClick={() => {
+                            setInjectText('');
+                            setViewMode('default');
+                            toast({
+                              title: "Reset Complete",
+                              description: "Inject text cleared and view switched to Default Prompt.",
+                            });
+                          }}
                         >
                           Reset to Default
                         </Button>
