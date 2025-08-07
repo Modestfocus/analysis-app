@@ -163,6 +163,67 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Document card styles */
+  .document-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .document-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 0.75rem;
+    background-color: #111827;
+    padding: 1rem;
+    width: 140px;
+    height: auto;
+    overflow: hidden;
+    box-sizing: border-box;
+    gap: 0.5rem;
+    border: 1px solid #374151;
+    transition: all 0.2s ease;
+  }
+
+  .document-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  }
+
+  .document-card img,
+  .document-card svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .document-card button {
+    width: 100%;
+    max-width: 120px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .document-card .file-size {
+    font-size: 0.75rem;
+    color: #9ca3af;
+  }
+
+  /* Light mode document cards */
+  :root .document-card {
+    background-color: #ffffff;
+    border-color: #e5e7eb;
+  }
+
+  :root .document-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  }
   
   /* Dark mode specific overrides */
   .dark .bg-gray-50 {

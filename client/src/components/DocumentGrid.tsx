@@ -226,88 +226,56 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="document-list">
           {filteredDocuments.map((document: Document) => (
-            <Card key={document.id} className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/20 bg-card/50 backdrop-blur-sm">
-              <CardContent className="p-6">
-                {/* Document Icon and Type */}
-                <div className="flex flex-col items-center text-center mb-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
-                    <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <Badge 
-                    variant="secondary" 
-                    className="text-xs font-medium px-3 py-1 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-700"
-                  >
-                    {document.fileType.toUpperCase()}
-                  </Badge>
-                </div>
+            <div key={document.id} className="document-card">
+              {/* Document Icon */}
+              <div className="flex flex-col items-center gap-2">
+                <FileText className="w-10 h-10 text-blue-400" />
+                <Badge 
+                  variant="secondary" 
+                  className="text-xs px-2 py-1 bg-gray-700 text-gray-300 border-gray-600"
+                >
+                  {document.fileType.toUpperCase()}
+                </Badge>
+              </div>
 
-                {/* Document Title */}
-                <div className="mb-3">
-                  <h3 
-                    className="text-sm font-semibold text-foreground line-clamp-2 leading-5 min-h-[2.5rem] group-hover:text-primary transition-colors" 
-                    title={document.originalName}
-                  >
-                    {document.originalName}
-                  </h3>
-                </div>
+              {/* Document Title */}
+              <h3 
+                className="text-sm font-medium text-center line-clamp-2 leading-4 px-2" 
+                title={document.originalName}
+              >
+                {document.originalName}
+              </h3>
 
-                {/* File Size */}
-                <div className="flex justify-center mb-4">
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {formatFileSize(document.fileSize)}
-                  </span>
-                </div>
-                
-                {/* Description */}
-                {document.description && (
-                  <div className="mb-4">
-                    <p className="text-xs text-muted-foreground line-clamp-3 leading-4">
-                      {document.description}
-                    </p>
-                  </div>
-                )}
-                
-                {/* Tags */}
-                {document.tags && document.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-4 justify-center">
-                    {document.tags.slice(0, 2).map((tag, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs px-2 py-0.5">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {document.tags.length > 2 && (
-                      <Badge variant="outline" className="text-xs px-2 py-0.5">
-                        +{document.tags.length - 2}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-                
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
-                  <Button 
-                    size="sm" 
-                    variant="default"
-                    className="flex-1 text-xs font-medium h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    onClick={() => setSelectedDocumentForViewing(document)}
-                  >
-                    View Document
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="w-8 h-8 p-0 flex items-center justify-center border-destructive/20 hover:border-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    onClick={() => deleteDocumentMutation.mutate(document.id)}
-                    disabled={deleteDocumentMutation.isPending}
-                    title="Delete document"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              {/* File Size */}
+              <span className="file-size text-center">
+                {formatFileSize(document.fileSize)}
+              </span>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-1 w-full">
+                <Button 
+                  size="sm" 
+                  variant="default"
+                  className="w-full text-xs"
+                  onClick={() => setSelectedDocumentForViewing(document)}
+                >
+                  View
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="w-full text-xs border-red-600 text-red-400 hover:bg-red-600/10"
+                  onClick={() => deleteDocumentMutation.mutate(document.id)}
+                  disabled={deleteDocumentMutation.isPending}
+                  title="Delete document"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}
