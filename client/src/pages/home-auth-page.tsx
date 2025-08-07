@@ -240,7 +240,6 @@ export default function HomeAuthPage() {
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>
-      
       {/* Background Image with Overlay */}
       <div 
         className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
@@ -252,7 +251,6 @@ export default function HomeAuthPage() {
       />
       {/* Dark overlay for better content readability */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-purple-900/75 to-slate-900/85 dark:from-gray-900/95 dark:via-gray-800/90 dark:to-gray-900/95" />
-      
       {/* Content */}
       <div className="relative z-10 min-h-screen bg-transparent">
       <div className="container mx-auto px-4 py-8">
@@ -391,7 +389,7 @@ export default function HomeAuthPage() {
                   </TabsContent>
 
                   <TabsContent value="wallet" className="space-y-3">
-                    <div className="space-y-2">
+                    <div className="space-y-2 text-[#ffffff] bg-[#374151]">
                       <Button
                         onClick={connectPhantom}
                         disabled={isLoading}
