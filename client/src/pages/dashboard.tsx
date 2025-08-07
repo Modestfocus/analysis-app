@@ -907,11 +907,10 @@ export default function DashboardPage() {
       )}
 
       {/* Right Panel - GPT Analysis */}
-      <div className={`transition-all duration-300 ease-in-out ${
-        isLeftPanelCollapsed ? 'flex-1' : ''
-      }`}>
-        <GPTAnalysisPanel analysisResults={analysisResults} />
-      </div>
+      <GPTAnalysisPanel 
+        analysisResults={analysisResults} 
+        isExpanded={isLeftPanelCollapsed}
+      />
     </div>
   );
 }

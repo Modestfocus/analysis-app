@@ -37,17 +37,21 @@ interface AnalysisPanelProps {
   isLoading: boolean;
   onRegenerateAnalysis?: () => void;
   isRegenerating?: boolean;
+  isExpanded?: boolean;
 }
 
 export default function AnalysisPanel({ 
   analysisData, 
   isLoading, 
   onRegenerateAnalysis,
-  isRegenerating = false 
+  isRegenerating = false,
+  isExpanded = false
 }: AnalysisPanelProps) {
   if (isLoading) {
     return (
-      <div className="flex-1 bg-white border-l border-gray-200 p-6">
+      <div className={`transition-all duration-300 ease-in-out bg-white dark:bg-[#161b22] border-l border-gray-200 dark:border-[#3a3a3a] p-6 ${
+        isExpanded ? 'w-full' : 'flex-1'
+      }`}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -67,7 +71,9 @@ export default function AnalysisPanel({
 
   if (!analysisData) {
     return (
-      <div className="flex-1 bg-white border-l border-gray-200 p-6">
+      <div className={`transition-all duration-300 ease-in-out bg-white dark:bg-[#161b22] border-l border-gray-200 dark:border-[#3a3a3a] p-6 ${
+        isExpanded ? 'w-full' : 'flex-1'
+      }`}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -106,7 +112,9 @@ export default function AnalysisPanel({
   };
 
   return (
-    <div className="flex-1 bg-white border-l border-gray-200 p-6 overflow-y-auto">
+    <div className={`transition-all duration-300 ease-in-out bg-white dark:bg-[#161b22] border-l border-gray-200 dark:border-[#3a3a3a] p-6 overflow-y-auto ${
+      isExpanded ? 'w-full' : 'flex-1'
+    }`}>
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">

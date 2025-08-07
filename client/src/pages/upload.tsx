@@ -734,16 +734,13 @@ export default function UploadPage() {
       )}
 
       {/* Right Panel - RAG Analysis */}
-      <div className={`transition-all duration-300 ease-in-out ${
-        isLeftPanelCollapsed ? 'flex-1' : ''
-      }`}>
-        <AnalysisPanel 
-          analysisData={analysisResults} 
-          isLoading={analyzeChartsMutation.isPending}
-          onRegenerateAnalysis={handleRegenerateAnalysis}
-          isRegenerating={regenerateAnalysisMutation.isPending}
-        />
-      </div>
+      <AnalysisPanel 
+        analysisData={analysisResults} 
+        isLoading={analyzeChartsMutation.isPending}
+        onRegenerateAnalysis={handleRegenerateAnalysis}
+        isRegenerating={regenerateAnalysisMutation.isPending}
+        isExpanded={isLeftPanelCollapsed}
+      />
     </div>
   );
 }

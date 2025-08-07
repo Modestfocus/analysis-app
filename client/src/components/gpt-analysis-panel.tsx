@@ -60,9 +60,10 @@ type PanelMode = 'analysis' | 'history' | 'prompts';
 
 interface GPTAnalysisPanelProps {
   analysisResults: AnalysisResults | null;
+  isExpanded?: boolean;
 }
 
-export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelProps) {
+export default function GPTAnalysisPanel({ analysisResults, isExpanded = false }: GPTAnalysisPanelProps) {
   const [panelMode, setPanelMode] = useState<PanelMode>('analysis');
 
   // Fetch analysis history
@@ -150,7 +151,9 @@ export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelPr
   };
 
   return (
-    <div className="w-96 bg-white dark:bg-[#161b22] border-l border-gray-200 dark:border-[#3a3a3a] flex flex-col">
+    <div className={`transition-all duration-300 ease-in-out bg-white dark:bg-[#161b22] border-l border-gray-200 dark:border-[#3a3a3a] flex flex-col ${
+      isExpanded ? 'w-full max-w-none' : 'w-96'
+    }`}>
       {renderHeader()}
 
       {/* Content */}
