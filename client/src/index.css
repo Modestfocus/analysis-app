@@ -209,6 +209,28 @@
     text-overflow: ellipsis;
   }
 
+  /* View button styles */
+  .document-card button.bg-indigo-600 {
+    background-color: #4F46E5 !important;
+    color: #F9FAFB !important;
+    border: none;
+  }
+
+  .document-card button.bg-indigo-600:hover {
+    background-color: #4338CA !important;
+  }
+
+  /* Delete button styles */
+  .document-card button.bg-gray-800 {
+    background-color: #1F2937 !important;
+    color: #F87171 !important;
+    border: 1px solid #F87171 !important;
+  }
+
+  .document-card button.bg-gray-800:hover {
+    background-color: #374151 !important;
+  }
+
   .document-card .file-size {
     font-size: 0.75rem;
     color: #9ca3af;
