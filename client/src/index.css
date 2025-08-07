@@ -65,9 +65,29 @@
   --divider-color: hsl(210, 18%, 23%); /* #3a3a3a */
 }
 
+/* Custom transitions and animations */
+@layer components {
+  .panel-transition {
+    transition: all 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+  
+  .panel-collapse {
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  .panel-expand {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
+    scroll-behavior: smooth;
   }
 
   body {

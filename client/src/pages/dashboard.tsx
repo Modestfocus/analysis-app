@@ -220,21 +220,23 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1117] relative">
       {/* Floating Toggle Button - Only shown when left panel is collapsed */}
-      {isLeftPanelCollapsed && (
+      <div className={`absolute top-4 left-4 z-50 transition-all duration-500 ease-in-out ${
+        isLeftPanelCollapsed ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8 pointer-events-none'
+      }`}>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setIsLeftPanelCollapsed(false)}
-          className="absolute top-4 left-4 z-50 bg-white dark:bg-[#161b22] border-gray-200 dark:border-[#3a3a3a] shadow-lg hover:shadow-xl transition-all duration-200"
+          className="bg-white dark:bg-[#161b22] border-gray-200 dark:border-[#3a3a3a] shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out"
           title="Expand Panel"
         >
           <Menu className="h-4 w-4" />
         </Button>
-      )}
+      </div>
       
       {/* Left Panel */}
-      <div className={`transition-all duration-300 ease-in-out flex flex-col dark:bg-[#0d1117] ${
-        isLeftPanelCollapsed ? 'w-0 overflow-hidden' : 'flex-1'
+      <div className={`transition-all duration-500 ease-in-out flex flex-col dark:bg-[#0d1117] ${
+        isLeftPanelCollapsed ? 'w-0 min-w-0 opacity-0 overflow-hidden' : 'flex-1 min-w-0 opacity-100'
       }`}>
         {/* Navigation */}
         <nav className="bg-white dark:bg-[#0d1117] border-b border-gray-200 dark:border-[#3a3a3a] px-6 py-4">
@@ -283,14 +285,16 @@ export default function DashboardPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
-                className="p-2 h-8 w-8"
+                className="p-2 h-8 w-8 hover:bg-gray-100 dark:hover:bg-[#262c36] transition-all duration-300 ease-in-out hover:scale-110"
                 title={isLeftPanelCollapsed ? "Expand Panel" : "Collapse Panel"}
               >
-                {isLeftPanelCollapsed ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4" />
-                )}
+                <div className="transition-transform duration-300 ease-in-out">
+                  {isLeftPanelCollapsed ? (
+                    <ChevronRight className="h-4 w-4" />
+                  ) : (
+                    <ChevronLeft className="h-4 w-4" />
+                  )}
+                </div>
               </Button>
               <ThemeToggle />
             </div>
@@ -298,7 +302,7 @@ export default function DashboardPage() {
         </nav>
 
         {/* Dashboard Content */}
-        <div className="flex-1 p-6 dark:bg-[#0d1117] min-w-0">
+        <div className="flex-1 p-6 dark:bg-[#0d1117] min-w-0 transition-all duration-500 ease-in-out">
           {/* Accordion Menu System */}
           <Card className="mb-6 dark:bg-[#161b22] dark:border-[#3a3a3a]">
             <CardContent className="p-0">
@@ -902,9 +906,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Divider - Only show when left panel is expanded */}
-      {!isLeftPanelCollapsed && (
-        <div className="w-px bg-gray-200 dark:bg-[#3a3a3a]"></div>
-      )}
+      <div className={`transition-all duration-500 ease-in-out bg-gray-200 dark:bg-[#3a3a3a] ${
+        isLeftPanelCollapsed ? 'w-0 opacity-0' : 'w-px opacity-100'
+      }`}></div>
 
       {/* Right Panel - Chat Interface */}
       <ChatInterface 
