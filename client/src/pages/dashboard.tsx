@@ -653,18 +653,11 @@ export default function DashboardPage() {
                       
                       {/* Document Reader - Right Side */}
                       <div className="overflow-hidden">
-                        {selectedDocument ? (
+                        {selectedDocument && (
                           <DocumentReader
                             document={selectedDocument}
                             onClose={() => setSelectedDocument(null)}
                           />
-                        ) : (
-                          <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg">
-                            <div className="text-center">
-                              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                              <p className="text-gray-500">Select a document to view</p>
-                            </div>
-                          </div>
                         )}
                       </div>
                     </div>
