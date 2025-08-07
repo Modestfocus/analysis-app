@@ -255,23 +255,20 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
               
               {/* Action Buttons */}
               <div className="flex flex-col gap-1 w-full">
-                <Button 
-                  size="sm" 
-                  className="view-button w-full text-xs"
+                <button 
+                  className="view-button"
                   onClick={() => setSelectedDocumentForViewing(document)}
                 >
                   View
-                </Button>
-                <Button 
-                  size="sm" 
-                  className="delete-button w-full text-xs"
+                </button>
+                <button 
+                  className="delete-button"
                   onClick={() => deleteDocumentMutation.mutate(document.id)}
                   disabled={deleteDocumentMutation.isPending}
                   title="Delete document"
                 >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Delete
-                </Button>
+                  🗑️ Delete
+                </button>
               </div>
             </div>
           ))}
