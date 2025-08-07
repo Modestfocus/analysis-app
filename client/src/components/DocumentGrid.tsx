@@ -150,21 +150,22 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
   return (
     <div className="space-y-4">
       {/* Header with search and upload */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
+      <div className="space-y-3">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
           <h3 className="text-lg font-semibold">Documents</h3>
           <Badge variant="secondary">{documents.length}</Badge>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2 mt-2 search-upload-container">
-          <div className="relative flex-grow max-w-[300px]">
+        {/* Search and Upload Controls */}
+        <div className="flex flex-wrap items-center gap-2 w-full">
+          <div className="relative flex-grow min-w-[200px] max-w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search documents..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-[#111827] text-white h-[38px]"
+              className="pl-10 bg-[#111827] text-white h-[38px] w-full"
             />
           </div>
           
@@ -180,7 +181,7 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
             ]}
             onGetUploadParameters={handleGetUploadParameters}
             onComplete={handleUploadComplete}
-            buttonClassName="shrink-0 bg-[#1F2937] text-white px-4 py-2 rounded-md h-[38px]"
+            buttonClassName="shrink-0 bg-[#1F2937] text-white px-4 py-2 rounded-md h-[38px] whitespace-nowrap"
           >
             <Plus className="h-4 w-4 mr-2" />
             Upload

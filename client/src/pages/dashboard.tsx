@@ -643,16 +643,18 @@ export default function DashboardPage() {
                   <AccordionContent className="px-6 pb-6 accordion-content">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px] docs-container">
                       {/* Document Grid - Left Side */}
-                      <div className="overflow-y-auto">
-                        <DocumentGrid
-                          userId={userId}
-                          onDocumentSelect={setSelectedDocument}
-                          selectedDocument={selectedDocument || undefined}
-                        />
+                      <div className="overflow-y-auto min-w-0">
+                        <div className="pr-2">
+                          <DocumentGrid
+                            userId={userId}
+                            onDocumentSelect={setSelectedDocument}
+                            selectedDocument={selectedDocument || undefined}
+                          />
+                        </div>
                       </div>
                       
                       {/* Document Reader - Right Side */}
-                      <div className="overflow-hidden">
+                      <div className="overflow-hidden min-w-0">
                         {selectedDocument && (
                           <DocumentReader
                             document={selectedDocument}
