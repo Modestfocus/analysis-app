@@ -241,12 +241,14 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
               </div>
 
               {/* Document Title */}
-              <h3 
-                className="text-sm font-medium text-center line-clamp-2 leading-4 px-2" 
-                title={document.originalName}
-              >
-                {document.originalName}
-              </h3>
+              <div className="w-full text-sm text-gray-200 text-center truncate px-2">
+                <h3 
+                  className="font-medium truncate" 
+                  title={document.originalName}
+                >
+                  {document.originalName}
+                </h3>
+              </div>
 
               {/* File Size */}
               <span className="file-size text-center">
