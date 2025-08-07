@@ -2150,6 +2150,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chat routes
+  const { 
+    getChatConversations, 
+    createChatConversation, 
+    getConversationMessages, 
+    sendChatMessage,
+    uploadChatImage
+  } = await import('./chat-routes');
+
+  app.get('/api/chat/conversations', getChatConversations);
+  app.post('/api/chat/conversations', createChatConversation);
+  app.get('/api/chat/conversations/:conversationId/messages', getConversationMessages);
+  app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
+  app.post('/api/chat/upload-image', uploadChatImage);
+
   const httpServer = createServer(app);
   return httpServer;
 }

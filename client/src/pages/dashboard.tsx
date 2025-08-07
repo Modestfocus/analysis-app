@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp, FileText, StickyNote, Shield, Settings, ChevronDown, ChevronRight, Menu, X, ChevronLeft } from "lucide-react";
 import ChartCard from "@/components/chart-card";
 import BundleCard from "@/components/bundle-card";
-import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
+import ChatInterface from "@/components/chat-interface";
 import { DocumentGrid } from "@/components/DocumentGrid";
 import { DocumentReader } from "@/components/DocumentReader";
 import { NotesSection } from "@/components/NotesSection";
@@ -906,9 +906,9 @@ export default function DashboardPage() {
         <div className="w-px bg-gray-200 dark:bg-[#3a3a3a]"></div>
       )}
 
-      {/* Right Panel - GPT Analysis */}
-      <GPTAnalysisPanel 
-        analysisResults={analysisResults} 
+      {/* Right Panel - Chat Interface */}
+      <ChatInterface 
+        systemPrompt={currentPrompt} 
         isExpanded={isLeftPanelCollapsed}
       />
     </div>

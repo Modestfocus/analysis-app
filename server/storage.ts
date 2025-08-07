@@ -10,6 +10,8 @@ import {
   tradingRules,
   chartAnalysisSessions,
   userPromptsHistory,
+  chatConversations,
+  chatMessages,
   type User, 
   type InsertUser, 
   type Chart, 
@@ -31,7 +33,11 @@ import {
   type ChartAnalysisSession,
   type InsertChartAnalysisSession,
   type UserPromptsHistory,
-  type InsertUserPromptsHistory
+  type InsertUserPromptsHistory,
+  type ChatConversation,
+  type InsertChatConversation,
+  type ChatMessage,
+  type InsertChatMessage
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -114,6 +120,20 @@ export interface IStorage {
   createPromptHistory(prompt: InsertUserPromptsHistory): Promise<UserPromptsHistory>;
   getUserPromptHistory(userId: string): Promise<UserPromptsHistory[]>;
   
+  // Chat Conversation operations
+  createChatConversation(conversation: InsertChatConversation): Promise<ChatConversation>;
+  getChatConversation(id: string): Promise<ChatConversation | undefined>;
+  getUserChatConversations(userId: string): Promise<ChatConversation[]>;
+  updateChatConversation(id: string, updates: Partial<ChatConversation>): Promise<ChatConversation | undefined>;
+  deleteChatConversation(id: string): Promise<boolean>;
+  
+  // Chat Messages operations
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  getChatMessage(id: string): Promise<ChatMessage | undefined>;
+  getConversationMessages(conversationId: string): Promise<ChatMessage[]>;
+  updateChatMessage(id: string, updates: Partial<ChatMessage>): Promise<ChatMessage | undefined>;
+  deleteChatMessage(id: string): Promise<boolean>;
+  
   // Similarity search
   findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>>;
 }
@@ -128,6 +148,8 @@ export class MemStorage implements IStorage {
   private documents: Map<number, Document>;
   private notes: Map<string, Note>;
   private tradingRules: Map<string, TradingRule>;
+  private chatConversations: Map<string, ChatConversation>;
+  private chatMessages: Map<string, ChatMessage>;
   private currentChartId: number;
   private currentAnalysisId: number;
   private currentDocumentId: number;
@@ -142,6 +164,8 @@ export class MemStorage implements IStorage {
     this.documents = new Map();
     this.notes = new Map();
     this.tradingRules = new Map();
+    this.chatConversations = new Map();
+    this.chatMessages = new Map();
     this.currentChartId = 1;
     this.currentAnalysisId = 1;
     this.currentDocumentId = 1;
@@ -947,6 +971,88 @@ export class DatabaseStorage implements IStorage {
       .from(userPromptsHistory)
       .where(eq(userPromptsHistory.userId, userId))
       .orderBy(desc(userPromptsHistory.createdAt));
+  }
+
+  // Chat Conversation operations
+  async createChatConversation(insertConversation: InsertChatConversation): Promise<ChatConversation> {
+    const [conversation] = await db
+      .insert(chatConversations)
+      .values([insertConversation])
+      .returning();
+    return conversation;
+  }
+
+  async getChatConversation(id: string): Promise<ChatConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(chatConversations)
+      .where(eq(chatConversations.id, id));
+    return conversation || undefined;
+  }
+
+  async getUserChatConversations(userId: string): Promise<ChatConversation[]> {
+    return await db
+      .select()
+      .from(chatConversations)
+      .where(eq(chatConversations.userId, parseInt(userId)))
+      .orderBy(desc(chatConversations.updatedAt));
+  }
+
+  async updateChatConversation(id: string, updates: Partial<ChatConversation>): Promise<ChatConversation | undefined> {
+    const [conversation] = await db
+      .update(chatConversations)
+      .set(updates)
+      .where(eq(chatConversations.id, id))
+      .returning();
+    return conversation || undefined;
+  }
+
+  async deleteChatConversation(id: string): Promise<boolean> {
+    const result = await db
+      .delete(chatConversations)
+      .where(eq(chatConversations.id, id));
+    return result.rowCount! > 0;
+  }
+
+  // Chat Messages operations
+  async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db
+      .insert(chatMessages)
+      .values([insertMessage])
+      .returning();
+    return message;
+  }
+
+  async getChatMessage(id: string): Promise<ChatMessage | undefined> {
+    const [message] = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.id, id));
+    return message || undefined;
+  }
+
+  async getConversationMessages(conversationId: string): Promise<ChatMessage[]> {
+    return await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, conversationId))
+      .orderBy(chatMessages.createdAt);
+  }
+
+  async updateChatMessage(id: string, updates: Partial<ChatMessage>): Promise<ChatMessage | undefined> {
+    const [message] = await db
+      .update(chatMessages)
+      .set(updates)
+      .where(eq(chatMessages.id, id))
+      .returning();
+    return message || undefined;
+  }
+
+  async deleteChatMessage(id: string): Promise<boolean> {
+    const result = await db
+      .delete(chatMessages)
+      .where(eq(chatMessages.id, id));
+    return result.rowCount! > 0;
   }
 
   async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {

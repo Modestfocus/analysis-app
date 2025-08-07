@@ -122,6 +122,27 @@ export const userPromptsHistory = pgTable("user_prompts_history", {
   createdAt: timestamp("created_at").defaultNow(), // When this prompt version was created/used
 });
 
+// Chat Conversations - stores chat sessions for conversational analysis
+export const chatConversations = pgTable("chat_conversations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: integer("user_id").notNull(), // Use integer to match existing users table
+  title: text("title").notNull().default("New Chat"), // Auto-generated or user-defined
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Chat Messages - individual messages within conversations
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: uuid("conversation_id").references(() => chatConversations.id).notNull(),
+  role: text("role").notNull(), // 'user', 'assistant', 'system'
+  content: text("content").notNull(), // Message text content
+  imageUrls: text("image_urls").array(), // Array of uploaded chart image URLs
+  systemPrompt: text("system_prompt"), // System prompt used for this message (assistant role)
+  metadata: jsonb("metadata"), // Additional data like analysis results, similar charts, etc.
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -179,6 +200,17 @@ export const insertUserPromptsHistorySchema = createInsertSchema(userPromptsHist
   createdAt: true,
 });
 
+export const insertChatConversationSchema = createInsertSchema(chatConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWatchlist = z.infer<typeof insertWatchlistSchema>;
@@ -201,6 +233,10 @@ export type ChartAnalysisSession = typeof chartAnalysisSessions.$inferSelect;
 export type InsertChartAnalysisSession = z.infer<typeof insertChartAnalysisSessionSchema>;
 export type UserPromptsHistory = typeof userPromptsHistory.$inferSelect;
 export type InsertUserPromptsHistory = z.infer<typeof insertUserPromptsHistorySchema>;
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type InsertChatConversation = z.infer<typeof insertChatConversationSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 // Bundle metadata interface
 export interface BundleMetadata {
