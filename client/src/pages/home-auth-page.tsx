@@ -393,7 +393,7 @@ export default function HomeAuthPage() {
                       <Button
                         onClick={connectPhantom}
                         disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 h-8 text-sm"
+                        className="w-full bg-[#374151] h-8 text-sm"
                       >
                         <Wallet className="mr-1 h-3 w-3" />
                         {isLoading ? "Connecting..." : "Phantom"}
