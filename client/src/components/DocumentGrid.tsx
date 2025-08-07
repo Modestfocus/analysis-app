@@ -257,14 +257,14 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
               <div className="flex flex-col gap-1 w-full">
                 <Button 
                   size="sm" 
-                  className="w-full text-xs bg-indigo-600 text-neutral-50 hover:bg-indigo-700 border-0"
+                  className="view-button w-full text-xs"
                   onClick={() => setSelectedDocumentForViewing(document)}
                 >
                   View
                 </Button>
                 <Button 
                   size="sm" 
-                  className="w-full text-xs bg-gray-800 text-red-400 border border-red-400 hover:bg-gray-700 transition-colors"
+                  className="delete-button w-full text-xs"
                   onClick={() => deleteDocumentMutation.mutate(document.id)}
                   disabled={deleteDocumentMutation.isPending}
                   title="Delete document"

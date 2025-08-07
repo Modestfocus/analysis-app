@@ -210,25 +210,27 @@
   }
 
   /* View button styles */
-  .document-card button.bg-indigo-600 {
+  .document-card .view-button {
     background-color: #4F46E5 !important;
     color: #F9FAFB !important;
-    border: none;
+    border: none !important;
   }
 
-  .document-card button.bg-indigo-600:hover {
+  .document-card .view-button:hover {
     background-color: #4338CA !important;
   }
 
   /* Delete button styles */
-  .document-card button.bg-gray-800 {
+  .document-card .delete-button {
     background-color: #1F2937 !important;
     color: #F87171 !important;
     border: 1px solid #F87171 !important;
   }
 
-  .document-card button.bg-gray-800:hover {
+  .document-card .delete-button:hover {
     background-color: #374151 !important;
+    color: #F87171 !important;
+    border: 1px solid #F87171 !important;
   }
 
   .document-card .file-size {
