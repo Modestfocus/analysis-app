@@ -190,93 +190,120 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
 
       {/* Documents grid */}
       {filteredDocuments.length === 0 ? (
-        <Card className="p-8 text-center">
-          <CardContent className="space-y-4">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-            <div>
-              <h3 className="text-lg font-medium mb-2">
+        <Card className="p-12 text-center border-2 border-dashed border-muted-foreground/20">
+          <CardContent className="flex flex-col items-center space-y-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center">
+              <FileText className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-xl font-semibold text-foreground">
                 {searchTerm ? 'No documents found' : 'No documents uploaded'}
               </h3>
-              <p className="text-muted-foreground mb-4">
+              <p className="text-muted-foreground max-w-md">
                 {searchTerm 
-                  ? 'Try adjusting your search terms' 
-                  : 'Upload your first document to get started'}
+                  ? 'Try adjusting your search terms or browse all documents' 
+                  : 'Upload your first document to start building your document library'}
               </p>
-              {!searchTerm && (
-                <ObjectUploader
-                  maxNumberOfFiles={5}
-                  maxFileSize={52428800}
-                  allowedFileTypes={[
-                    'application/pdf',
-                    'application/msword',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'text/plain',
-                    'application/rtf'
-                  ]}
-                  onGetUploadParameters={handleGetUploadParameters}
-                  onComplete={handleUploadComplete}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Upload Documents
-                </ObjectUploader>
-              )}
             </div>
+            {!searchTerm && (
+              <ObjectUploader
+                maxNumberOfFiles={5}
+                maxFileSize={52428800}
+                allowedFileTypes={[
+                  'application/pdf',
+                  'application/msword',
+                  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                  'text/plain',
+                  'application/rtf'
+                ]}
+                onGetUploadParameters={handleGetUploadParameters}
+                onComplete={handleUploadComplete}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Upload Documents
+              </ObjectUploader>
+            )}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredDocuments.map((document: Document) => (
-            <Card key={document.id} className="hover:shadow-md transition-shadow cursor-pointer h-fit overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2 min-w-0" title={document.originalName}>
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="truncate">{document.originalName}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 overflow-hidden">
-                <div className="flex items-center justify-between text-xs text-muted-foreground min-w-0">
-                  <Badge variant="secondary" className="shrink-0">{document.fileType.toUpperCase()}</Badge>
-                  <span className="truncate ml-2">{formatFileSize(document.fileSize)}</span>
+            <Card key={document.id} className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/20 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-6">
+                {/* Document Icon and Type */}
+                <div className="flex flex-col items-center text-center mb-4">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
+                    <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <Badge 
+                    variant="secondary" 
+                    className="text-xs font-medium px-3 py-1 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-700"
+                  >
+                    {document.fileType.toUpperCase()}
+                  </Badge>
+                </div>
+
+                {/* Document Title */}
+                <div className="mb-3">
+                  <h3 
+                    className="text-sm font-semibold text-foreground line-clamp-2 leading-5 min-h-[2.5rem] group-hover:text-primary transition-colors" 
+                    title={document.originalName}
+                  >
+                    {document.originalName}
+                  </h3>
+                </div>
+
+                {/* File Size */}
+                <div className="flex justify-center mb-4">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {formatFileSize(document.fileSize)}
+                  </span>
                 </div>
                 
+                {/* Description */}
                 {document.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {document.description}
-                  </p>
+                  <div className="mb-4">
+                    <p className="text-xs text-muted-foreground line-clamp-3 leading-4">
+                      {document.description}
+                    </p>
+                  </div>
                 )}
                 
+                {/* Tags */}
                 {document.tags && document.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {document.tags.slice(0, 3).map((tag, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
+                  <div className="flex flex-wrap gap-1 mb-4 justify-center">
+                    {document.tags.slice(0, 2).map((tag, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs px-2 py-0.5">
                         {tag}
                       </Badge>
                     ))}
-                    {document.tags.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{document.tags.length - 3}
+                    {document.tags.length > 2 && (
+                      <Badge variant="outline" className="text-xs px-2 py-0.5">
+                        +{document.tags.length - 2}
                       </Badge>
                     )}
                   </div>
                 )}
                 
-                <div className="flex gap-2 pt-2 w-full">
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-2">
                   <Button 
                     size="sm" 
-                    variant="outline"
-                    className="flex-1 min-w-0 text-xs overflow-hidden"
+                    variant="default"
+                    className="flex-1 text-xs font-medium h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                     onClick={() => setSelectedDocumentForViewing(document)}
                   >
-                    <span className="truncate">View</span>
+                    View Document
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className="shrink-0 w-8 h-8 p-0 flex items-center justify-center"
+                    className="w-8 h-8 p-0 flex items-center justify-center border-destructive/20 hover:border-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
                     onClick={() => deleteDocumentMutation.mutate(document.id)}
                     disabled={deleteDocumentMutation.isPending}
+                    title="Delete document"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </CardContent>
