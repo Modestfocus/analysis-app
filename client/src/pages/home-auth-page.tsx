@@ -404,8 +404,7 @@ export default function HomeAuthPage() {
                       <Button
                         onClick={connectMetaMask}
                         disabled={isLoading}
-                        variant="outline"
-                        className="w-full border-orange-500/50 text-orange-400 hover:bg-orange-500/10 h-8 text-sm"
+                        className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 h-8 text-sm text-white"
                       >
                         <Wallet className="mr-1 h-3 w-3" />
                         {isLoading ? "Connecting..." : "MetaMask"}
