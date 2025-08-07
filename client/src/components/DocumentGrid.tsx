@@ -228,41 +228,41 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
       ) : (
         <div className="document-list">
           {filteredDocuments.map((document: Document) => (
-            <div key={document.id} className="bg-gray-950 rounded-xl shadow-md p-4 w-[200px] flex flex-col items-center text-center gap-3">
+            <div key={document.id} className="document-card">
               {/* Document Icon */}
-              <FileText className="w-10 h-10 text-blue-400 mb-2" />
-              
-              {/* File Type Badge */}
-              <Badge 
-                variant="secondary" 
-                className="text-xs px-2 py-1 bg-gray-700 text-gray-300 border-gray-600"
-              >
-                {document.fileType.toUpperCase()}
-              </Badge>
+              <div className="flex flex-col items-center gap-2">
+                <FileText className="w-10 h-10 text-blue-400" />
+                <Badge 
+                  variant="secondary" 
+                  className="text-xs px-2 py-1 bg-gray-700 text-gray-300 border-gray-600"
+                >
+                  {document.fileType.toUpperCase()}
+                </Badge>
+              </div>
 
               {/* Document Title */}
-              <div 
-                className="w-full text-sm text-gray-200 text-center truncate px-2" 
+              <h3 
+                className="text-sm font-medium text-center line-clamp-2 leading-4 px-2" 
                 title={document.originalName}
               >
                 {document.originalName}
-              </div>
+              </h3>
 
               {/* File Size */}
-              <div className="text-xs text-gray-400 mt-1 mb-3">
+              <span className="file-size text-center">
                 {formatFileSize(document.fileSize)}
-              </div>
+              </span>
               
               {/* Action Buttons */}
-              <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-1 w-full">
                 <button 
-                  className="bg-gray-700 text-gray-100 text-sm font-medium rounded-md px-4 py-2 hover:bg-gray-600 transition-colors w-full"
+                  className="view-button"
                   onClick={() => setSelectedDocumentForViewing(document)}
                 >
                   View
                 </button>
                 <button 
-                  className="bg-gray-800 text-red-500 border border-red-500 text-sm font-medium rounded-md px-4 py-2 hover:bg-gray-700 transition-colors w-full flex items-center justify-center gap-2"
+                  className="delete-button"
                   onClick={() => deleteDocumentMutation.mutate(document.id)}
                   disabled={deleteDocumentMutation.isPending}
                   title="Delete document"
