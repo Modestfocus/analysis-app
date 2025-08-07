@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wallet, User, TrendingUp, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import ThemeToggle from "@/components/ThemeToggle";
 
 // Background images array for rotation - using relative paths to avoid import issues with special characters
 const backgroundImages = [
@@ -234,18 +235,23 @@ export default function HomeAuthPage() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden dark:bg-gray-900">
+      {/* Theme Toggle - Fixed position */}
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle />
+      </div>
+      
       {/* Background Image with Overlay */}
       <div 
         className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
           isTransitioning ? 'opacity-50' : 'opacity-100'
-        }`}
+        } dark:opacity-30`}
         style={{
           backgroundImage: `url(${backgroundImages[currentBackgroundIndex]})`
         }}
       />
       {/* Dark overlay for better content readability */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-purple-900/75 to-slate-900/85" />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-purple-900/75 to-slate-900/85 dark:from-gray-900/95 dark:via-gray-800/90 dark:to-gray-900/95" />
       
       {/* Content */}
       <div className="relative z-10 min-h-screen bg-transparent">

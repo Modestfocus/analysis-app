@@ -10,6 +10,7 @@ import TimeframeSelector from "@/components/timeframe-selector";
 import DragDropZone from "@/components/drag-drop-zone";
 import InstrumentSelector from "@/components/instrument-selector";
 import AnalysisPanel from "@/components/analysis-panel";
+import ThemeToggle from "@/components/ThemeToggle";
 import type { Timeframe, Session } from "@shared/schema";
 
 export default function UploadPage() {
@@ -455,14 +456,14 @@ export default function UploadPage() {
 
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900">
       {/* Left Panel */}
       <div className="flex-1 flex flex-col">
         {/* Navigation */}
-        <nav className="bg-white border-b border-gray-200 px-6 py-4">
+        <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
-              <h1 className="text-xl font-bold text-gray-900 flex items-center">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
                 <ChartLine className="text-primary-500 mr-2 h-6 w-6" />
                 Chart Analysis Pro
               </h1>
@@ -499,7 +500,9 @@ export default function UploadPage() {
                 </Button>
               </div>
             </div>
-
+            <div className="flex items-center">
+              <ThemeToggle />
+            </div>
           </div>
         </nav>
 

@@ -16,6 +16,7 @@ import { DocumentGrid } from "@/components/DocumentGrid";
 import { DocumentReader } from "@/components/DocumentReader";
 import { NotesSection } from "@/components/NotesSection";
 import { TradingRulesSection } from "@/components/TradingRulesSection";
+import ThemeToggle from "@/components/ThemeToggle";
 import type { Chart, Timeframe, ChartBundle, BundleMetadata, Document } from "@shared/schema";
 
 export default function DashboardPage() {
@@ -216,14 +217,14 @@ export default function DashboardPage() {
   console.log('Dashboard render - selectedTimeframe:', selectedTimeframe, 'charts.length:', charts.length, 'charts:', charts);
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900">
       {/* Left Panel */}
       <div className="flex-1 flex flex-col">
         {/* Navigation */}
-        <nav className="bg-white border-b border-gray-200 px-6 py-4">
+        <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
-              <h1 className="text-xl font-bold text-gray-900 flex items-center">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
                 <ChartLine className="text-primary-500 mr-2 h-6 w-6" />
                 Chart Analysis Pro
               </h1>
@@ -260,6 +261,9 @@ export default function DashboardPage() {
                   </Link>
                 </Button>
               </div>
+            </div>
+            <div className="flex items-center">
+              <ThemeToggle />
             </div>
           </div>
         </nav>

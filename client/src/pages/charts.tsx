@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, TrendingUp, Camera, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import WatchlistManager from "@/components/watchlist-manager";
@@ -473,6 +474,9 @@ export default function ChartsPage() {
                 Live Charts - {currentSymbol}
               </h1>
             </div>
+          </div>
+          <div className="flex items-center">
+            <ThemeToggle />
           </div>
         </div>
       </nav>

@@ -8,6 +8,7 @@ Preferred communication style: Simple, everyday language.
 Trading panel: Minimized by default for optimal chart viewing.
 Dashboard default view: Condensed accordion layout with all sections closed by default.
 System Prompt Interface: Three-view toggle interface (Inject, Current Prompt, Default Prompt) with dynamic AI integration.
+Theme Preferences: Dark mode toggle implemented across all pages with automatic system preference detection and localStorage persistence.
 
 ## System Architecture
 ### Frontend Architecture
@@ -16,7 +17,8 @@ System Prompt Interface: Three-view toggle interface (Inject, Current Prompt, De
 - **State Management**: TanStack Query (React Query).
 - **UI Components**: Shadcn/ui (built on Radix UI).
 - **Trading Interface**: Professional TradingView-style components with drawing tools, watchlists, and trading panels.
-- **Styling**: Tailwind CSS with custom design tokens.
+- **Styling**: Tailwind CSS with custom design tokens and full dark mode support.
+- **Theme System**: Custom React Context-based theme management with persistent localStorage and system preference detection.
 - **Build Tool**: Vite.
 
 ### Backend Architecture
@@ -57,5 +59,6 @@ System Prompt Interface: Three-view toggle interface (Inject, Current Prompt, De
 
 ### UI & Styling
 - **Radix UI**: Accessible component primitives.
-- **Tailwind CSS**: Utility-first styling.
+- **Tailwind CSS**: Utility-first styling with full dark mode support.
 - **Lucide React**: Icon library.
+- **Theme System**: React Context-based dark/light mode with smooth transitions and persistent preferences.
