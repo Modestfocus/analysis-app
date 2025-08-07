@@ -456,14 +456,14 @@ export default function UploadPage() {
 
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1117]">
       {/* Left Panel */}
       <div className="flex-1 flex flex-col">
         {/* Navigation */}
-        <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+        <nav className="bg-white dark:bg-[#0d1117] border-b border-gray-200 dark:border-[#3a3a3a] px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-[#e6e6e6] flex items-center">
                 <ChartLine className="text-primary-500 mr-2 h-6 w-6" />
                 Chart Analysis Pro
               </h1>

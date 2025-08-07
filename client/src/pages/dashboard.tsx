@@ -217,14 +217,14 @@ export default function DashboardPage() {
   console.log('Dashboard render - selectedTimeframe:', selectedTimeframe, 'charts.length:', charts.length, 'charts:', charts);
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1117]">
       {/* Left Panel */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col dark:bg-[#0d1117]">
         {/* Navigation */}
-        <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+        <nav className="bg-white dark:bg-[#0d1117] border-b border-gray-200 dark:border-[#3a3a3a] px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-[#e6e6e6] flex items-center">
                 <ChartLine className="text-primary-500 mr-2 h-6 w-6" />
                 Chart Analysis Pro
               </h1>
@@ -269,9 +269,9 @@ export default function DashboardPage() {
         </nav>
 
         {/* Dashboard Content */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-6 dark:bg-[#0d1117]">
           {/* Accordion Menu System */}
-          <Card className="mb-6">
+          <Card className="mb-6 dark:bg-[#161b22] dark:border-[#3a3a3a]">
             <CardContent className="p-0">
               <Accordion 
                 type="single" 
@@ -282,10 +282,10 @@ export default function DashboardPage() {
               >
                 {/* Charts Dashboard Section */}
                 <AccordionItem value="charts-dashboard" className="border-b-0">
-                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-[#161b22] data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-[#161b22]">
                     <div className="flex items-center">
                       <ChartBar className="text-primary-500 mr-3 h-5 w-5" />
-                      <span className="font-semibold text-gray-900">Charts Dashboard</span>
+                      <span className="font-semibold text-gray-900 dark:text-[#e6e6e6]">Charts Dashboard</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
@@ -601,10 +601,10 @@ export default function DashboardPage() {
 
                 {/* Docs Section */}
                 <AccordionItem value="docs" className="border-b-0">
-                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-[#161b22] data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-[#161b22]">
                     <div className="flex items-center">
                       <FileText className="text-primary-500 mr-3 h-5 w-5" />
-                      <span className="font-semibold text-gray-900">Docs</span>
+                      <span className="font-semibold text-gray-900 dark:text-[#e6e6e6]">Docs</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
@@ -640,10 +640,10 @@ export default function DashboardPage() {
 
                 {/* Notes Section */}
                 <AccordionItem value="notes" className="border-b-0">
-                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-[#161b22] data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-[#161b22]">
                     <div className="flex items-center">
                       <StickyNote className="text-primary-500 mr-3 h-5 w-5" />
-                      <span className="font-semibold text-gray-900">Notes</span>
+                      <span className="font-semibold text-gray-900 dark:text-[#e6e6e6]">Notes</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
@@ -653,10 +653,10 @@ export default function DashboardPage() {
 
                 {/* Rules Section */}
                 <AccordionItem value="rules" className="border-b-0">
-                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-[#161b22] data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-[#161b22]">
                     <div className="flex items-center">
                       <Shield className="text-primary-500 mr-3 h-5 w-5" />
-                      <span className="font-semibold text-gray-900">Rules</span>
+                      <span className="font-semibold text-gray-900 dark:text-[#e6e6e6]">Rules</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
@@ -666,10 +666,10 @@ export default function DashboardPage() {
 
                 {/* System Prompt Section */}
                 <AccordionItem value="system-prompt" className="border-b-0">
-                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                  <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-[#161b22] data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-[#161b22]">
                     <div className="flex items-center">
                       <Settings className="text-primary-500 mr-3 h-5 w-5" />
-                      <span className="font-semibold text-gray-900">System Prompt</span>
+                      <span className="font-semibold text-gray-900 dark:text-[#e6e6e6]">System Prompt</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
@@ -871,6 +871,9 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* Divider */}
+      <div className="w-px bg-gray-200 dark:bg-[#3a3a3a]"></div>
 
       {/* Right Panel - GPT Analysis */}
       <GPTAnalysisPanel analysisResults={analysisResults} />

@@ -38,25 +38,31 @@
 }
 
 .dark {
-  --background: hsl(220, 13%, 7%);
-  --foreground: hsl(210, 40%, 88%);
-  --muted: hsl(220, 13%, 15%);
+  /* Custom dark mode colors matching style guide */
+  --background: hsl(216, 28%, 7%); /* #0d1117 */
+  --foreground: hsl(213, 31%, 91%); /* #e6e6e6 */
+  --muted: hsl(215, 28%, 11%); /* #161b22 */
   --muted-foreground: hsl(215, 20%, 65%);
-  --popover: hsl(220, 13%, 10%);
-  --popover-foreground: hsl(210, 40%, 88%);
-  --card: hsl(220, 13%, 10%);
-  --card-foreground: hsl(210, 40%, 88%);
-  --border: hsl(220, 13%, 18%);
-  --input: hsl(220, 13%, 15%);
+  --popover: hsl(215, 28%, 11%); /* #161b22 */
+  --popover-foreground: hsl(213, 31%, 91%); /* #e6e6e6 */
+  --card: hsl(215, 28%, 11%); /* #161b22 */
+  --card-foreground: hsl(213, 31%, 91%); /* #e6e6e6 */
+  --border: hsl(210, 18%, 23%); /* #3a3a3a */
+  --input: hsl(215, 28%, 11%); /* #161b22 */
   --primary: hsl(262, 83%, 58%);
-  --primary-foreground: hsl(210, 40%, 98%);
-  --secondary: hsl(220, 13%, 15%);
-  --secondary-foreground: hsl(210, 40%, 88%);
-  --accent: hsl(220, 13%, 15%);
-  --accent-foreground: hsl(210, 40%, 88%);
+  --primary-foreground: hsl(213, 31%, 91%);
+  --secondary: hsl(215, 28%, 11%); /* #161b22 */
+  --secondary-foreground: hsl(213, 31%, 91%); /* #e6e6e6 */
+  --accent: hsl(215, 28%, 11%); /* #161b22 */
+  --accent-foreground: hsl(213, 31%, 91%); /* #e6e6e6 */
   --destructive: hsl(0, 63%, 31%);
-  --destructive-foreground: hsl(210, 40%, 98%);
+  --destructive-foreground: hsl(213, 31%, 91%);
   --ring: hsl(262, 83%, 58%);
+  
+  /* Custom panel colors */
+  --left-panel-bg: hsl(216, 28%, 7%); /* #0d1117 */
+  --right-panel-bg: hsl(215, 28%, 11%); /* #161b22 */
+  --divider-color: hsl(210, 18%, 23%); /* #3a3a3a */
 }
 
 @layer base {

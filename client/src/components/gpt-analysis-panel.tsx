@@ -107,9 +107,9 @@ export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelPr
     };
 
     return (
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 dark:border-[#3a3a3a] dark:bg-[#161b22]">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-[#e6e6e6] flex items-center">
             {getHeaderIcon()}
             {getHeaderTitle()}
           </h3>
@@ -150,11 +150,11 @@ export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelPr
   };
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+    <div className="w-96 bg-white dark:bg-[#161b22] border-l border-gray-200 dark:border-[#3a3a3a] flex flex-col">
       {renderHeader()}
 
       {/* Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-6 overflow-y-auto dark:bg-[#161b22]">
         {panelMode === 'analysis' && renderAnalysisContent()}
         {panelMode === 'history' && renderHistoryContent()}
         {panelMode === 'prompts' && renderPromptsContent()}
@@ -167,9 +167,9 @@ export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelPr
     if (!analysisResults) {
       return (
         <div className="text-center py-12">
-          <Bot className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 mb-2">No chart uploaded yet.</p>
-          <p className="text-sm text-gray-400">Your analysis will appear here.</p>
+          <Bot className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-500 dark:text-[#e6e6e6] mb-2">No chart uploaded yet.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-400">Your analysis will appear here.</p>
         </div>
       );
     }
@@ -178,9 +178,9 @@ export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelPr
       <div className="space-y-6">
         {/* Similar Charts */}
         {analysisResults.similarCharts && analysisResults.similarCharts.length > 0 && (
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-blue-50 dark:bg-[#1e2328] border-blue-200 dark:border-[#3a3a3a]">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-blue-900 flex items-center">
+              <CardTitle className="text-sm font-semibold text-blue-900 dark:text-blue-400 flex items-center">
                 <Search className="mr-2 h-4 w-4" />
                 Similar Charts Found
               </CardTitle>
@@ -188,8 +188,8 @@ export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelPr
             <CardContent className="pt-0">
               <div className="space-y-2">
                 {analysisResults.similarCharts.map((chart, index) => (
-                  <div key={index} className="flex items-center justify-between bg-white rounded p-2 text-sm">
-                    <span className="text-gray-700">
+                  <div key={index} className="flex items-center justify-between bg-white dark:bg-[#161b22] rounded p-2 text-sm">
+                    <span className="text-gray-700 dark:text-[#e6e6e6]">
                       {chart.name} - {chart.timeframe}
                     </span>
                     <Badge variant="secondary" className="text-blue-600 bg-blue-100">
@@ -204,15 +204,15 @@ export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelPr
 
         {/* Technical Analysis */}
         {analysisResults.analysis?.technical && (
-          <Card className="bg-green-50 border-green-200">
+          <Card className="bg-green-50 dark:bg-[#1e2328] border-green-200 dark:border-[#3a3a3a]">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-green-900 flex items-center">
+              <CardTitle className="text-sm font-semibold text-green-900 dark:text-green-400 flex items-center">
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Technical Analysis
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-sm text-green-800 space-y-2">
+              <div className="text-sm text-green-800 dark:text-green-400 space-y-2">
                 <div>
                   <strong>Trend:</strong> {analysisResults.analysis.technical.trend}
                 </div>
@@ -241,7 +241,7 @@ export default function GPTAnalysisPanel({ analysisResults }: GPTAnalysisPanelPr
 
         {/* Depth Analysis */}
         {analysisResults.analysis?.depth && (
-          <Card className="bg-purple-50 border-purple-200">
+          <Card className="bg-purple-50 dark:bg-[#1e2328] border-purple-200 dark:border-[#3a3a3a]">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold text-purple-900 flex items-center">
                 <Layers className="mr-2 h-4 w-4" />

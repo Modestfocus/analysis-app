@@ -457,9 +457,9 @@ export default function ChartsPage() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117]">
       {/* Navigation Header */}
-      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <nav className="bg-white dark:bg-[#0d1117] border-b border-gray-200 dark:border-[#3a3a3a] px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button variant="outline" size="sm" asChild>
@@ -470,7 +470,7 @@ export default function ChartsPage() {
             </Button>
             <div className="flex items-center space-x-2">
               <TrendingUp className="h-6 w-6 text-blue-600" />
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-[#e6e6e6]">
                 Live Charts - {currentSymbol}
               </h1>
             </div>
