@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Document } from "@shared/schema";
 import DocumentViewer from "./DocumentViewer";
-import { DocumentReader } from "./DocumentReader";
+import { PDFModalViewer } from "./PDFModalViewer";
 import { ObjectUploader } from "./ObjectUploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -226,13 +226,14 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDocuments.map((document: Document) => (
-            <Card key={document.id} className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card key={document.id} className="hover:shadow-md transition-shadow cursor-pointer h-fit">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium truncate" title={document.originalName}>
+                  <FileText className="h-4 w-4 inline-block mr-2 text-muted-foreground shrink-0" />
                   {document.originalName}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 flex flex-col min-h-0">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <Badge variant="secondary">{document.fileType.toUpperCase()}</Badge>
                   <span>{formatFileSize(document.fileSize)}</span>
@@ -263,7 +264,7 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 min-w-0 text-xs"
                     onClick={() => setSelectedDocumentForViewing(document)}
                   >
                     View
@@ -271,6 +272,7 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
                   <Button 
                     size="sm" 
                     variant="outline"
+                    className="shrink-0 px-2"
                     onClick={() => deleteDocumentMutation.mutate(document.id)}
                     disabled={deleteDocumentMutation.isPending}
                   >
@@ -283,9 +285,9 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
         </div>
       )}
 
-      {/* Document Reader Modal */}
+      {/* PDF Modal Viewer */}
       {selectedDocumentForViewing && (
-        <DocumentReader
+        <PDFModalViewer
           document={selectedDocumentForViewing}
           onClose={() => setSelectedDocumentForViewing(null)}
         />
