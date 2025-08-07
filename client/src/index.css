@@ -272,6 +272,24 @@
   .dark .bg-gray-50 {
     background-color: hsl(220, 13%, 15%);
   }
+
+  /* Fix invisible layout constraints */
+  .accordion-content {
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  .docs-container {
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure responsive search container */
+  .search-upload-container {
+    max-width: none !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+  }
   
   .dark .bg-gray-100 {
     background-color: hsl(220, 13%, 18%);

@@ -640,8 +640,8 @@ export default function DashboardPage() {
                       <span className="font-semibold text-gray-900 dark:text-[#e6e6e6]">Docs</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
+                  <AccordionContent className="px-6 pb-6 accordion-content">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px] docs-container">
                       {/* Document Grid - Left Side */}
                       <div className="overflow-y-auto">
                         <DocumentGrid
