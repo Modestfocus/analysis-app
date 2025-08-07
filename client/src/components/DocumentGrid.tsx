@@ -157,14 +157,14 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
           <Badge variant="secondary">{documents.length}</Badge>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2 w-full search-upload-container">
+        <div className="flex flex-wrap items-center gap-2 mt-2 search-upload-container">
           <div className="relative flex-grow max-w-[300px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search documents..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-[#111827] text-white"
+              className="pl-10 bg-[#111827] text-white h-[38px]"
             />
           </div>
           
@@ -180,7 +180,7 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
             ]}
             onGetUploadParameters={handleGetUploadParameters}
             onComplete={handleUploadComplete}
-            buttonClassName="shrink-0 bg-[#1F2937] text-white px-4 py-2 rounded-md"
+            buttonClassName="shrink-0 bg-[#1F2937] text-white px-4 py-2 rounded-md h-[38px]"
           >
             <Plus className="h-4 w-4 mr-2" />
             Upload
