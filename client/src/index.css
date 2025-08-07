@@ -178,7 +178,7 @@
     align-items: center;
     justify-content: space-between;
     border-radius: 0.75rem;
-    background-color: #111827;
+    background-color: transparent;
     padding: 1rem;
     width: 140px;
     height: auto;
@@ -259,7 +259,7 @@
 
   /* Light mode document cards */
   :root .document-card {
-    background-color: #ffffff;
+    background-color: transparent;
     border-color: #e5e7eb;
   }
 
