@@ -150,15 +150,15 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
   return (
     <div className="space-y-4">
       {/* Header with search and upload */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
           <h3 className="text-lg font-semibold">Documents</h3>
           <Badge variant="secondary">{documents.length}</Badge>
         </div>
         
-        <div className="flex gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+        <div className="flex gap-2 w-full flex-1">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search documents..."
