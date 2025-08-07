@@ -226,17 +226,17 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDocuments.map((document: Document) => (
-            <Card key={document.id} className="hover:shadow-md transition-shadow cursor-pointer h-fit">
+            <Card key={document.id} className="hover:shadow-md transition-shadow cursor-pointer h-fit overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium truncate" title={document.originalName}>
-                  <FileText className="h-4 w-4 inline-block mr-2 text-muted-foreground shrink-0" />
-                  {document.originalName}
+                <CardTitle className="text-sm font-medium flex items-center gap-2 min-w-0" title={document.originalName}>
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="truncate">{document.originalName}</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 flex flex-col min-h-0">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <Badge variant="secondary">{document.fileType.toUpperCase()}</Badge>
-                  <span>{formatFileSize(document.fileSize)}</span>
+              <CardContent className="space-y-3 overflow-hidden">
+                <div className="flex items-center justify-between text-xs text-muted-foreground min-w-0">
+                  <Badge variant="secondary" className="shrink-0">{document.fileType.toUpperCase()}</Badge>
+                  <span className="truncate ml-2">{formatFileSize(document.fileSize)}</span>
                 </div>
                 
                 {document.description && (
@@ -260,19 +260,19 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
                   </div>
                 )}
                 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-2 w-full">
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className="flex-1 min-w-0 text-xs"
+                    className="flex-1 min-w-0 text-xs overflow-hidden"
                     onClick={() => setSelectedDocumentForViewing(document)}
                   >
-                    View
+                    <span className="truncate">View</span>
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className="shrink-0 px-2"
+                    className="shrink-0 w-8 h-8 p-0 flex items-center justify-center"
                     onClick={() => deleteDocumentMutation.mutate(document.id)}
                     disabled={deleteDocumentMutation.isPending}
                   >
