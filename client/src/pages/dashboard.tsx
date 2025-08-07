@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp, FileText, StickyNote, Shield, Settings, ChevronDown, ChevronRight } from "lucide-react";
+import { ChartLine, Upload, ChartBar, Filter, Trash2, TrendingUp, FileText, StickyNote, Shield, Settings, ChevronDown, ChevronRight, Menu, X, ChevronLeft } from "lucide-react";
 import ChartCard from "@/components/chart-card";
 import BundleCard from "@/components/bundle-card";
 import GPTAnalysisPanel from "@/components/gpt-analysis-panel";
@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [savedDefaultPrompt, setSavedDefaultPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
   const [savedInjectText, setSavedInjectText] = useState<string>('');
   const [showDefaultPromptInfo, setShowDefaultPromptInfo] = useState<boolean>(false);
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState<boolean>(false);
   const currentPrompt = `${defaultPrompt}${injectText ? `\n\n${injectText}` : ''}`;
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -217,9 +218,24 @@ export default function DashboardPage() {
   console.log('Dashboard render - selectedTimeframe:', selectedTimeframe, 'charts.length:', charts.length, 'charts:', charts);
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1117]">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1117] relative">
+      {/* Floating Toggle Button - Only shown when left panel is collapsed */}
+      {isLeftPanelCollapsed && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsLeftPanelCollapsed(false)}
+          className="absolute top-4 left-4 z-50 bg-white dark:bg-[#161b22] border-gray-200 dark:border-[#3a3a3a] shadow-lg hover:shadow-xl transition-all duration-200"
+          title="Expand Panel"
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+      )}
+      
       {/* Left Panel */}
-      <div className="flex-1 flex flex-col dark:bg-[#0d1117]">
+      <div className={`transition-all duration-300 ease-in-out flex flex-col dark:bg-[#0d1117] ${
+        isLeftPanelCollapsed ? 'w-0 overflow-hidden' : 'flex-1'
+      }`}>
         {/* Navigation */}
         <nav className="bg-white dark:bg-[#0d1117] border-b border-gray-200 dark:border-[#3a3a3a] px-6 py-4">
           <div className="flex items-center justify-between">
@@ -262,14 +278,27 @@ export default function DashboardPage() {
                 </Button>
               </div>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+                className="p-2 h-8 w-8"
+                title={isLeftPanelCollapsed ? "Expand Panel" : "Collapse Panel"}
+              >
+                {isLeftPanelCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronLeft className="h-4 w-4" />
+                )}
+              </Button>
               <ThemeToggle />
             </div>
           </div>
         </nav>
 
         {/* Dashboard Content */}
-        <div className="flex-1 p-6 dark:bg-[#0d1117]">
+        <div className="flex-1 p-6 dark:bg-[#0d1117] min-w-0">
           {/* Accordion Menu System */}
           <Card className="mb-6 dark:bg-[#161b22] dark:border-[#3a3a3a]">
             <CardContent className="p-0">
@@ -872,11 +901,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="w-px bg-gray-200 dark:bg-[#3a3a3a]"></div>
+      {/* Divider - Only show when left panel is expanded */}
+      {!isLeftPanelCollapsed && (
+        <div className="w-px bg-gray-200 dark:bg-[#3a3a3a]"></div>
+      )}
 
       {/* Right Panel - GPT Analysis */}
-      <GPTAnalysisPanel analysisResults={analysisResults} />
+      <div className={`transition-all duration-300 ease-in-out ${
+        isLeftPanelCollapsed ? 'flex-1' : ''
+      }`}>
+        <GPTAnalysisPanel analysisResults={analysisResults} />
+      </div>
     </div>
   );
 }

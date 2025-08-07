@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar, Save, TrendingUp } from "lucide-react";
+import { ChartLine, Upload, Eye, Bolt, CloudUpload, ChartBar, Save, TrendingUp, Menu, ChevronLeft } from "lucide-react";
 import TimeframeSelector from "@/components/timeframe-selector";
 import DragDropZone from "@/components/drag-drop-zone";
 import InstrumentSelector from "@/components/instrument-selector";
@@ -23,6 +23,7 @@ export default function UploadPage() {
   const [fileTimeframes, setFileTimeframes] = useState<Record<string, Timeframe>>({});
   const [quickAnalysisFiles, setQuickAnalysisFiles] = useState<File[]>([]);
   const [quickAnalysisTimeframes, setQuickAnalysisTimeframes] = useState<Record<string, Timeframe>>({});
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState<boolean>(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -456,9 +457,24 @@ export default function UploadPage() {
 
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1117]">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1117] relative">
+      {/* Floating Toggle Button - Only shown when left panel is collapsed */}
+      {isLeftPanelCollapsed && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsLeftPanelCollapsed(false)}
+          className="absolute top-4 left-4 z-50 bg-white dark:bg-[#161b22] border-gray-200 dark:border-[#3a3a3a] shadow-lg hover:shadow-xl transition-all duration-200"
+          title="Expand Panel"
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+      )}
+      
       {/* Left Panel */}
-      <div className="flex-1 flex flex-col">
+      <div className={`transition-all duration-300 ease-in-out flex flex-col ${
+        isLeftPanelCollapsed ? 'w-0 overflow-hidden' : 'flex-1'
+      }`}>
         {/* Navigation */}
         <nav className="bg-white dark:bg-[#0d1117] border-b border-gray-200 dark:border-[#3a3a3a] px-6 py-4">
           <div className="flex items-center justify-between">
@@ -500,7 +516,16 @@ export default function UploadPage() {
                 </Button>
               </div>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+                className="p-2 h-8 w-8"
+                title={isLeftPanelCollapsed ? "Expand Panel" : "Collapse Panel"}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
               <ThemeToggle />
             </div>
           </div>
@@ -703,13 +728,22 @@ export default function UploadPage() {
         </div>
       </div>
 
+      {/* Divider - Only show when left panel is expanded */}
+      {!isLeftPanelCollapsed && (
+        <div className="w-px bg-gray-200 dark:bg-[#3a3a3a]"></div>
+      )}
+
       {/* Right Panel - RAG Analysis */}
-      <AnalysisPanel 
-        analysisData={analysisResults} 
-        isLoading={analyzeChartsMutation.isPending}
-        onRegenerateAnalysis={handleRegenerateAnalysis}
-        isRegenerating={regenerateAnalysisMutation.isPending}
-      />
+      <div className={`transition-all duration-300 ease-in-out ${
+        isLeftPanelCollapsed ? 'flex-1' : ''
+      }`}>
+        <AnalysisPanel 
+          analysisData={analysisResults} 
+          isLoading={analyzeChartsMutation.isPending}
+          onRegenerateAnalysis={handleRegenerateAnalysis}
+          isRegenerating={regenerateAnalysisMutation.isPending}
+        />
+      </div>
     </div>
   );
 }
