@@ -16,9 +16,10 @@ interface DocumentGridProps {
   userId: string;
   onDocumentSelect?: (document: Document) => void;
   selectedDocument?: Document;
+  onTextInject?: (text: string) => void;
 }
 
-export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: DocumentGridProps) {
+export function DocumentGrid({ userId, onDocumentSelect, selectedDocument, onTextInject }: DocumentGridProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadDescription, setUploadDescription] = useState("");
   const [uploadTags, setUploadTags] = useState("");
@@ -283,6 +284,7 @@ export function DocumentGrid({ userId, onDocumentSelect, selectedDocument }: Doc
         <PDFModalViewer
           document={selectedDocumentForViewing}
           onClose={() => setSelectedDocumentForViewing(null)}
+          onTextInject={onTextInject}
         />
       )}
     </div>

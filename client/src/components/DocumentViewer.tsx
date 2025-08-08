@@ -11,9 +11,6 @@ interface DocumentViewerProps {
 }
 
 const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
-    console.log('DocumentViewer rendering with fileUrl:', fileUrl);
-    console.log('DocumentViewer onTextInject callback:', !!onTextInject);
-    
     const containerRef = useRef<HTMLDivElement>(null);
     const [injectButton, setInjectButton] = useState<{
         show: boolean;
@@ -59,8 +56,7 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
                 const rect = range.getBoundingClientRect();
                 const containerRect = containerElement.getBoundingClientRect();
 
-                console.log('Text selected:', selectedText);
-                console.log('Selection rect:', rect);
+                // Text selected - position inject button
 
                 if (rect.width === 0 || rect.height === 0) {
                     return; // Invalid selection bounds
@@ -143,13 +139,11 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
                 
                 <div
                     onMouseUp={() => {
-                        console.log('Container mouseup detected');
                         setTimeout(() => {
                             const selection = window.getSelection();
                             if (selection && !selection.isCollapsed) {
                                 const text = selection.toString().trim();
                                 if (text.length > 0) {
-                                    console.log('Selection found:', text);
                                     setInjectButton({
                                         show: true,
                                         text: text,
@@ -157,8 +151,6 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
                                         y: 200
                                     });
                                 }
-                            } else {
-                                console.log('No selection or selection collapsed');
                             }
                         }, 200);
                     }}

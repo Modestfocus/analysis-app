@@ -649,6 +649,27 @@ export default function DashboardPage() {
                             userId={userId}
                             onDocumentSelect={setSelectedDocument}
                             selectedDocument={selectedDocument || undefined}
+                            onTextInject={(text: string) => {
+                              // Append text to inject field with line breaks for readability
+                              const newInjectText = injectText 
+                                ? `${injectText}\n\n${text}` 
+                                : text;
+                              setInjectText(newInjectText);
+                              
+                              // Switch to inject tab to show the injected text
+                              setViewMode('inject');
+                              
+                              // Open the system prompt section if not already open
+                              if (activeAccordionSection !== 'system-prompt') {
+                                setActiveAccordionSection('system-prompt');
+                              }
+                              
+                              // Show success toast
+                              toast({
+                                title: "Text Injected",
+                                description: "Selected text has been added to the System Prompt inject field.",
+                              });
+                            }}
                           />
                         </div>
                       </div>
