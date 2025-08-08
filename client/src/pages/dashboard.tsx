@@ -714,7 +714,7 @@ export default function DashboardPage() {
                           variant={viewMode === 'inject' ? 'default' : 'ghost'}
                           onClick={() => setViewMode('inject')}
                           className={`flex-1 ${viewMode === 'inject' 
-                            ? 'bg-white text-gray-900 shadow-sm' 
+                            ? 'bg-white text-black shadow-sm' 
                             : 'text-gray-600 hover:text-gray-900'}`}
                         >
                           Inject
@@ -724,7 +724,7 @@ export default function DashboardPage() {
                           variant={viewMode === 'current' ? 'default' : 'ghost'}
                           onClick={() => setViewMode('current')}
                           className={`flex-1 ${viewMode === 'current' 
-                            ? 'bg-white text-gray-900 shadow-sm' 
+                            ? 'bg-white text-black shadow-sm' 
                             : 'text-gray-600 hover:text-gray-900'}`}
                         >
                           Current Prompt
@@ -734,7 +734,7 @@ export default function DashboardPage() {
                           variant={viewMode === 'default' ? 'default' : 'ghost'}
                           onClick={() => setViewMode('default')}
                           className={`flex-1 ${viewMode === 'default' 
-                            ? 'bg-white text-gray-900 shadow-sm' 
+                            ? 'bg-white text-black shadow-sm' 
                             : 'text-gray-600 hover:text-gray-900'}`}
                         >
                           Default Prompt
