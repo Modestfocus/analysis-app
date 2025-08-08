@@ -18,9 +18,10 @@ import DocumentViewer from "./DocumentViewer";
 interface DocumentReaderProps {
   document: DocumentType;
   onClose: () => void;
+  onTextInject?: (text: string) => void;
 }
 
-export function DocumentReader({ document, onClose }: DocumentReaderProps) {
+export function DocumentReader({ document, onClose, onTextInject }: DocumentReaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [notes, setNotes] = useState("");
   const [documentTitle, setDocumentTitle] = useState(document.originalName);
@@ -118,7 +119,7 @@ export function DocumentReader({ document, onClose }: DocumentReaderProps) {
         {/* PDF Viewer */}
         <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900">
           {document.fileType.toLowerCase() === 'pdf' ? (
-            <DocumentViewer fileUrl={documentUrl} />
+            <DocumentViewer fileUrl={documentUrl} onTextInject={onTextInject} />
           ) : (
             <div className="flex items-center justify-center h-full">
               <Card className="max-w-2xl">

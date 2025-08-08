@@ -659,6 +659,27 @@ export default function DashboardPage() {
                           <DocumentReader
                             document={selectedDocument}
                             onClose={() => setSelectedDocument(null)}
+                            onTextInject={(text: string) => {
+                              // Append text to inject field with line breaks for readability
+                              const newInjectText = injectText 
+                                ? `${injectText}\n\n${text}` 
+                                : text;
+                              setInjectText(newInjectText);
+                              
+                              // Switch to inject tab to show the injected text
+                              setViewMode('inject');
+                              
+                              // Open the system prompt section if not already open
+                              if (activeAccordionSection !== 'system-prompt') {
+                                setActiveAccordionSection('system-prompt');
+                              }
+                              
+                              // Show success toast
+                              toast({
+                                title: "Text Injected",
+                                description: "Selected text has been added to the System Prompt inject field.",
+                              });
+                            }}
                           />
                         )}
                       </div>
@@ -745,9 +766,26 @@ export default function DashboardPage() {
                       <div className="space-y-2">
                         {viewMode === 'inject' && (
                           <>
-                            <label className="text-sm font-medium text-gray-700">
-                              Inject Text
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm font-medium text-gray-700">
+                                Inject Text
+                              </label>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setInjectText('');
+                                  toast({
+                                    title: "Inject Text Cleared",
+                                    description: "The inject field has been emptied.",
+                                  });
+                                }}
+                                className="text-xs h-7 px-2"
+                                disabled={!injectText.trim()}
+                              >
+                                Clear Inject
+                              </Button>
+                            </div>
                             <Textarea
                               value={injectText}
                               onChange={(e) => setInjectText(e.target.value)}
@@ -756,7 +794,7 @@ export default function DashboardPage() {
                               rows={10}
                             />
                             <p className="text-xs text-gray-500">
-                              This text will be appended to the default prompt when analyzing charts.
+                              This text will be appended to the default prompt when analyzing charts. Select text in PDF documents and click the "Inject" button to add it here.
                             </p>
                           </>
                         )}
