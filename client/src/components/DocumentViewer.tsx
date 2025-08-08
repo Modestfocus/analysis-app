@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Worker, Viewer } from '@react-pdf-viewer/core';
+import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ interface DocumentViewerProps {
 
 const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const defaultLayoutPluginInstance = defaultLayoutPlugin();
+    
     const [injectButton, setInjectButton] = useState<{
         show: boolean;
         text: string;
@@ -121,23 +124,9 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
 
     return (
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
-            <div ref={containerRef} style={{ height: '100vh', width: '100%', position: 'relative' }}>
-                {/* Manual Test Button - for debugging */}
-                <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 1000 }}>
-                    <Button
-                        size="sm"
-                        onClick={() => {
-                            const testText = "Test text injection from PDF";
-                            setInjectButton({ show: true, text: testText, x: 200, y: 100 });
-                            console.log('Manual test triggered');
-                        }}
-                        className="bg-green-600 hover:bg-green-700 text-white text-xs"
-                    >
-                        Test Inject
-                    </Button>
-                </div>
-                
+            <div ref={containerRef} style={{ height: '100%', width: '100%', position: 'relative', overflow: 'auto' }}>
                 <div
+                    style={{ height: '100%', width: '100%' }}
                     onMouseUp={() => {
                         setTimeout(() => {
                             const selection = window.getSelection();
@@ -160,12 +149,14 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
                             const selection = window.getSelection();
                             if (selection && !selection.isCollapsed) {
                                 const text = selection.toString().trim();
-                                console.log('Context menu with selection:', text);
                             }
                         }, 100);
                     }}
                 >
-                    <Viewer fileUrl={fileUrl} />
+                    <Viewer 
+                        fileUrl={fileUrl} 
+                        plugins={[defaultLayoutPluginInstance]}
+                    />
                 </div>
                 
                 {/* Floating Inject Button */}
@@ -193,23 +184,7 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
                     </div>
                 )}
                 
-                {/* Debug indicator */}
-                {injectButton.show && (
-                    <div 
-                        style={{ 
-                            position: 'fixed', 
-                            top: '10px', 
-                            right: '10px', 
-                            background: 'red', 
-                            color: 'white', 
-                            padding: '4px 8px',
-                            fontSize: '12px',
-                            zIndex: 100000
-                        }}
-                    >
-                        Active: {injectButton.text.substring(0, 20)}...
-                    </div>
-                )}
+
             </div>
         </Worker>
     );

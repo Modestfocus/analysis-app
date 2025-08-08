@@ -67,7 +67,7 @@ export function PDFModalViewer({ document, onClose, onTextInject }: PDFModalView
         </div>
 
         {/* Content */}
-        <div className="flex-1 bg-gray-100 dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 bg-gray-100 dark:bg-gray-900 overflow-auto">
           {document.fileType.toLowerCase() === 'pdf' ? (
             <DocumentViewer fileUrl={documentUrl} onTextInject={onTextInject} />
           ) : (
