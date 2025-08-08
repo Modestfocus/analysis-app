@@ -33,25 +33,34 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
         // Disable periodic checking - rely only on mouseup events
         // The periodic checker was causing text truncation issues
 
-        // Also listen for mouseup events as backup
-        const handleMouseUp = () => {
+        // Primary text selection handler
+        const handleMouseUp = (event: MouseEvent) => {
+            // Check if the mouseup is within our PDF container
+            const containerElement = containerRef.current;
+            if (!containerElement || !containerElement.contains(event.target as Node)) {
+                return;
+            }
+
             setTimeout(() => {
                 const selection = window.getSelection();
-                if (selection && !selection.isCollapsed) {
+                if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
                     const text = selection.toString();
                     if (text && text.trim().length > 2) {
                         const range = selection.getRangeAt(0);
                         const rect = range.getBoundingClientRect();
                         
-                        setInjectButton({
-                            show: true,
-                            text: text,
-                            x: rect.left + (rect.width / 2),
-                            y: rect.top - 50
-                        });
+                        // Ensure we're capturing text from within our container
+                        if (containerElement.contains(range.commonAncestorContainer)) {
+                            setInjectButton({
+                                show: true,
+                                text: text, // Keep original text without trimming
+                                x: rect.left + (rect.width / 2),
+                                y: rect.top - 50
+                            });
+                        }
                     }
                 }
-            }, 100);
+            }, 150); // Reduced timeout for better responsiveness
         };
 
         document.addEventListener('mouseup', handleMouseUp);
@@ -99,34 +108,6 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
             <div ref={containerRef} style={{ height: '100%', width: '100%', position: 'relative', overflow: 'auto' }}>
                 <div
                     style={{ height: '100%', width: '100%' }}
-                    onMouseUp={() => {
-                        setTimeout(() => {
-                            const selection = window.getSelection();
-                            if (selection && !selection.isCollapsed) {
-                                const text = selection.toString();
-                                if (text && text.trim().length > 0) {
-                                    const range = selection.getRangeAt(0);
-                                    const rect = range.getBoundingClientRect();
-                                    
-                                    setInjectButton({
-                                        show: true,
-                                        text: text,
-                                        x: rect.left + (rect.width / 2),
-                                        y: rect.top - 50
-                                    });
-                                }
-                            }
-                        }, 200);
-                    }}
-                    onContextMenu={(e) => {
-                        // Right-click context menu - check for selection
-                        setTimeout(() => {
-                            const selection = window.getSelection();
-                            if (selection && !selection.isCollapsed) {
-                                const text = selection.toString().trim();
-                            }
-                        }, 100);
-                    }}
                 >
                     <Viewer 
                         fileUrl={fileUrl} 
