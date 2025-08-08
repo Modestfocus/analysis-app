@@ -40,9 +40,9 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
                     return;
                 }
 
-                const selectedText = selection.toString().trim();
+                const selectedText = selection.toString();
                 
-                if (!selectedText || selectedText.length < 3) {
+                if (!selectedText || selectedText.trim().length < 3) {
                     setInjectButton(prev => ({ ...prev, show: false }));
                     return;
                 }
@@ -106,12 +106,24 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
 
     const handleInjectText = (event: React.MouseEvent) => {
         event.stopPropagation();
-        if (injectButton.text && onTextInject) {
-            onTextInject(injectButton.text);
+        
+        // Get fresh selection to ensure we have the complete text
+        const selection = window.getSelection();
+        let textToInject = injectButton.text;
+        
+        // If there's still an active selection, use that text directly
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+            const freshText = selection.toString();
+            if (freshText && freshText.length > textToInject.length) {
+                textToInject = freshText;
+            }
+        }
+        
+        if (textToInject && onTextInject) {
+            onTextInject(textToInject);
         }
         
         // Clear the selection and hide the button
-        const selection = window.getSelection();
         if (selection) {
             selection.removeAllRanges();
         }
@@ -131,13 +143,16 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
                         setTimeout(() => {
                             const selection = window.getSelection();
                             if (selection && !selection.isCollapsed) {
-                                const text = selection.toString().trim();
-                                if (text.length > 0) {
+                                const text = selection.toString();
+                                if (text && text.trim().length > 0) {
+                                    const range = selection.getRangeAt(0);
+                                    const rect = range.getBoundingClientRect();
+                                    
                                     setInjectButton({
                                         show: true,
                                         text: text,
-                                        x: 300,
-                                        y: 200
+                                        x: rect.left + (rect.width / 2),
+                                        y: rect.top - 50
                                     });
                                 }
                             }
