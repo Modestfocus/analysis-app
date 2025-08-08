@@ -30,63 +30,26 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
     useEffect(() => {
         let checkInterval: NodeJS.Timeout;
         
-        // Check for text selection periodically when viewer is loaded
-        const startSelectionChecker = () => {
-            checkInterval = setInterval(() => {
-                const selection = window.getSelection();
-                
-                if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-                    setInjectButton(prev => ({ ...prev, show: false }));
-                    return;
-                }
-
-                const selectedText = selection.toString();
-                
-                if (!selectedText || selectedText.trim().length < 3) {
-                    setInjectButton(prev => ({ ...prev, show: false }));
-                    return;
-                }
-
-                // Check if the selection is within our PDF container
-                const range = selection.getRangeAt(0);
-                const containerElement = containerRef.current;
-                
-                if (!containerElement || !containerElement.contains(range.commonAncestorContainer)) {
-                    setInjectButton(prev => ({ ...prev, show: false }));
-                    return;
-                }
-
-                const rect = range.getBoundingClientRect();
-                const containerRect = containerElement.getBoundingClientRect();
-
-                // Text selected - position inject button
-
-                if (rect.width === 0 || rect.height === 0) {
-                    return; // Invalid selection bounds
-                }
-
-                // Position the button above the selection (using page coordinates)
-                const x = rect.left + (rect.width / 2);
-                const y = rect.top - 50; // 50px above selection
-
-                setInjectButton({
-                    show: true,
-                    text: selectedText,
-                    x: Math.max(50, Math.min(x, window.innerWidth - 150)), // Keep within screen bounds
-                    y: Math.max(10, y) // Don't go above viewport
-                });
-            }, 500); // Check every 500ms
-        };
-
-        // Start checking after a delay to let PDF load
-        const initTimeout = setTimeout(startSelectionChecker, 2000);
+        // Disable periodic checking - rely only on mouseup events
+        // The periodic checker was causing text truncation issues
 
         // Also listen for mouseup events as backup
         const handleMouseUp = () => {
             setTimeout(() => {
                 const selection = window.getSelection();
                 if (selection && !selection.isCollapsed) {
-                    console.log('Mouse up with selection:', selection.toString());
+                    const text = selection.toString();
+                    if (text && text.trim().length > 2) {
+                        const range = selection.getRangeAt(0);
+                        const rect = range.getBoundingClientRect();
+                        
+                        setInjectButton({
+                            show: true,
+                            text: text,
+                            x: rect.left + (rect.width / 2),
+                            y: rect.top - 50
+                        });
+                    }
                 }
             }, 100);
         };
@@ -96,9 +59,6 @@ const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
         return () => {
             if (checkInterval) {
                 clearInterval(checkInterval);
-            }
-            if (initTimeout) {
-                clearTimeout(initTimeout);
             }
             document.removeEventListener('mouseup', handleMouseUp);
         };
