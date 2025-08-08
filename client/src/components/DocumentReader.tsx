@@ -61,6 +61,10 @@ export function DocumentReader({ document, onClose, onTextInject }: DocumentRead
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  console.log('DocumentReader rendering - Document:', document);
+  console.log('DocumentReader - fileType:', document.fileType);
+  console.log('DocumentReader - isPDF check:', document.fileType?.toLowerCase() === 'pdf');
+
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       {/* Header */}

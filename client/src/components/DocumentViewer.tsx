@@ -11,6 +11,9 @@ interface DocumentViewerProps {
 }
 
 const DocumentViewer = ({ fileUrl, onTextInject }: DocumentViewerProps) => {
+    console.log('DocumentViewer rendering with fileUrl:', fileUrl);
+    console.log('DocumentViewer onTextInject callback:', !!onTextInject);
+    
     const containerRef = useRef<HTMLDivElement>(null);
     const [injectButton, setInjectButton] = useState<{
         show: boolean;
