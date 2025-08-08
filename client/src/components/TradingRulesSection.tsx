@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Edit3, Plus, GripVertical } from "lucide-react";
+import { Trash2, Edit3, Plus, GripVertical, Syringe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Rule {
@@ -12,9 +12,10 @@ interface Rule {
 
 interface TradingRulesSectionProps {
   userId: string;
+  onTextInject?: (text: string) => void;
 }
 
-export function TradingRulesSection({ userId }: TradingRulesSectionProps) {
+export function TradingRulesSection({ userId, onTextInject }: TradingRulesSectionProps) {
   const [rules, setRules] = useState<Rule[]>([
     { id: "1", content: "Never risk more than 2% of account per trade", order: 0 },
     { id: "2", content: "Always use stop loss orders", order: 1 },
@@ -171,6 +172,12 @@ export function TradingRulesSection({ userId }: TradingRulesSectionProps) {
     setDragOverId(null);
   };
 
+  const handleInjectRule = (rule: Rule) => {
+    if (onTextInject) {
+      onTextInject(rule.content);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -293,6 +300,17 @@ export function TradingRulesSection({ userId }: TradingRulesSectionProps) {
                 {editingId !== rule.id && (
                   <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <div className="flex space-x-1">
+                      {onTextInject && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleInjectRule(rule)}
+                          className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600"
+                          title="Inject rule into System Prompt"
+                        >
+                          <Syringe className="h-3 w-3" />
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
