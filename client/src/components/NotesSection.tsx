@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,8 @@ import {
   Trash2,
   Edit3,
   Save,
-  X
+  X,
+  Syringe
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistance } from "date-fns";
@@ -23,19 +24,32 @@ import type { Note, InsertNote } from "@shared/schema";
 
 interface NotesSectionProps {
   userId: string;
+  onTextInject?: (text: string) => void;
 }
 
 const STORAGE_KEY = 'notes-last-selected';
 
-export function NotesSection({ userId }: NotesSectionProps) {
+export function NotesSection({ userId, onTextInject }: NotesSectionProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [injectButton, setInjectButton] = useState<{
+    show: boolean;
+    text: string;
+    x: number;
+    y: number;
+  }>({
+    show: false,
+    text: '',
+    x: 0,
+    y: 0
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const noteContentRef = useRef<HTMLDivElement>(null);
 
   // Fetch user notes
   const { data: notesData, isLoading } = useQuery({
@@ -229,6 +243,63 @@ export function NotesSection({ userId }: NotesSectionProps) {
     return cleaned.length > maxLength ? cleaned.substring(0, maxLength) + '...' : cleaned;
   };
 
+  // Handle text injection
+  const handleInjectText = useCallback(() => {
+    if (injectButton.text && onTextInject) {
+      // Get fresh selection at injection time
+      const selection = window.getSelection();
+      const textToInject = selection && !selection.isCollapsed 
+        ? selection.toString() 
+        : injectButton.text;
+      
+      onTextInject(textToInject);
+      setInjectButton({ show: false, text: '', x: 0, y: 0 });
+    }
+  }, [injectButton.text, onTextInject]);
+
+  // Text selection functionality for notes content
+  useEffect(() => {
+    if (!onTextInject || !selectedNote || isEditing) return;
+
+    const handleMouseUp = (event: MouseEvent) => {
+      const noteContent = noteContentRef.current;
+      if (!noteContent || !noteContent.contains(event.target as Node)) {
+        return;
+      }
+
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+          const text = selection.toString();
+          if (text && text.trim().length > 2) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            
+            if (noteContent.contains(range.commonAncestorContainer)) {
+              setInjectButton({
+                show: true,
+                text: text,
+                x: rect.left + (rect.width / 2),
+                y: rect.top - 50
+              });
+            }
+          }
+        }
+      }, 150);
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [onTextInject, selectedNote, isEditing]);
+
+  // Hide inject button when switching notes or editing
+  useEffect(() => {
+    setInjectButton({ show: false, text: '', x: 0, y: 0 });
+  }, [selectedNote, isEditing]);
+
   // Auto-save functionality
   const debouncedSave = useCallback(
     debounce(() => {
@@ -421,8 +492,11 @@ export function NotesSection({ userId }: NotesSectionProps) {
                     {selectedNote.title}
                   </h1>
                   <Separator />
-                  <div className="prose prose-gray dark:prose-invert max-w-none">
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed dark:text-gray-300 text-[#2a2c37] bg-[#e6e8ec00]">
+                  <div 
+                    ref={noteContentRef}
+                    className="prose prose-gray dark:prose-invert max-w-none relative"
+                  >
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed dark:text-gray-300 text-[#2a2c37] bg-[#e6e8ec00] select-text cursor-text">
                       {selectedNote.content || "This note is empty."}
                     </pre>
                   </div>
@@ -448,6 +522,30 @@ export function NotesSection({ userId }: NotesSectionProps) {
                 Create Note
               </Button>
             </div>
+          </div>
+        )}
+        
+        {/* Floating Inject Button */}
+        {injectButton.show && onTextInject && (
+          <div
+            style={{
+              position: 'fixed',
+              left: `${injectButton.x}px`,
+              top: `${injectButton.y}px`,
+              zIndex: 99999,
+              transform: 'translateX(-50%)',
+              pointerEvents: 'auto'
+            }}
+            className="animate-in fade-in-0 zoom-in-95 duration-200"
+          >
+            <Button
+              size="sm"
+              onClick={handleInjectText}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg px-4 py-2 shadow-xl border-2 border-blue-500 flex items-center gap-2 whitespace-nowrap font-medium"
+            >
+              <Syringe className="h-4 w-4" />
+              Inject Text
+            </Button>
           </div>
         )}
       </div>

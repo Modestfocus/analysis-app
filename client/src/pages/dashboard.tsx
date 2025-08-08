@@ -717,7 +717,30 @@ export default function DashboardPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
-                    <NotesSection userId={userId} />
+                    <NotesSection 
+                      userId={userId} 
+                      onTextInject={(text: string) => {
+                        // Append text to inject field with line breaks for readability
+                        const newInjectText = injectText 
+                          ? `${injectText}\n\n${text}` 
+                          : text;
+                        setInjectText(newInjectText);
+                        
+                        // Switch to inject tab to show the injected text
+                        setViewMode('inject');
+                        
+                        // Open the system prompt section if not already open
+                        if (activeAccordionSection !== 'system-prompt') {
+                          setActiveAccordionSection('system-prompt');
+                        }
+                        
+                        // Show success toast
+                        toast({
+                          title: "Text Injected",
+                          description: "Selected text has been added to the System Prompt inject field.",
+                        });
+                      }}
+                    />
                   </AccordionContent>
                 </AccordionItem>
 
