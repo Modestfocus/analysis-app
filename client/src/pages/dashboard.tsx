@@ -876,12 +876,24 @@ export default function DashboardPage() {
                               onChange={(e) => {
                                 // When editing current prompt, we need to parse it back
                                 const newValue = e.target.value;
-                                if (newValue.includes(defaultPrompt)) {
-                                  // Extract inject text by removing default prompt
-                                  const extractedInject = newValue.replace(defaultPrompt, '').replace(/^\n\n/, '').replace(/^\n/, '');
+                                
+                                // Try to split the content based on the default prompt
+                                if (newValue.startsWith(defaultPrompt)) {
+                                  // Extract inject text by removing default prompt and cleaning up
+                                  const extractedInject = newValue.substring(defaultPrompt.length).replace(/^\n+/, '').replace(/^\s+/, '');
                                   setInjectText(extractedInject);
+                                } else if (newValue.includes(defaultPrompt)) {
+                                  // Handle case where default prompt is in the middle
+                                  const parts = newValue.split(defaultPrompt);
+                                  if (parts.length >= 2) {
+                                    const beforeDefault = parts[0].trim();
+                                    const afterDefault = parts.slice(1).join(defaultPrompt).trim();
+                                    setInjectText(beforeDefault + (beforeDefault && afterDefault ? '\n\n' : '') + afterDefault);
+                                  } else {
+                                    setInjectText(newValue.replace(defaultPrompt, '').trim());
+                                  }
                                 } else {
-                                  // If default prompt was modified, update default prompt
+                                  // If default prompt was completely replaced, update default prompt
                                   setDefaultPrompt(newValue);
                                   setInjectText('');
                                 }
@@ -951,50 +963,71 @@ export default function DashboardPage() {
                       </div>
                       
                       {/* Action Buttons */}
-                      <div className="flex justify-end space-x-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const originalDefault = "You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.";
-                            setDefaultPrompt(originalDefault);
-                            setInjectText('');
-                            setSavedDefaultPrompt(originalDefault);
-                            setSavedInjectText('');
-                            setViewMode('default');
-                            
-                            // Clear localStorage
-                            localStorage.removeItem('systemPrompt_default');
-                            localStorage.removeItem('systemPrompt_inject');
-                            
-                            toast({
-                              title: "Reset Complete",
-                              description: "All prompts reset to original defaults and saved state cleared.",
-                            });
-                          }}
-                        >
-                          Reset to Default
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="hover:bg-purple-700 text-white bg-[#706870]"
-                          onClick={() => {
-                            // Save current state
-                            setSavedDefaultPrompt(defaultPrompt);
-                            setSavedInjectText(injectText);
-                            
-                            // Store in localStorage for persistence
-                            localStorage.setItem('systemPrompt_default', defaultPrompt);
-                            localStorage.setItem('systemPrompt_inject', injectText);
-                            
-                            toast({
-                              title: "System Prompt Saved",
-                              description: "Your system prompt configuration has been saved successfully.",
-                            });
-                          }}
-                        >
-                          Save Changes
-                        </Button>
+                      <div className="flex justify-between items-center pt-2">
+                        {/* Status Indicator */}
+                        <div className="flex items-center text-xs text-gray-500">
+                          {injectText.trim().length > 0 && (
+                            <div className="flex items-center space-x-1">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span>Injected text ready to save</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Buttons */}
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const originalDefault = "You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.";
+                              setDefaultPrompt(originalDefault);
+                              setInjectText('');
+                              setSavedDefaultPrompt(originalDefault);
+                              setSavedInjectText('');
+                              setViewMode('default');
+                              
+                              // Clear localStorage
+                              localStorage.removeItem('systemPrompt_default');
+                              localStorage.removeItem('systemPrompt_inject');
+                              
+                              toast({
+                                title: "Reset Complete",
+                                description: "All prompts reset to original defaults and saved state cleared.",
+                              });
+                            }}
+                          >
+                            Reset to Default
+                          </Button>
+                          <Button
+                            size="sm"
+                            className={`hover:bg-purple-700 text-white ${
+                              injectText.trim().length > 0 
+                                ? 'bg-blue-600 hover:bg-blue-700' 
+                                : 'bg-[#706870]'
+                            }`}
+                            onClick={() => {
+                              // Save current state
+                              setSavedDefaultPrompt(defaultPrompt);
+                              setSavedInjectText(injectText);
+                              
+                              // Store in localStorage for persistence
+                              localStorage.setItem('systemPrompt_default', defaultPrompt);
+                              localStorage.setItem('systemPrompt_inject', injectText);
+                              
+                              // Show different message based on whether inject text exists
+                              const hasInjectedText = injectText.trim().length > 0;
+                              toast({
+                                title: "System Prompt Saved",
+                                description: hasInjectedText 
+                                  ? "Your system prompt with injected text has been saved successfully."
+                                  : "Your system prompt configuration has been saved successfully.",
+                              });
+                            }}
+                          >
+                            Save Changes
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </AccordionContent>
