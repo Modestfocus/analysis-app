@@ -157,10 +157,17 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
         });
       }
       
+      // Check if this is a follow-up (conversation has existing messages and no new images)
+      const hasExistingMessages = Array.isArray(messages) && messages.length > 0;
+      const hasNewImages = imageUrls && imageUrls.length > 0;
+      const isFollowUp = hasExistingMessages && !hasNewImages;
+      
       // Use the new chat analysis endpoint
       const response = await apiRequest('POST', '/api/chat/analyze', { 
         content: visionContent,
-        systemPrompt 
+        systemPrompt,
+        conversationId,
+        isFollowUp
       });
       
       const result = await response.json();
@@ -273,7 +280,16 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
   // Send message
   const handleSendMessage = () => {
+    // Allow text-only messages if there's an active conversation with existing messages
+    const hasExistingMessages = Array.isArray(messages) && messages.length > 0;
+    const canSendTextOnly = hasExistingMessages && message.trim();
+    
     if ((!message.trim() && uploadedImages.length === 0) || sendMessageMutation.isPending) {
+      return;
+    }
+
+    // For new conversations, require at least one image or text
+    if (!activeConversationId && uploadedImages.length === 0 && !message.trim()) {
       return;
     }
 

@@ -10,7 +10,7 @@ import { analyzeChatCharts } from '../services/chat-analysis';
  */
 export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => {
   try {
-    const { content, systemPrompt } = req.body;
+    const { content, systemPrompt, conversationId, isFollowUp } = req.body;
 
     // Validate request
     if (!content || !Array.isArray(content)) {
@@ -27,15 +27,57 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
 
     // Check for images
     const imageCount = content.filter(part => part.type === 'image_url').length;
-    if (imageCount === 0) {
+    
+    // For new conversations, require at least one image
+    // For follow-up questions, allow text-only questions
+    if (imageCount === 0 && !isFollowUp) {
       return res.status(422).json({ 
         error: 'No images attached. Please attach at least one chart image for analysis.' 
       });
     }
 
+    // For follow-up questions without images, handle differently
+    if (imageCount === 0 && isFollowUp) {
+      console.log(`💬 Follow-up chat question - conversation: ${conversationId}`);
+      
+      // For text-only follow-ups, use a simplified OpenAI call without vision
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const textContent = content.find(part => part.type === 'text')?.text || '';
+      
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are continuing a chart analysis conversation. The user is asking a follow-up question about their previously analyzed trading charts. Provide helpful insights based on the context of chart analysis. Keep your response concise and focused on trading insights.`
+          },
+          {
+            role: 'user',
+            content: textContent
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.1
+      });
+
+      const aiResponse = response.choices[0]?.message?.content || 'Unable to process follow-up question.';
+
+      return res.json({
+        success: true,
+        session: 'Follow-up',
+        direction: 'neutral',
+        confidence: 'medium',
+        rationale: aiResponse,
+        analysis: aiResponse,
+        similarCharts: [] // No similar charts for follow-up questions
+      });
+    }
+
     console.log(`🔍 Chat analysis request - ${imageCount} images, system prompt: ${systemPrompt.length} chars`);
 
-    // Perform analysis
+    // Perform full analysis for messages with images
     const result = await analyzeChatCharts({ content, systemPrompt });
 
     res.json({
