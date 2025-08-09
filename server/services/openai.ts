@@ -284,7 +284,30 @@ You will also be provided with a dynamically retrieved list of the top 3 most vi
 ---
 
 📚 **Historical Chart Context:**
+For each similar chart, you will be provided:
+
+📊 Similar Chart #1:
+- Image: /uploads/{filename}
+- Depth Map: {path or "Not available"}
+- Edge Map: {path or "Not available"}
+- Gradient Map: {path or "Not available"}
+- Instrument: {instrument}
+- Timeframe: {timeframe}
+- Session: {session or "Unknown"}
+- CLIP Similarity: {similarity score}%
+- Outcome: {comment or "Not recorded"}
+
+📦 Bundle for Chart #2:
+- Charts across: [e.g., 15m, 1h, 4h]
+- Each image includes Depth, Edge, and Gradient maps
+- Instrument: {instrument}
+- Session: {session or "Unknown"}
+- CLIP Similarity: {similarity score}%
+- Outcome Summary: {analysis outcome or "Not recorded"}
+
 ${ragContext}
+
+---
 
 🎯 **YOUR TASK**:
 1. Determine which market session (Asia, London, New York) is most likely to lead the move.
