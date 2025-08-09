@@ -56,14 +56,15 @@ export default function AnalysisResultRenderer({
   const normalizedResult = {
     prediction: result.prediction || result.direction || "Unknown",
     session: result.session || "Unknown",
-    confidence: result.confidence || "Medium",
+    confidence: (result.confidence || "Medium").toString(),
     reasoning: result.reasoning || result.rationale || "No reasoning provided",
     similarCharts: result.similarCharts || [],
     diagnostics: result.diagnostics
   };
 
-  const getConfidenceColor = (confidence: string) => {
-    switch (confidence.toLowerCase()) {
+  const getConfidenceColor = (confidence: string | number) => {
+    const confidenceStr = typeof confidence === 'string' ? confidence.toLowerCase() : confidence.toString().toLowerCase();
+    switch (confidenceStr) {
       case 'high': return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
       case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
       case 'low': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
@@ -71,8 +72,9 @@ export default function AnalysisResultRenderer({
     }
   };
 
-  const getConfidenceIcon = (confidence: string) => {
-    switch (confidence.toLowerCase()) {
+  const getConfidenceIcon = (confidence: string | number) => {
+    const confidenceStr = typeof confidence === 'string' ? confidence.toLowerCase() : confidence.toString().toLowerCase();
+    switch (confidenceStr) {
       case 'high': return <CheckCircle2 className="h-4 w-4" />;
       case 'medium': return <AlertCircle className="h-4 w-4" />;
       case 'low': return <AlertCircle className="h-4 w-4" />;
