@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   Bot, 
   User, 
@@ -401,13 +401,18 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                                 className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80"
                               />
                             </DialogTrigger>
-                            <DialogContent className="max-w-4xl">
-                              <DialogTitle className="sr-only">Chart Image {index + 1}</DialogTitle>
-                              <img
-                                src={url}
-                                alt={`Full chart ${index + 1}`}
-                                className="w-full h-auto"
-                              />
+                            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                              <DialogTitle>Chart Image {index + 1}</DialogTitle>
+                              <DialogDescription>
+                                Full view of uploaded chart image
+                              </DialogDescription>
+                              <div className="pb-4">
+                                <img
+                                  src={url}
+                                  alt={`Full chart ${index + 1}`}
+                                  className="w-full h-auto rounded-lg"
+                                />
+                              </div>
                             </DialogContent>
                           </Dialog>
                         ))}
@@ -456,11 +461,14 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                                       </div>
                                     </button>
                                   </DialogTrigger>
-                                  <DialogContent className="max-w-4xl">
+                                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                                     <DialogTitle>
                                       Similar Chart: {chart.filename} ({(chart.similarity * 100).toFixed(1)}% match)
                                     </DialogTitle>
-                                    <div className="space-y-4">
+                                    <DialogDescription>
+                                      View the full chart image and depth map analysis for this similar trading pattern
+                                    </DialogDescription>
+                                    <div className="space-y-4 pb-4">
                                       <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div>
                                           <span className="font-medium">Instrument:</span> {chart.instrument}
