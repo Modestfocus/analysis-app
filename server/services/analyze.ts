@@ -112,9 +112,14 @@ export async function analyzeCharts({
         systemPrompt
       );
       
+      // Format the result for chat display
+      const formattedAnalysis = formatAnalysisForChat(result, similarCharts);
+      
       return {
-        analysis: result,
-        confidence: typeof result.confidence === 'string' ? 0.85 : result.confidence || 0.85,
+        analysis: formattedAnalysis,
+        confidence: typeof result.confidence === 'string' ? 
+          (result.confidence === 'High' ? 0.9 : result.confidence === 'Medium' ? 0.7 : 0.5) : 
+          result.confidence || 0.85,
         similarCharts
       };
     } else {
@@ -125,8 +130,11 @@ export async function analyzeCharts({
         systemPrompt
       );
       
+      // Format the result for chat display
+      const formattedAnalysis = typeof result === 'string' ? result : formatAnalysisForChat(result, similarCharts);
+      
       return {
-        analysis: result,
+        analysis: formattedAnalysis,
         confidence: result.confidence || 0.85,
         similarCharts
       };
@@ -136,6 +144,39 @@ export async function analyzeCharts({
     console.error('❌ Error in chart analysis:', error);
     throw error;
   }
+}
+
+/**
+ * Format analysis result for chat display
+ */
+function formatAnalysisForChat(result: any, similarCharts: any[] = []): string {
+  if (typeof result === 'string') {
+    return result;
+  }
+
+  // If it's a structured analysis result from GPT, format it nicely
+  if (result.prediction && result.reasoning) {
+    let formatted = `## Technical Analysis\n\n`;
+    
+    formatted += `**Prediction:** ${result.prediction}\n`;
+    formatted += `**Best Session:** ${result.session}\n`;
+    formatted += `**Confidence:** ${result.confidence}\n\n`;
+    
+    formatted += `**Analysis:**\n${result.reasoning}\n\n`;
+    
+    if (similarCharts && similarCharts.length > 0) {
+      formatted += `**Similar Historical Patterns:**\n`;
+      similarCharts.slice(0, 3).forEach((item, index) => {
+        const chart = item.chart;
+        formatted += `${index + 1}. ${chart.originalName || chart.filename} (${chart.instrument}, ${chart.timeframe}) - ${(item.similarity * 100).toFixed(1)}% similarity\n`;
+      });
+    }
+    
+    return formatted;
+  }
+  
+  // Fallback for any other format
+  return typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result);
 }
 
 /**
