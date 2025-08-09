@@ -564,45 +564,7 @@ export default function UploadPage() {
                   placeholder="Drop chart images here or click 'Add Charts' button"
                 />
                 
-                <div className="flex space-x-3">
-                  <Button 
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.multiple = true;
-                      input.onchange = (e) => {
-                        const files = (e.target as HTMLInputElement).files;
-                        if (files) handleFilesSelected(Array.from(files));
-                      };
-                      input.click();
-                    }}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Add Charts
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.multiple = false;
-                      input.onchange = (e) => {
-                        const files = (e.target as HTMLInputElement).files;
-                        if (files) handleFilesSelected(Array.from(files));
-                      };
-                      input.click();
-                    }}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Add Single Chart
-                  </Button>
-                </div>
+                
               </div>
 
               {/* Selected Files Preview */}
