@@ -93,11 +93,17 @@ interface ChatConversation {
 }
 
 interface ChatInterfaceProps {
-  systemPrompt: string;
+  systemPrompt?: string;
   isExpanded?: boolean;
 }
 
 export default function ChatInterface({ systemPrompt, isExpanded = false }: ChatInterfaceProps) {
+  // Get current prompt from localStorage to match dashboard System Prompt tab
+  const getCurrentPrompt = () => {
+    const savedDefault = localStorage.getItem('systemPrompt_default') || "You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.";
+    const savedInject = localStorage.getItem('systemPrompt_inject') || '';
+    return `${savedDefault}${savedInject ? `\n\n${savedInject}` : ''}`;
+  };
   const [message, setMessage] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -162,10 +168,11 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       const hasNewImages = imageUrls && imageUrls.length > 0;
       const isFollowUp = hasExistingMessages && !hasNewImages;
       
-      // Use the new chat analysis endpoint
+      // Use the new chat analysis endpoint with current prompt from dashboard
+      const currentPrompt = getCurrentPrompt();
       const response = await apiRequest('POST', '/api/chat/analyze', { 
         content: visionContent,
-        systemPrompt,
+        systemPrompt: currentPrompt,
         conversationId,
         isFollowUp
       });
@@ -328,7 +335,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
           GPT-4o Chart Analysis
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Upload charts, ask questions, and get AI-powered insights
+          Upload charts, ask questions, and get AI-powered insights using your current dashboard prompt
         </p>
       </div>
 

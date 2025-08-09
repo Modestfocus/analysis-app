@@ -47,17 +47,17 @@ export default function DashboardPage() {
     const savedDefault = localStorage.getItem('systemPrompt_default');
     const savedInject = localStorage.getItem('systemPrompt_inject');
     const savedCurrent = localStorage.getItem('systemPrompt_current');
-    
+
     if (savedDefault) {
       setDefaultPrompt(savedDefault);
       setSavedDefaultPrompt(savedDefault);
     }
-    
+
     if (savedInject) {
       setInjectText(savedInject);
       setSavedInjectText(savedInject);
     }
-    
+
     if (savedCurrent) {
       setSavedCurrentPrompt(savedCurrent);
     }
@@ -87,9 +87,8 @@ export default function DashboardPage() {
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/bundles');
       const data = await response.json();
-      return data;
+      return data.bundles as (ChartBundle & { parsedMetadata: BundleMetadata })[];
     },
-    select: (data: any) => data.bundles as (ChartBundle & { parsedMetadata: BundleMetadata })[],
     staleTime: 0,
     gcTime: 1000 * 60 * 5,
   });
@@ -193,7 +192,7 @@ export default function DashboardPage() {
 
     const selectedChartData = charts.filter((chart: Chart) => selectedCharts.has(chart.id));
     const instruments = Array.from(new Set(selectedChartData.map((chart: Chart) => chart.instrument)));
-    
+
     if (instruments.length > 1) {
       toast({
         title: "Mixed Instruments",
@@ -220,7 +219,7 @@ export default function DashboardPage() {
   const bundles = bundlesData || [];
   const analyses = analysesData || [];
   const isLoading = showView === "charts" ? isLoadingCharts : showView === "bundles" ? isLoadingBundles : isLoadingAnalyses;
-  
+
   console.log('Dashboard render - selectedTimeframe:', selectedTimeframe, 'charts.length:', charts.length, 'charts:', charts);
 
   return (
@@ -239,7 +238,7 @@ export default function DashboardPage() {
           <Menu className="h-4 w-4" />
         </Button>
       </div>
-      
+
       {/* Left Panel */}
       <div className={`transition-all duration-500 ease-in-out flex flex-col dark:bg-[#0d1117] h-full overflow-y-auto ${
         isLeftPanelCollapsed ? 'w-0 min-w-0 opacity-0 overflow-hidden' : 'flex-1 min-w-0 opacity-100'
@@ -328,7 +327,6 @@ export default function DashboardPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
-                    {/* Chart Dashboard Content */}
                     <div className="space-y-4">
                       {/* Dashboard Header Controls */}
                       <div className="flex items-center justify-between mb-4">
@@ -369,7 +367,7 @@ export default function DashboardPage() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           {showView === "charts" && (
@@ -443,7 +441,7 @@ export default function DashboardPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Charts Content */}
                       {activeAccordionSection === "charts-dashboard" && (
                         <div className="mt-6">
@@ -576,7 +574,7 @@ export default function DashboardPage() {
                                             )}
                                           </div>
                                         </div>
-                                        
+
                                         {analysis.prediction && (
                                           <div className="mb-4">
                                             <div className="grid grid-cols-3 gap-4 mb-3">
@@ -597,14 +595,14 @@ export default function DashboardPage() {
                                                 </p>
                                               </div>
                                             </div>
-                                            
+
                                             <div className="mb-3">
                                               <span className="text-sm font-medium text-gray-600">Analysis:</span>
                                               <p className="text-sm text-gray-700 leading-relaxed mt-1">
                                                 {analysis.prediction.reasoning}
                                               </p>
                                             </div>
-                                            
+
                                             {analysis.similarCharts && analysis.similarCharts.length > 0 && (
                                               <div>
                                                 <span className="text-sm font-medium text-gray-600">
@@ -621,7 +619,7 @@ export default function DashboardPage() {
                                             )}
                                           </div>
                                         )}
-                                        
+
                                         <div className="text-xs text-gray-500">
                                           Created: {new Date(analysis.createdAt).toLocaleString()}
                                         </div>
@@ -661,15 +659,15 @@ export default function DashboardPage() {
                                 ? `${injectText}\n\n${text}` 
                                 : text;
                               setInjectText(newInjectText);
-                              
+
                               // Switch to inject tab to show the injected text
                               setViewMode('inject');
-                              
+
                               // Open the system prompt section if not already open
                               if (activeAccordionSection !== 'system-prompt') {
                                 setActiveAccordionSection('system-prompt');
                               }
-                              
+
                               // Show success toast
                               toast({
                                 title: "Text Injected",
@@ -679,7 +677,7 @@ export default function DashboardPage() {
                           />
                         </div>
                       </div>
-                      
+
                       {/* Document Reader - Right Side */}
                       <div className="overflow-hidden min-w-0">
                         {selectedDocument && (
@@ -692,15 +690,15 @@ export default function DashboardPage() {
                                 ? `${injectText}\n\n${text}` 
                                 : text;
                               setInjectText(newInjectText);
-                              
+
                               // Switch to inject tab to show the injected text
                               setViewMode('inject');
-                              
+
                               // Open the system prompt section if not already open
                               if (activeAccordionSection !== 'system-prompt') {
                                 setActiveAccordionSection('system-prompt');
                               }
-                              
+
                               // Show success toast
                               toast({
                                 title: "Text Injected",
@@ -731,15 +729,15 @@ export default function DashboardPage() {
                           ? `${injectText}\n\n${text}` 
                           : text;
                         setInjectText(newInjectText);
-                        
+
                         // Switch to inject tab to show the injected text
                         setViewMode('inject');
-                        
+
                         // Open the system prompt section if not already open
                         if (activeAccordionSection !== 'system-prompt') {
                           setActiveAccordionSection('system-prompt');
                         }
-                        
+
                         // Show success toast
                         toast({
                           title: "Text Injected",
@@ -767,15 +765,15 @@ export default function DashboardPage() {
                           ? `${injectText}\n\n${text}` 
                           : text;
                         setInjectText(newInjectText);
-                        
+
                         // Switch to inject tab to show the injected text
                         setViewMode('inject');
-                        
+
                         // Open the system prompt section if not already open
                         if (activeAccordionSection !== 'system-prompt') {
                           setActiveAccordionSection('system-prompt');
                         }
-                        
+
                         // Show success toast
                         toast({
                           title: "Rule Injected",
@@ -800,7 +798,7 @@ export default function DashboardPage() {
                         <Settings className="h-5 w-5 text-gray-500" />
                         <h3 className="text-sm font-medium text-gray-700">AI System Configuration</h3>
                       </div>
-                      
+
                       {/* Toggle Buttons */}
                       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
                         <Button
@@ -882,7 +880,7 @@ export default function DashboardPage() {
                               onChange={(e) => {
                                 // When editing current prompt, we need to parse it back
                                 const newValue = e.target.value;
-                                
+
                                 // Try to split the content based on the default prompt
                                 if (newValue.startsWith(defaultPrompt)) {
                                   // Extract inject text by removing default prompt and cleaning up
@@ -967,7 +965,7 @@ export default function DashboardPage() {
                           </>
                         )}
                       </div>
-                      
+
                       {/* Action Buttons */}
                       <div className="flex justify-between items-center pt-2">
                         {/* Status Indicator */}
@@ -979,7 +977,7 @@ export default function DashboardPage() {
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Buttons */}
                         <div className="flex space-x-2">
                           <Button
@@ -993,12 +991,12 @@ export default function DashboardPage() {
                               setSavedInjectText('');
                               setSavedCurrentPrompt(originalDefault);
                               setViewMode('default');
-                              
+
                               // Clear localStorage
                               localStorage.removeItem('systemPrompt_default');
                               localStorage.removeItem('systemPrompt_inject');
                               localStorage.removeItem('systemPrompt_current');
-                              
+
                               toast({
                                 title: "Reset Complete",
                                 description: "All prompts reset to original defaults and saved state cleared.",
@@ -1018,17 +1016,17 @@ export default function DashboardPage() {
                               // Create the final merged prompt (default + inject)
                               const finalPrompt = currentPrompt;
                               const hasInjectedText = injectText.trim().length > 0;
-                              
+
                               // Save all current states without moving injected content
                               setSavedDefaultPrompt(defaultPrompt);
                               setSavedInjectText(injectText);
                               setSavedCurrentPrompt(finalPrompt);
-                              
+
                               // Store in localStorage for persistence
                               localStorage.setItem('systemPrompt_default', defaultPrompt);
                               localStorage.setItem('systemPrompt_inject', injectText);
                               localStorage.setItem('systemPrompt_current', finalPrompt);
-                              
+
                               toast({
                                 title: "System Prompt Saved",
                                 description: hasInjectedText 
@@ -1058,7 +1056,6 @@ export default function DashboardPage() {
       {/* Right Panel - Chat Interface */}
       <div className="h-full flex-1 min-w-0">
         <ChatInterface 
-          systemPrompt={currentPrompt} 
           isExpanded={isLeftPanelCollapsed}
         />
       </div>
