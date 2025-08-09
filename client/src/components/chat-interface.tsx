@@ -101,11 +101,22 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
         });
       }
       
-      const response = await apiRequest('POST', `/api/chat/conversations/${conversationId}/messages`, { 
-        content: visionContent, // Send as vision content array
+      // Use the new chat analysis endpoint
+      const response = await apiRequest('POST', '/api/chat/analyze', { 
+        content: visionContent,
         systemPrompt 
       });
-      return response.json();
+      
+      const result = await response.json();
+      
+      // Save both user message and AI response to conversation
+      await apiRequest('POST', `/api/chat/conversations/${conversationId}/messages`, { 
+        content: content || '',
+        imageUrls: imageUrls || [],
+        aiResponse: result
+      });
+      
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 

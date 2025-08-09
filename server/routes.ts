@@ -2164,6 +2164,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chat/conversations/:conversationId/messages', getConversationMessages);
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
+  
+  // Chat analysis endpoint
+  const { analyzeChatChartsEndpoint } = await import('./routes/chat-analysis');
+  app.post('/api/chat/analyze', analyzeChatChartsEndpoint);
 
   const httpServer = createServer(app);
   return httpServer;

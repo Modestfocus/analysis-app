@@ -163,102 +163,59 @@ export const getConversationMessages = async (req: Request, res: Response) => {
   }
 };
 
-// Send message to conversation
+// Send message to conversation (updated to handle AI responses from chat analysis)
 export const sendChatMessage = async (req: Request, res: Response) => {
   try {
     const { conversationId } = req.params;
-    const { content, systemPrompt } = req.body;
-
-    // Extract text and images from vision content format
-    let textContent = '';
-    let imageUrls: string[] = [];
-    
-    if (Array.isArray(content)) {
-      // New vision content format
-      content.forEach((item: any) => {
-        if (item.type === 'text') {
-          textContent = item.text;
-        } else if (item.type === 'image_url') {
-          imageUrls.push(item.image_url.url);
-        }
-      });
-    } else if (typeof content === 'string') {
-      // Legacy text content
-      textContent = content;
-    }
+    const { content, imageUrls, aiResponse } = req.body;
 
     // Validate input
-    if (!textContent && imageUrls.length === 0) {
+    if (!content && (!imageUrls || imageUrls.length === 0)) {
       return res.status(400).json({ error: 'Message content or images required' });
     }
-
-    // Get conversation history for context
-    const conversationHistory = await storage.getConversationMessages(conversationId);
 
     // Create user message
     const userMessage = await storage.createChatMessage({
       conversationId,
       role: 'user',
-      content: textContent || '',
+      content: content || '',
       imageUrls: imageUrls || [],
     });
 
-    // Analyze with shared analysis service if images are provided or if it's a follow-up question
-    let assistantResponse = '';
-    let metadata = null;
-
-    if (imageUrls.length > 0 || textContent) {
-      try {
-        // Use shared analysis service
-        const { analyzeCharts } = await import('./services/analyze');
+    // If AI response is provided (from chat analysis), save it
+    if (aiResponse) {
+      // Format the AI response for display
+      let formattedResponse = '';
+      if (aiResponse.prediction && aiResponse.reasoning) {
+        formattedResponse = `## Technical Analysis\n\n`;
+        formattedResponse += `**Prediction:** ${aiResponse.prediction}\n`;
+        formattedResponse += `**Best Session:** ${aiResponse.session}\n`;
+        formattedResponse += `**Confidence:** ${aiResponse.confidence}\n\n`;
+        formattedResponse += `**Analysis:**\n${aiResponse.reasoning}`;
         
-        if (imageUrls.length > 0) {
-          // Chart analysis with images
-          const finalSystemPrompt = systemPrompt || await getSystemPromptMergedFromDB();
-          const result = await analyzeCharts({
-            imageUrls,
-            systemPrompt: finalSystemPrompt,
-            options: {
-              usePreprocessing: true,
-              useRAG: true,
-              stream: false
-            }
+        if (aiResponse.similarCharts && aiResponse.similarCharts.length > 0) {
+          formattedResponse += `\n\n**Similar Historical Patterns:**\n`;
+          aiResponse.similarCharts.forEach((chart: any, index: number) => {
+            formattedResponse += `${index + 1}. ${chart.filename} (${chart.instrument}, ${chart.timeframe}) - ${(chart.similarity * 100).toFixed(1)}% similarity\n`;
           });
-          
-          assistantResponse = typeof result.analysis === 'string' ? result.analysis : JSON.stringify(result.analysis, null, 2);
-          metadata = {
-            confidence: result.confidence || 0.85,
-            analysisType: 'chart_analysis',
-            similarChartsCount: result.similarCharts?.length || 0
-          };
-        } else {
-          // Text-only response using GPT-4o
-          const finalSystemPrompt = systemPrompt || await getSystemPromptMergedFromDB();
-          assistantResponse = await analyzeChartWithGPT(
-            finalSystemPrompt,
-            textContent,
-            [],
-            conversationHistory
-          );
-          
-          metadata = {
-            confidence: 0.8,
-            analysisType: 'text_response',
-          };
         }
-      } catch (error) {
-        assistantResponse = 'I apologize, but I encountered an error while analyzing your request. Please try again or contact support if the issue persists.';
-        console.error('Analysis error:', error);
+      } else {
+        formattedResponse = typeof aiResponse === 'object' ? JSON.stringify(aiResponse, null, 2) : String(aiResponse);
       }
-    }
 
-    // Create assistant message
-    const assistantMessage = await storage.createChatMessage({
-      conversationId,
-      role: 'assistant',
-      content: assistantResponse,
-      metadata,
-    });
+      // Create assistant message
+      const assistantMessage = await storage.createChatMessage({
+        conversationId,
+        role: 'assistant',
+        content: formattedResponse,
+        metadata: {
+          confidence: aiResponse.confidence === 'High' ? 0.9 : aiResponse.confidence === 'Medium' ? 0.7 : 0.5,
+          analysisType: 'chat_analysis',
+          visualMapsIncluded: aiResponse.visualMapsIncluded,
+          similarChartsCount: aiResponse.similarCharts?.length || 0
+        }
+      });
+    }
 
     // Update conversation timestamp
     await storage.updateChatConversation(conversationId, {
@@ -266,8 +223,8 @@ export const sendChatMessage = async (req: Request, res: Response) => {
     });
 
     res.json({
+      success: true,
       userMessage,
-      assistantMessage,
     });
   } catch (error) {
     console.error('Error sending message:', error);
