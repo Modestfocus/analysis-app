@@ -1390,6 +1390,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health check endpoint for analysis system
+  app.get("/api/analysis/health", async (req, res) => {
+    try {
+      const model = process.env.VISION_MODEL ?? "gpt-4o";
+      const mapsReady = { depth: isDepthModelReady(), edge: true, gradient: true };
+
+      const k = Number(req.query.k ?? 3);
+      const ragPreview = await previewSimilarCharts({ k }); // return count + sample ids only (no heavy data)
+
+      const injectText = await getInjectTextFromStore(); // same source as dashboard Inject
+      const BACKEND_RAG_PROMPT_BASE = `You are a professional trading chart analyst with expertise in advanced pattern recognition and multi-timeframe analysis.
+
+You will receive:
+- Original chart images (candlesticks, price action, indicators)
+- Depth maps (3D depth perception for pattern strength assessment)
+- Edge maps (structural boundaries, support/resistance lines)
+- Gradient maps (price momentum and directional bias analysis)
+- Historical similar patterns for context (RAG-enhanced analysis)
+
+CRITICAL ANALYSIS FRAMEWORK:
+1. **Pattern Recognition**: Identify chart patterns using all visual layers
+2. **Multi-Map Synthesis**: Combine insights from depth, edge, and gradient data
+3. **Historical Context**: Reference similar historical patterns for validation
+4. **Session Timing**: Determine optimal trading session based on setup
+5. **Risk Assessment**: Evaluate pattern strength and confluence factors
+
+RESPOND IN JSON FORMAT ONLY:
+{
+  "prediction": "Bullish/Bearish/Neutral",
+  "session": "Asia/London/New York/Sydney",
+  "confidence": "Low/Medium/High",
+  "reasoning": "Detailed technical analysis referencing all visual maps and historical patterns"
+}`;
+      
+      const merged = [(injectText || "").trim(), BACKEND_RAG_PROMPT_BASE].filter(Boolean).join("\n\n");
+
+      res.json({
+        model,
+        mapsReady,
+        rag: { k, found: ragPreview.count, sample: ragPreview.ids?.slice(0, 3) },
+        mergedPromptPreview: merged.slice(0, 160),
+        mergedPromptLength: merged.length
+      });
+    } catch (error) {
+      console.error('Health check error:', error);
+      res.status(500).json({ 
+        error: 'Health check failed', 
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   // Get charts grouped by instrument
   app.get('/api/charts/grouped', async (req, res) => {
     try {

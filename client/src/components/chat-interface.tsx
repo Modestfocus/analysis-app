@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import AnalysisResultRenderer from "@/components/analysis-result-renderer";
 
 // Component to display similar chart images
 function SimilarChartImage({ chartId, filename }: { chartId: number; filename: string }) {
@@ -442,73 +443,17 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                       </div>
                     )}
                     
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                    
-                    {/* Display analysis metadata */}
-                    {msg.metadata && (
-                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {msg.metadata.confidence && (
-                            <Badge variant="secondary">
-                              Confidence: {msg.metadata.confidence}%
-                            </Badge>
-                          )}
-                          {msg.metadata.similarCharts && (
-                            <Badge variant="outline">
-                              {msg.metadata.similarCharts.length} Similar Charts
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        {/* Clickable Similar Charts */}
-                        {msg.metadata.similarCharts && msg.metadata.similarCharts.length > 0 && (
-                          <div className="mt-2">
-                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Similar Historical Patterns:
-                            </h4>
-                            <div className="space-y-1">
-                              {msg.metadata.similarCharts.map((chart: any, index: number) => (
-                                <Dialog key={chart.chartId}>
-                                  <DialogTrigger asChild>
-                                    <button className="w-full text-left p-2 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-sm">
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-blue-600 dark:text-blue-400 hover:underline">
-                                          {index + 1}. {chart.filename}
-                                        </span>
-                                        <span className="text-green-600 dark:text-green-400 font-medium">
-                                          {(chart.similarity * 100).toFixed(1)}%
-                                        </span>
-                                      </div>
-                                      <div className="text-gray-600 dark:text-gray-400 text-xs">
-                                        {chart.instrument} • {chart.timeframe}
-                                      </div>
-                                    </button>
-                                  </DialogTrigger>
-                                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                                    <DialogTitle>
-                                      Similar Chart: {chart.filename} ({(chart.similarity * 100).toFixed(1)}% match)
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                      View the full chart image and depth map analysis for this similar trading pattern
-                                    </DialogDescription>
-                                    <div className="space-y-4 pb-4">
-                                      <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div>
-                                          <span className="font-medium">Instrument:</span> {chart.instrument}
-                                        </div>
-                                        <div>
-                                          <span className="font-medium">Timeframe:</span> {chart.timeframe}
-                                        </div>
-                                      </div>
-                                      <SimilarChartImage chartId={chart.chartId} filename={chart.filename} />
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                    {/* Display analysis using unified renderer */}
+                    {msg.metadata && msg.role === 'assistant' ? (
+                      <AnalysisResultRenderer
+                        result={msg.metadata}
+                        title="Chat Analysis"
+                        showSimilarCharts={true}
+                        compact={false}
+                        className="mt-3"
+                      />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
                     )}
                   </div>
                 </div>

@@ -17,6 +17,7 @@ import { DocumentReader } from "@/components/DocumentReader";
 import { NotesSection } from "@/components/NotesSection";
 import { TradingRulesSection } from "@/components/TradingRulesSection";
 import ThemeToggle from "@/components/ThemeToggle";
+import HealthCheckModal from "@/components/health-check-modal";
 import type { Chart, Timeframe, ChartBundle, BundleMetadata, Document } from "@shared/schema";
 
 export default function DashboardPage() {
@@ -286,6 +287,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <HealthCheckModal />
               <Button
                 variant="ghost"
                 size="sm"

@@ -414,20 +414,42 @@ export async function previewSimilarCharts({ k = 3 }: { k?: number } = {}) {
     // Get a sample chart to demonstrate RAG functionality
     const charts = await storage.getAllCharts();
     if (charts.length === 0) {
-      return { count: 0, message: "No charts in database" };
+      return { count: 0, message: "No charts in database", ids: [] };
     }
 
     const sampleChart = charts[0];
     if (sampleChart.embedding && sampleChart.embedding.length === 1024) {
       const similarCharts = await storage.findSimilarCharts(sampleChart.embedding, k);
-      return { count: similarCharts.length };
+      return { 
+        count: similarCharts.length, 
+        ids: similarCharts.map(sc => sc.chart.id) 
+      };
     } else {
-      return { count: 0, message: "Sample chart has no embedding" };
+      return { count: 0, message: "Sample chart has no embedding", ids: [] };
     }
   } catch (error) {
     console.error('Error previewing similar charts:', error);
-    return { count: 0, error: error instanceof Error ? error.message : 'Unknown error' };
+    return { count: 0, error: error instanceof Error ? error.message : 'Unknown error', ids: [] };
   }
+}
+
+/**
+ * Check if messages contain image parts - defensive check
+ */
+export function messageHasImageParts(messages: any[]): boolean {
+  if (!Array.isArray(messages)) return false;
+  
+  return messages.some(message => {
+    if (typeof message === 'object' && message.content) {
+      if (Array.isArray(message.content)) {
+        return message.content.some((part: any) => 
+          part.type === 'image_url' || 
+          (part.image_url && part.image_url.url)
+        );
+      }
+    }
+    return false;
+  });
 }
 
 /**

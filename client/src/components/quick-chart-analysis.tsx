@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DragDropZone from "@/components/drag-drop-zone";
+import AnalysisResultRenderer from "@/components/analysis-result-renderer";
 import { Bolt, Camera, X, Zap, RefreshCw } from "lucide-react";
 
 interface QuickChartAnalysisProps {
@@ -276,21 +277,13 @@ export function QuickChartAnalysis({
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">Analysis Results</h3>
               {analysisResults.map((result, index) => (
-                <div key={index} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-xs">
-                      Chart {index + 1}
-                    </Badge>
-                    {result.timeframe && (
-                      <Badge variant="secondary" className="text-xs">
-                        {result.timeframe}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {result.analysis || "Analysis completed"}
-                  </div>
-                </div>
+                <AnalysisResultRenderer
+                  key={index}
+                  result={result}
+                  title={`Chart ${index + 1}${result.timeframe ? ` (${result.timeframe})` : ''}`}
+                  showSimilarCharts={true}
+                  className="mb-4"
+                />
               ))}
             </div>
           )}
