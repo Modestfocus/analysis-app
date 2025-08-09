@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [injectText, setInjectText] = useState<string>('');
   const [savedDefaultPrompt, setSavedDefaultPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
   const [savedInjectText, setSavedInjectText] = useState<string>('');
+  const [savedCurrentPrompt, setSavedCurrentPrompt] = useState<string>("You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.");
   const [showDefaultPromptInfo, setShowDefaultPromptInfo] = useState<boolean>(false);
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState<boolean>(false);
   const currentPrompt = `${defaultPrompt}${injectText ? `\n\n${injectText}` : ''}`;
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const savedDefault = localStorage.getItem('systemPrompt_default');
     const savedInject = localStorage.getItem('systemPrompt_inject');
+    const savedCurrent = localStorage.getItem('systemPrompt_current');
     
     if (savedDefault) {
       setDefaultPrompt(savedDefault);
@@ -54,6 +56,10 @@ export default function DashboardPage() {
     if (savedInject) {
       setInjectText(savedInject);
       setSavedInjectText(savedInject);
+    }
+    
+    if (savedCurrent) {
+      setSavedCurrentPrompt(savedCurrent);
     }
   }, []);
 
@@ -482,7 +488,7 @@ export default function DashboardPage() {
                                     selected={selectedCharts.has(chart.id)}
                                     onSelect={(selected) => handleChartSelect(chart.id, selected)}
                                     onAnalyze={(results) => setAnalysisResults(results)}
-                                    systemPrompt={currentPrompt}
+                                    systemPrompt={savedCurrentPrompt}
                                   />
                                 ))}
                               </div>
@@ -511,7 +517,7 @@ export default function DashboardPage() {
                                     key={bundle.id}
                                     bundle={bundle}
                                     onAnalyze={(results) => setAnalysisResults(results)}
-                                    systemPrompt={currentPrompt}
+                                    systemPrompt={savedCurrentPrompt}
                                   />
                                 ))}
                               </div>
@@ -985,11 +991,13 @@ export default function DashboardPage() {
                               setInjectText('');
                               setSavedDefaultPrompt(originalDefault);
                               setSavedInjectText('');
+                              setSavedCurrentPrompt(originalDefault);
                               setViewMode('default');
                               
                               // Clear localStorage
                               localStorage.removeItem('systemPrompt_default');
                               localStorage.removeItem('systemPrompt_inject');
+                              localStorage.removeItem('systemPrompt_current');
                               
                               toast({
                                 title: "Reset Complete",
@@ -1007,20 +1015,29 @@ export default function DashboardPage() {
                                 : 'bg-[#706870]'
                             }`}
                             onClick={() => {
-                              // Save current state
+                              // Create the final merged prompt
+                              const finalPrompt = currentPrompt;
+                              
+                              // Save the merged prompt as the new current prompt
+                              setSavedCurrentPrompt(finalPrompt);
                               setSavedDefaultPrompt(defaultPrompt);
                               setSavedInjectText(injectText);
                               
                               // Store in localStorage for persistence
+                              localStorage.setItem('systemPrompt_current', finalPrompt);
                               localStorage.setItem('systemPrompt_default', defaultPrompt);
                               localStorage.setItem('systemPrompt_inject', injectText);
+                              
+                              // Clear the inject text after saving to make it permanent
+                              setInjectText('');
+                              localStorage.setItem('systemPrompt_inject', '');
                               
                               // Show different message based on whether inject text exists
                               const hasInjectedText = injectText.trim().length > 0;
                               toast({
                                 title: "System Prompt Saved",
                                 description: hasInjectedText 
-                                  ? "Your system prompt with injected text has been saved successfully."
+                                  ? "Your system prompt with injected text has been saved permanently. The injected text is now part of your system prompt."
                                   : "Your system prompt configuration has been saved successfully.",
                               });
                             }}
@@ -1045,7 +1062,7 @@ export default function DashboardPage() {
 
       {/* Right Panel - Chat Interface */}
       <ChatInterface 
-        systemPrompt={currentPrompt} 
+        systemPrompt={savedCurrentPrompt} 
         isExpanded={isLeftPanelCollapsed}
       />
     </div>
