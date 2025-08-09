@@ -1018,22 +1018,30 @@ export default function DashboardPage() {
                               // Create the final merged prompt
                               const finalPrompt = currentPrompt;
                               
+                              // Check if we have injected text to merge
+                              const hasInjectedText = injectText.trim().length > 0;
+                              
+                              if (hasInjectedText) {
+                                // When saving with injected text, merge it into the default prompt
+                                // and clear the inject field so it becomes permanent
+                                setDefaultPrompt(finalPrompt);
+                                setSavedDefaultPrompt(finalPrompt);
+                                setInjectText('');
+                                setSavedInjectText('');
+                              } else {
+                                // When no inject text, just save the current state
+                                setSavedDefaultPrompt(defaultPrompt);
+                                setSavedInjectText(injectText);
+                              }
+                              
                               // Save the merged prompt as the new current prompt
                               setSavedCurrentPrompt(finalPrompt);
-                              setSavedDefaultPrompt(defaultPrompt);
-                              setSavedInjectText(injectText);
                               
                               // Store in localStorage for persistence
                               localStorage.setItem('systemPrompt_current', finalPrompt);
-                              localStorage.setItem('systemPrompt_default', defaultPrompt);
-                              localStorage.setItem('systemPrompt_inject', injectText);
+                              localStorage.setItem('systemPrompt_default', hasInjectedText ? finalPrompt : defaultPrompt);
+                              localStorage.setItem('systemPrompt_inject', hasInjectedText ? '' : injectText);
                               
-                              // Clear the inject text after saving to make it permanent
-                              setInjectText('');
-                              localStorage.setItem('systemPrompt_inject', '');
-                              
-                              // Show different message based on whether inject text exists
-                              const hasInjectedText = injectText.trim().length > 0;
                               toast({
                                 title: "System Prompt Saved",
                                 description: hasInjectedText 
