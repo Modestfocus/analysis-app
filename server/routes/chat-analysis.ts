@@ -41,7 +41,7 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       console.log(`💬 Follow-up chat question - conversation: ${conversationId}`);
       
       // For text-only follow-ups, use a simplified OpenAI call without vision
-      const OpenAI = require('openai');
+      const { OpenAI } = await import('openai');
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       
       const textContent = content.find(part => part.type === 'text')?.text || '';
