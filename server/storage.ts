@@ -1056,9 +1056,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>> {
-    // For database implementation, we would need to implement vector similarity search
-    // For now, return empty array as this requires specialized vector database functionality
-    return [];
+    // Get all charts with embeddings from database
+    const allCharts = await db.select().from(charts);
+    const similarities: Array<{ chart: Chart; similarity: number }> = [];
+
+    for (const chart of allCharts) {
+      if (!chart.embedding || !Array.isArray(chart.embedding)) continue;
+      
+      const similarity = this.calculateCosineSimilarity(embedding, chart.embedding);
+      if (similarity > 0.1) { // Only include charts with some similarity
+        similarities.push({ chart, similarity });
+      }
+    }
+
+    return similarities
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit);
+  }
+
+  private calculateCosineSimilarity(a: number[], b: number[]): number {
+    if (a.length !== b.length) return 0;
+    
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    
+    for (let i = 0; i < a.length; i++) {
+      dotProduct += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    
+    const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+    return magnitude === 0 ? 0 : dotProduct / magnitude;
   }
 }
 
