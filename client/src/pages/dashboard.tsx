@@ -224,7 +224,7 @@ export default function DashboardPage() {
   console.log('Dashboard render - selectedTimeframe:', selectedTimeframe, 'charts.length:', charts.length, 'charts:', charts);
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1117] relative">
+    <div className="h-screen flex bg-slate-50 dark:bg-[#0d1117] relative overflow-hidden">
       {/* Floating Toggle Button - Only shown when left panel is collapsed */}
       <div className={`absolute top-4 left-4 z-50 transition-all duration-500 ease-in-out ${
         isLeftPanelCollapsed ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8 pointer-events-none'
@@ -241,7 +241,7 @@ export default function DashboardPage() {
       </div>
       
       {/* Left Panel */}
-      <div className={`transition-all duration-500 ease-in-out flex flex-col dark:bg-[#0d1117] ${
+      <div className={`transition-all duration-500 ease-in-out flex flex-col dark:bg-[#0d1117] h-full overflow-y-auto ${
         isLeftPanelCollapsed ? 'w-0 min-w-0 opacity-0 overflow-hidden' : 'flex-1 min-w-0 opacity-100'
       }`}>
         {/* Navigation */}
@@ -1056,10 +1056,12 @@ export default function DashboardPage() {
       }`}></div>
 
       {/* Right Panel - Chat Interface */}
-      <ChatInterface 
-        systemPrompt={savedCurrentPrompt} 
-        isExpanded={isLeftPanelCollapsed}
-      />
+      <div className="h-full flex-1 min-w-0">
+        <ChatInterface 
+          systemPrompt={savedCurrentPrompt} 
+          isExpanded={isLeftPanelCollapsed}
+        />
+      </div>
     </div>
   );
 }

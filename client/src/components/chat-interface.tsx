@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { 
   Bot, 
   User, 
@@ -318,6 +318,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                               />
                             </DialogTrigger>
                             <DialogContent className="max-w-4xl">
+                              <DialogTitle className="sr-only">Chart Image {index + 1}</DialogTitle>
                               <img
                                 src={url}
                                 alt={`Full chart ${index + 1}`}
