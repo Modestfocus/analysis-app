@@ -125,20 +125,23 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       });
     }
 
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        setUploadedImages(prev => [...prev, dataUrl]);
-        
-        // Auto-start conversation if this is the first image
-        if (!activeConversationId) {
-          const title = `Chart Analysis - ${new Date().toLocaleDateString()}`;
-          createConversationMutation.mutate(title);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    if (validFiles.length > 0) {
+      // Auto-start conversation if this is the first image and no conversation exists
+      if (!activeConversationId) {
+        const title = `Chart Analysis - ${new Date().toLocaleDateString()}`;
+        createConversationMutation.mutate(title);
+      }
+
+      // Process each valid file
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
+          setUploadedImages(prev => [...prev, dataUrl]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
   };
 
   // Handle drag and drop
@@ -156,25 +159,31 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
     const items = e.clipboardData?.items;
     if (!items) return;
 
+    const imageFiles: File[] = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (item.type.indexOf('image') === 0) {
         const file = item.getAsFile();
         if (file) {
-          handleFileUpload(new FileList());
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const dataUrl = e.target?.result as string;
-            setUploadedImages(prev => [...prev, dataUrl]);
-            
-            if (!activeConversationId) {
-              const title = `Chart Analysis - ${new Date().toLocaleDateString()}`;
-              createConversationMutation.mutate(title);
-            }
-          };
-          reader.readAsDataURL(file);
+          imageFiles.push(file);
         }
       }
+    }
+
+    if (imageFiles.length > 0) {
+      imageFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
+          setUploadedImages(prev => [...prev, dataUrl]);
+          
+          if (!activeConversationId) {
+            const title = `Chart Analysis - ${new Date().toLocaleDateString()}`;
+            createConversationMutation.mutate(title);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
@@ -225,43 +234,45 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {!activeConversationId ? (
-          <div 
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive 
-                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
-                : 'border-gray-300 dark:border-gray-600'
-            }`}
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            onDragEnter={() => setDragActive(true)}
-            onDragLeave={() => setDragActive(false)}
+        {/* Always show upload area */}
+        <div 
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            dragActive 
+              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+              : 'border-gray-300 dark:border-gray-600'
+          }`}
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onDragEnter={() => setDragActive(true)}
+          onDragLeave={() => setDragActive(false)}
+        >
+          <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Start Your Analysis
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Drop a chart image here, paste from clipboard, or upload manually
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="mx-auto"
           >
-            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Start Your Analysis
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Drop a chart image here, paste from clipboard, or upload manually
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="mx-auto"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Chart
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-              className="hidden"
-            />
-          </div>
-        ) : (
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Chart
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+            className="hidden"
+          />
+        </div>
+
+        {/* Messages */}
+        {activeConversationId && (
           <>
             {messagesLoading ? (
               <div className="flex justify-center py-8">
