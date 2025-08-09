@@ -66,7 +66,10 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
   // Create new conversation mutation
   const createConversationMutation = useMutation({
-    mutationFn: (title: string) => apiRequest('/api/chat/conversations', 'POST', { title }),
+    mutationFn: async (title: string) => {
+      const response = await apiRequest('POST', '/api/chat/conversations', { title });
+      return response.json();
+    },
     onSuccess: (conversation: any) => {
       setActiveConversationId(conversation.id);
       queryClient.invalidateQueries({ queryKey: ['/api/chat/conversations'] });
@@ -75,15 +78,18 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: ({ conversationId, content, imageUrls }: { 
+    mutationFn: async ({ conversationId, content, imageUrls }: { 
       conversationId: string; 
       content: string; 
       imageUrls?: string[] 
-    }) => apiRequest(`/api/chat/conversations/${conversationId}/messages`, 'POST', { 
-      content, 
-      imageUrls, 
-      systemPrompt 
-    }),
+    }) => {
+      const response = await apiRequest('POST', `/api/chat/conversations/${conversationId}/messages`, { 
+        content, 
+        imageUrls, 
+        systemPrompt 
+      });
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
         queryKey: ['/api/chat/conversations', activeConversationId, 'messages'] 
