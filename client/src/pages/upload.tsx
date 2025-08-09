@@ -660,7 +660,7 @@ export default function UploadPage() {
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      Save Charts Only
+                      Save Charts
                     </>
                   )}
                 </Button>
