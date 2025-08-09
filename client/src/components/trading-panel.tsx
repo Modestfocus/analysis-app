@@ -345,9 +345,12 @@ export default function TradingPanel({
       
       formData.append('timeframeMapping', JSON.stringify(timeframeMapping));
       
-      // Add current prompt to the request
-      if (currentPrompt) {
+      // Always add the current system prompt to the request - this is critical for proper analysis
+      if (currentPrompt && currentPrompt.trim().length > 0) {
+        console.log('🔧 Using custom system prompt for Quick Analysis:', currentPrompt.substring(0, 100) + '...');
         formData.append('system_prompt', currentPrompt);
+      } else {
+        console.warn('⚠️ No system prompt provided - will use backend default');
       }
 
       const response = await fetch('/api/analyze/quick', {

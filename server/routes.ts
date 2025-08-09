@@ -64,7 +64,7 @@ function extractInstrumentFromResponse(gptResponse: string): string | null {
     const instruments = ["XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF", 
                         "AUDUSD", "NZDUSD", "USDCAD", "EURJPY", "GBPJPY", "EURGBP",
                         "BTCUSD", "ETHUSD", "SPX500", "NAS100", "US30"];
-    
+
     for (const instrument of instruments) {
       if (gptResponse.toUpperCase().includes(instrument)) {
         return instrument;
@@ -93,13 +93,13 @@ function extractInstrumentFromFilename(filename: string): string {
     "AUDUSD", "NZDUSD", "USDCAD", "EURJPY", "GBPJPY", "EURGBP",
     "BTCUSD", "ETHUSD", "SPX500", "NAS100", "US30"
   ];
-  
+
   for (const instrument of commonInstruments) {
     if (upperFilename.includes(instrument)) {
       return instrument;
     }
   }
-  
+
   // Default fallback
   return "UNKNOWN";
 }
@@ -111,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      
+
       if (!username || !password) {
         return res.status(400).json({ error: "Username and password required" });
       }
@@ -131,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, password, email } = req.body;
-      
+
       if (!username || !password) {
         return res.status(400).json({ error: "Username and password required" });
       }
@@ -165,13 +165,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/wallet-login", async (req, res) => {
     try {
       const { walletAddress, walletType } = req.body;
-      
+
       if (!walletAddress || !walletType) {
         return res.status(400).json({ error: "Wallet address and type required" });
       }
 
       let user = await storage.getUserByWalletAddress(walletAddress);
-      
+
       if (!user) {
         // Create new user for this wallet
         user = await storage.createUser({
@@ -191,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/link-wallet", async (req, res) => {
     try {
       const { userId, walletAddress, walletType } = req.body;
-      
+
       if (!userId || !walletAddress || !walletType) {
         return res.status(400).json({ error: "User ID, wallet address and type required" });
       }
@@ -269,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const filename = req.params.filename;
       console.log('Serving document with filename:', filename);
-      
+
       const documentFile = await objectStorageService.getDocumentFile(`/documents/${filename}`);
       objectStorageService.downloadObject(documentFile, res);
     } catch (error) {
@@ -393,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/edgemaps', express.static(edgemapsDir));
   app.use('/gradientmaps', express.static(gradientmapsDir));
   app.use('/temp', express.static(tempDir));
-  
+
   // Serve attached assets (background images, etc.)
   const attachedAssetsDir = path.join(process.cwd(), 'attached_assets');
   app.use('/attached_assets', express.static(attachedAssetsDir));
@@ -402,7 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/upload', upload.array('charts', 10), async (req, res) => {
     try {
 
-      
+
       const files = req.files as Express.Multer.File[];
       if (!files || files.length === 0) {
 
@@ -411,9 +411,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { timeframe, timeframeMapping, instrument: manualInstrument, session } = req.body;
       console.log(`📝 Upload request - Timeframe: "${timeframe}", TimeframeMapping: "${timeframeMapping}", Manual Instrument: "${manualInstrument}", Session: "${session}"`);
-      
+
       let parsedTimeframeMapping: Record<string, string> = {};
-      
+
       // Handle individual timeframe mapping (new method)
       if (timeframeMapping) {
         try {
@@ -423,7 +423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: 'Invalid timeframeMapping JSON format' });
         }
       }
-      
+
       // Validate timeframe if provided (old method fallback)
       if (timeframe && timeframe !== "undefined") {
         const validTimeframes = ["5M", "15M", "1H", "4H", "Daily"];
@@ -433,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       // Check if we have at least one valid method
       if (!timeframeMapping && (!timeframe || timeframe === "undefined")) {
         return res.status(400).json({ message: 'Either timeframe or timeframeMapping is required' });
@@ -448,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get timeframe for this specific file (individual mapping) or use global timeframe
         const fileTimeframe = parsedTimeframeMapping[file.originalname] || timeframe || "5M";
-        
+
         // Validate individual timeframe
         const validTimeframes = ["5M", "15M", "1H", "4H", "Daily"];
         if (!validTimeframes.includes(fileTimeframe)) {
@@ -492,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const imagePath = path.join(uploadsDir, chart.filename);
           const depthMapFilename = `depth_${chart.filename.replace(/\.[^/.]+$/, '.png')}`;
           const depthMapPath = path.join(depthmapsDir, depthMapFilename);
-          
+
           const depthResult = await generateDepthMap(imagePath, depthMapPath);
           if (depthResult.success) {
             await storage.updateChart(chart.id, { depthMapPath: `/depthmaps/${depthMapFilename}` });
@@ -549,7 +549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const imagePath = path.join(uploadsDir, chart.filename);
       const result = await generateCLIPEmbedding(imagePath);
-      
+
       if (result.embedding && result.embedding.length === 1024) {
         await storage.updateChart(chartId, { embedding: result.embedding });
 
@@ -584,12 +584,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imagePath = path.join(uploadsDir, chart.filename);
       const depthMapFilename = `depth_${chart.filename.replace(/\.[^/.]+$/, '.png')}`;
       const depthMapPath = path.join(depthmapsDir, depthMapFilename);
-      
+
       const result = await generateDepthMap(imagePath, depthMapPath);
-      
+
       if (result.success) {
         await storage.updateChart(chartId, { depthMapPath: `/depthmaps/${depthMapFilename}` });
-        
+
         res.json({
           success: true,
           depthMapPath: `/depthmaps/${depthMapFilename}`,
@@ -612,11 +612,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/depth/batch', async (req, res) => {
     try {
       const { instrument, timeframe } = req.body;
-      
+
       // Get charts to process
       const charts = await storage.getAllCharts(timeframe, instrument);
       const unprocessedCharts = charts.filter(chart => !chart.depthMapPath);
-      
+
       if (unprocessedCharts.length === 0) {
         return res.json({
           success: true,
@@ -626,15 +626,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const results = [];
-      
+
       for (const chart of unprocessedCharts) {
         const imagePath = path.join(uploadsDir, chart.filename);
         const depthMapFilename = `depth_${chart.filename.replace(/\.[^/.]+$/, '.png')}`;
         const depthMapPath = path.join(depthmapsDir, depthMapFilename);
-        
+
         try {
           const result = await generateDepthMap(imagePath, depthMapPath);
-          
+
           if (result.success) {
             await storage.updateChart(chart.id, { depthMapPath: `/depthmaps/${depthMapFilename}` });
             results.push({
@@ -671,7 +671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         failed: results.length - successCount,
         results: results
       });
-      
+
     } catch (error) {
       console.error('Batch depth map error:', error);
       res.status(500).json({ message: 'Batch depth map generation failed: ' + (error as Error).message });
@@ -697,12 +697,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!id) {
           return res.status(400).json({ message: 'Chart ID is required for saved analysis' });
         }
-        
+
         const chart = await storage.getChart(parseInt(id));
         if (!chart) {
           return res.status(404).json({ message: 'Chart not found' });
         }
-        
+
         chartId = parseInt(id);
         chartImagePath = path.join(uploadsDir, chart.filename);
       }
@@ -729,14 +729,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (similarChart.chart.bundleId && !processedBundles.has(similarChart.chart.bundleId)) {
           // This chart belongs to a bundle - include the entire bundle
           processedBundles.add(similarChart.chart.bundleId);
-          
+
           const bundle = await storage.getBundle(similarChart.chart.bundleId);
           const bundleCharts = await storage.getChartsByBundleId(similarChart.chart.bundleId);
-          
+
           if (bundle && bundleCharts.length > 0) {
             // Get analysis for this bundle if it exists
             const bundleAnalysis = await storage.getAnalysisByBundleId(similarChart.chart.bundleId);
-            
+
             enrichedSimilarCharts.push({
               type: 'bundle' as const,
               bundle,
@@ -765,7 +765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const depthMapFilename = `depth-${path.basename(chartImagePath)}`;
         const depthMapPath = path.join(depthmapsDir, depthMapFilename);
         await generateDepthMap(chartImagePath, depthMapPath);
-        
+
         const depthBuffer = await fs.readFile(depthMapPath);
         depthMapBase64 = depthBuffer.toString('base64');
       }
@@ -846,16 +846,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/analyze/multi-chart', async (req, res) => {
     try {
       const { chartIds } = req.body;
-      
+
       if (!chartIds || !Array.isArray(chartIds) || chartIds.length === 0) {
         return res.status(400).json({ message: 'Chart IDs array is required' });
       }
 
       console.log(`📊 Starting multi-chart analysis for ${chartIds.length} charts`);
-      
+
       // 1. Get all charts and process them
       const multiChartData: MultiChartData[] = [];
-      
+
       for (const chartId of chartIds) {
         const chart = await storage.getChart(parseInt(chartId));
         if (!chart) {
@@ -864,7 +864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const chartImagePath = path.join(uploadsDir, chart.filename);
-        
+
         // Read original chart
         const originalBuffer = await fs.readFile(chartImagePath);
         const originalBase64 = originalBuffer.toString('base64');
@@ -996,7 +996,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeframeMapping = req.body.timeframeMapping ? JSON.parse(req.body.timeframeMapping) : {};
       const instrument = req.body.instrument || 'UNKNOWN';
       const session = req.body.session;
-      const customSystemPrompt = req.body.system_prompt;
+      // Extract custom system prompt if provided
+      const customSystemPrompt = req.body.system_prompt as string | undefined;
+      if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
+        console.log('📋 Custom system prompt provided (length:', customSystemPrompt.length, 'chars)');
+        console.log('📋 Prompt preview:', customSystemPrompt.substring(0, 200) + '...');
+      } else {
+        console.log('⚠️ No custom system prompt provided, using default');
+      }
+
 
       console.log(`🚀 Quick Analysis: Processing ${files.length} charts with complete flow (no database save)`);
 
@@ -1015,7 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🧠 Generating CLIP embedding for ${file.originalname}`);
         const embeddingResult = await generateCLIPEmbedding(file.path);
         let similarCharts: Array<{ chart: any; similarity: number }> = [];
-        
+
         if (embeddingResult.embedding && embeddingResult.embedding.length === 1024) {
           console.log(`🔍 Performing vector similarity search for ${file.originalname}`);
           similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3);
@@ -1035,10 +1043,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const tempDepthPath = path.join(process.cwd(), 'server', 'temp', `quick_depth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
           await fs.mkdir(path.dirname(tempDepthPath), { recursive: true });
-          
+
           console.log(`🌀 Generating MiDaS depth map for ${file.originalname}`);
           const depthResult = await generateDepthMap(file.path, tempDepthPath);
-          
+
           if (depthResult.success) {
             const depthBuffer = await fs.readFile(tempDepthPath);
             depthBase64 = depthBuffer.toString('base64');
@@ -1051,11 +1059,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .blur(2)
               .png()
               .toFile(tempDepthPath);
-            
+
             const depthBuffer = await fs.readFile(tempDepthPath);
             depthBase64 = depthBuffer.toString('base64');
           }
-          
+
           // Clean up temp depth file
           await fs.unlink(tempDepthPath).catch(() => {});
         } catch (err) {
@@ -1073,7 +1081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let edgeBase64: string | undefined;
         try {
           const tempEdgePath = path.join(process.cwd(), 'server', 'temp', `quick_edge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
-          
+
           console.log(`🔲 Generating edge map for ${file.originalname}`);
           // Enhanced edge detection using Sobel operator
           await sharp(tempGrayscalePath)
@@ -1085,11 +1093,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .normalise()
             .png()
             .toFile(tempEdgePath);
-          
+
           const edgeBuffer = await fs.readFile(tempEdgePath);
           edgeBase64 = edgeBuffer.toString('base64');
           console.log(`✓ Generated edge map for ${file.originalname}`);
-          
+
           // Clean up temp edge file
           await fs.unlink(tempEdgePath).catch(() => {});
         } catch (err) {
@@ -1100,7 +1108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let gradientBase64: string | undefined;
         try {
           const tempGradientPath = path.join(process.cwd(), 'server', 'temp', `quick_gradient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
-          
+
           console.log(`📉 Generating gradient map for ${file.originalname}`);
           // Sobel X operator for horizontal gradient (price momentum)
           await sharp(tempGrayscalePath)
@@ -1112,11 +1120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .normalise()
             .png()
             .toFile(tempGradientPath);
-          
+
           const gradientBuffer = await fs.readFile(tempGradientPath);
           gradientBase64 = gradientBuffer.toString('base64');
           console.log(`✓ Generated gradient map for ${file.originalname}`);
-          
+
           // Clean up temp gradient file
           await fs.unlink(tempGradientPath).catch(() => {});
         } catch (err) {
@@ -1151,12 +1159,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 7. Compile all into structured GPT-4o system prompt (same as Upload page analysis)
       console.log(`🔍 Starting complete visual analysis for ${tempChartData.length} charts`);
       console.log(`📊 Visual maps generated: ${tempChartData.filter(c => c.depth).length} depth, ${tempChartData.filter(c => c.edge).length} edge, ${tempChartData.filter(c => c.gradient).length} gradient`);
-      
-      // Use the first chart's similar charts for overall context (or combine if needed)
-      const primarySimilarCharts = tempChartData.length > 0 ? tempChartData[0].similarCharts || [] : [];
-      
+
       // 8. Send complete visual stack to GPT-4o for live reasoning
-      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, primarySimilarCharts, customSystemPrompt);
+      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, [], customSystemPrompt); // Pass customSystemPrompt here
 
       // 9. Display GPT-4o's response in the Analysis Reasoning panel
       res.json({
@@ -1164,17 +1169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isQuickAnalysis: true,
         chartCount: tempChartData.length,
         prediction,
-        similarCharts: primarySimilarCharts.slice(0, 3).map((sc: { chart: any; similarity: number }) => ({
-          chartId: sc.chart.id,
-          filename: sc.chart.originalName || sc.chart.filename,
-          timeframe: sc.chart.timeframe,
-          instrument: sc.chart.instrument,
-          session: sc.chart.session,
-          similarity: sc.similarity,
-          filePath: `/uploads/${sc.chart.filename}`,
-          depthMapUrl: sc.chart.depthMapPath,
-          comment: sc.chart.comment
-        })),
+        similarCharts: [], // No similar charts for quick analysis
         message: `Complete quick analysis for ${tempChartData.length} chart(s) - processed with full visual stack (CLIP, depth, edge, gradient) without saving to dashboard`,
         visualMapsIncluded: {
           depth: tempChartData.filter(c => c.depth).length,
@@ -1199,7 +1194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const chartId = parseInt(req.params.chartId);
       const customSystemPrompt = req.body.system_prompt;
-      
+
       if (isNaN(chartId)) {
         return res.status(400).json({ message: 'Invalid chart ID' });
       }
@@ -1211,10 +1206,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const chartImagePath = path.join(uploadsDir, chart.filename);
-      
+
       // 2. RAG Retrieval: Get similar charts using vector embeddings
       let similarCharts: Array<{ chart: any; similarity: number }> = [];
-      
+
       if (chart.embedding && chart.embedding.length === 1024) {
         similarCharts = await storage.findSimilarCharts(chart.embedding, 3);
         console.log(`Found ${similarCharts.length} similar charts for RAG context`);
@@ -1276,28 +1271,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/analyses', async (req, res) => {
     try {
       const analyses = await storage.getAllAnalyses();
-      
+
       // Enrich analyses with chart data
       const enrichedAnalyses = await Promise.all(analyses.map(async (analysis) => {
         let chart = null;
         if (analysis.chartId) {
           chart = await storage.getChart(analysis.chartId);
         }
-        
+
         let prediction = null;
         try {
           prediction = JSON.parse(analysis.gptAnalysis);
         } catch (e) {
           console.error('Failed to parse GPT analysis:', e);
         }
-        
+
         let similarCharts = [];
         try {
           similarCharts = JSON.parse(analysis.similarCharts);
         } catch (e) {
           console.error('Failed to parse similar charts:', e);
         }
-        
+
         return {
           id: analysis.id,
           chartId: analysis.chartId,
@@ -1319,7 +1314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } : null
         };
       }));
-      
+
       res.json({
         success: true,
         analyses: enrichedAnalyses
@@ -1340,7 +1335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔍 Filter request - Timeframe: "${timeframe}", Instrument: "${instrument}"`);
       const charts = await storage.getAllCharts(timeframe as string, instrument as string);
       console.log(`📊 Found ${charts.length} charts for filter`);
-      
+
       // Include all map paths for comprehensive analysis
       const chartsWithPaths = charts.map(chart => ({
         ...chart,
@@ -1349,7 +1344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         edgeMapUrl: chart.edgeMapPath,
         gradientMapUrl: chart.gradientMapPath
       }));
-      
+
       res.json({ charts: chartsWithPaths });
     } catch (error) {
       console.error('Get charts error:', error);
@@ -1364,12 +1359,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(chartId)) {
         return res.status(400).json({ error: 'Invalid chart ID' });
       }
-      
+
       const chart = await storage.getChart(chartId);
       if (!chart) {
         return res.status(404).json({ error: 'Chart not found' });
       }
-      
+
       // Include all map paths
       const chartWithPaths = {
         ...chart,
@@ -1378,7 +1373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         edgeMapUrl: chart.edgeMapPath,
         gradientMapUrl: chart.gradientMapPath
       };
-      
+
       res.json(chartWithPaths);
     } catch (error) {
       console.error('Get chart error:', error);
@@ -1397,7 +1392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         acc[chart.instrument].push(chart);
         return acc;
       }, {} as Record<string, typeof allCharts>);
-      
+
       res.json({ grouped });
     } catch (error) {
       console.error('Get grouped charts error:', error);
@@ -1410,12 +1405,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const chartId = parseInt(req.params.id);
       const { comment } = req.body;
-      
+
       const updatedChart = await storage.updateChart(chartId, { comment });
       if (!updatedChart) {
         return res.status(404).json({ message: 'Chart not found' });
       }
-      
+
       res.json({ success: true, chart: updatedChart });
     } catch (error) {
       console.error('Update chart error:', error);
@@ -1428,7 +1423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const chartId = parseInt(req.params.id);
       const chart = await storage.getChart(chartId);
-      
+
       if (!chart) {
         return res.status(404).json({ message: 'Chart not found' });
       }
@@ -1436,7 +1431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete files
       const imagePath = path.join(uploadsDir, chart.filename);
       await fs.unlink(imagePath).catch(() => {});
-      
+
       if (chart.depthMapPath) {
         const depthPath = path.join(process.cwd(), 'server', chart.depthMapPath);
         await fs.unlink(depthPath).catch(() => {});
@@ -1464,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (chart) {
           const imagePath = path.join(uploadsDir, chart.filename);
           await fs.unlink(imagePath).catch(() => {});
-          
+
           if (chart.depthMapPath) {
             const depthPath = path.join(process.cwd(), 'server', chart.depthMapPath);
             await fs.unlink(depthPath).catch(() => {});
@@ -1484,7 +1479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/bundles', async (req, res) => {
     try {
       const { id, instrument, session, chartIds } = req.body;
-      
+
       if (!id || !instrument || !Array.isArray(chartIds)) {
         return res.status(400).json({ message: 'Bundle ID, instrument, and chart IDs are required' });
       }
@@ -1492,7 +1487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create bundle metadata
       const charts = await Promise.all(chartIds.map(id => storage.getChart(id)));
       const validCharts = charts.filter(chart => chart !== undefined) as Chart[];
-      
+
       if (validCharts.length === 0) {
         return res.status(400).json({ message: 'No valid charts found' });
       }
@@ -1531,7 +1526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { instrument } = req.query;
       const bundles = await storage.getAllBundles(instrument as string);
-      
+
       // Parse metadata for each bundle
       const bundlesWithMetadata = bundles.map(bundle => ({
         ...bundle,
@@ -1549,7 +1544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const bundleId = req.params.id;
       const bundle = await storage.getBundle(bundleId);
-      
+
       if (!bundle) {
         return res.status(404).json({ message: 'Bundle not found' });
       }
@@ -1576,7 +1571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bundleId = req.params.bundleId;
       const customSystemPrompt = req.body.system_prompt;
       const bundle = await storage.getBundle(bundleId);
-      
+
       if (!bundle) {
         return res.status(404).json({ message: 'Bundle not found' });
       }
@@ -1591,7 +1586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const imagePath = path.join(uploadsDir, chart.filename);
         const imageBuffer = await fs.readFile(imagePath);
         const base64Image = imageBuffer.toString('base64');
-        
+
         let depthMapBase64: string | undefined;
         if (chart.depthMapPath) {
           try {
@@ -1654,7 +1649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const bundleId = req.params.id;
       const bundle = await storage.getBundle(bundleId);
-      
+
       if (!bundle) {
         return res.status(404).json({ message: 'Bundle not found' });
       }
@@ -1678,7 +1673,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/process/:chartId', async (req, res) => {
     try {
       const chartId = parseInt(req.params.chartId);
-      
+
       if (isNaN(chartId)) {
         return res.status(400).json({ message: 'Invalid chart ID' });
       }
@@ -1733,11 +1728,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/process/batch', async (req, res) => {
     try {
       console.log('🚀 Starting batch processing of all charts for edge/gradient maps');
-      
+
       // Get all charts that need processing
       const allCharts = await storage.getAllCharts();
       const chartsToProcess = allCharts.filter(chart => !chart.edgeMapPath || !chart.gradientMapPath);
-      
+
       if (chartsToProcess.length === 0) {
         return res.json({
           success: true,
@@ -1751,7 +1746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process charts in batch
       const results = await processChartsInBatch(chartsToProcess);
-      
+
       // Update database with results
       let successCount = 0;
       for (const { chartId, result } of results) {
@@ -1784,32 +1779,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/rebuild-clip-index', async (req, res) => {
     try {
       console.log('🔄 Starting CLIP index rebuild...');
-      
+
       // Get all charts that don't have embeddings or have invalid embeddings
       const allCharts = await storage.getAllCharts();
       const chartsNeedingEmbedding = allCharts.filter(chart => 
         !chart.embedding || chart.embedding.length !== 1024
       );
-      
+
       console.log(`📊 Found ${chartsNeedingEmbedding.length} charts needing CLIP embeddings out of ${allCharts.length} total`);
-      
+
       let successCount = 0;
       let errorCount = 0;
-      
+
       for (const chart of chartsNeedingEmbedding) {
         try {
           const chartPath = path.join(uploadsDir, chart.filename);
-          
+
           // Check if file exists before processing
           if (!require('fs').existsSync(chartPath)) {
             console.log(`❌ Skipping chart ${chart.id}: File ${chart.filename} not found`);
             errorCount++;
             continue;
           }
-          
+
           // Generate CLIP embedding
           const embeddingResult = await generateCLIPEmbedding(chartPath);
-          
+
           if (embeddingResult.embedding && embeddingResult.embedding.length === 1024) {
             // Update chart with new embedding
             await storage.updateChart(chart.id, { embedding: embeddingResult.embedding });
@@ -1824,9 +1819,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errorCount++;
         }
       }
-      
+
       console.log(`🎯 CLIP index rebuild complete: ${successCount} successful, ${errorCount} failed`);
-      
+
       res.json({
         success: true,
         message: `CLIP index rebuild complete`,
@@ -1852,7 +1847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, use a hardcoded userId since we don't have authentication
       const userId = 'temp-user-id';
       const watchlist = await storage.getUserWatchlist(userId);
-      
+
       res.json({
         success: true,
         watchlist
@@ -1869,18 +1864,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/watchlist', async (req, res) => {
     try {
       const { symbol } = req.body;
-      
+
       if (!symbol) {
         return res.status(400).json({ message: 'Symbol is required' });
       }
 
       // For now, use a hardcoded userId since we don't have authentication
       const userId = 'temp-user-id';
-      
+
       // Check if symbol already exists in watchlist
       const existingWatchlist = await storage.getUserWatchlist(userId);
       const exists = existingWatchlist.some(item => item.symbol === symbol);
-      
+
       if (exists) {
         return res.status(400).json({ message: 'Symbol already in watchlist' });
       }
@@ -1906,14 +1901,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/watchlist/:symbol', async (req, res) => {
     try {
       const { symbol } = req.params;
-      
+
       if (!symbol) {
         return res.status(400).json({ message: 'Symbol is required' });
       }
 
       // For now, use a hardcoded userId since we don't have authentication
       const userId = 'temp-user-id';
-      
+
       await storage.removeFromWatchlist(userId, symbol);
 
       res.json({
@@ -1929,11 +1924,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Import TradingView watchlist from URL
+  // Import the TradingView watchlist from URL
   app.post('/api/watchlist/import-url', async (req, res) => {
     try {
       const { url } = req.body;
-      
+
       if (!url || typeof url !== 'string') {
         return res.status(400).json({ 
           success: false, 
@@ -1955,7 +1950,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Import symbols from URL
       const importedSymbols = await storage.importWatchlistFromURL(url, userId);
-      
+
       res.json({ 
         success: true, 
         message: `Successfully imported ${importedSymbols.length} symbols`,
@@ -1976,7 +1971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, use a hardcoded userId since we don't have authentication
       const userId = 'temp-user-id';
       const layout = await storage.getUserChartLayout(userId);
-      
+
       res.json({
         success: true,
         layout
@@ -1993,14 +1988,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/chart-layout', async (req, res) => {
     try {
       const { layoutConfig } = req.body;
-      
+
       if (!layoutConfig) {
         return res.status(400).json({ message: 'Layout configuration is required' });
       }
 
       // For now, use a hardcoded userId since we don't have authentication
       const userId = 'temp-user-id';
-      
+
       const layout = await storage.saveChartLayout({
         userId,
         layoutConfig
@@ -2026,9 +2021,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // For now, use demo user id - in production this would come from authentication
       const userId = 'demo-user-id'; // TODO: Replace with actual user authentication
-      
+
       const sessions = await storage.getUserAnalysisSessions(userId);
-      
+
       // Transform sessions for frontend consumption
       const transformedSessions = sessions.map(session => ({
         id: session.id,
@@ -2062,9 +2057,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // For now, use demo user id - in production this would come from authentication
       const userId = 'demo-user-id'; // TODO: Replace with actual user authentication
-      
+
       const prompts = await storage.getUserPromptHistory(userId);
-      
+
       // Transform prompts for frontend consumption
       const transformedPrompts = prompts.map(prompt => ({
         id: prompt.id,
@@ -2193,7 +2188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chat/conversations/:conversationId/messages', getConversationMessages);
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
-  
+
   // Chat analysis endpoint
   const { analyzeChatChartsEndpoint } = await import('./routes/chat-analysis');
   app.post('/api/chat/analyze', analyzeChatChartsEndpoint);

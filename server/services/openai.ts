@@ -47,7 +47,7 @@ export async function analyzeMultipleChartsWithAllMaps(
 ): Promise<ChartPrediction> {
   try {
     console.log(`🔍 Starting multi-chart analysis for ${charts.length} charts`);
-    
+
     // Build comprehensive RAG context
     let ragContext = "";
     if (similarCharts.length > 0) {
@@ -105,7 +105,7 @@ Respond with a JSON object containing:
         type: "text", 
         text: `\n--- CHART ${index + 1}: ${chart.metadata.originalName} (${chart.metadata.timeframe}) ---`
       });
-      
+
       // Original chart
       content.push({
         type: "image_url",
@@ -187,7 +187,7 @@ Respond with a JSON object containing:
     // Parse JSON response
     console.log("🔍 DEBUG - Raw GPT Response:", rawResponse);
     const cleanedResponse = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
+
     let parsedResponse: ChartPrediction;
     try {
       parsedResponse = JSON.parse(cleanedResponse);
@@ -195,7 +195,7 @@ Respond with a JSON object containing:
     } catch (parseError) {
       console.error("❌ JSON parse error:", parseError);
       console.log("🔍 Attempting to extract prediction from text...");
-      
+
       // Fallback parsing
       parsedResponse = {
         prediction: rawResponse.toLowerCase().includes('up') ? 'Up' : 
@@ -262,7 +262,25 @@ export async function analyzeChartWithRAG(
     }
 
     // Build the comprehensive prompt with full visual stack - use custom prompt if provided
-    const baseSystemPrompt = customSystemPrompt || `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
+    let baseSystemPrompt;
+    if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
+      // When using custom prompt, ensure it includes JSON output requirement
+      baseSystemPrompt = customSystemPrompt;
+      if (!customSystemPrompt.includes('JSON') && !customSystemPrompt.includes('json')) {
+        baseSystemPrompt += `\n\n🧾 **OUTPUT FORMAT:**
+Respond ONLY in this exact JSON format:
+\`\`\`json
+{
+  "session": "London",
+  "direction": "up", 
+  "confidence": "high",
+  "rationale": "Your detailed analysis reasoning here..."
+}
+\`\`\``;
+      }
+      console.log('✅ Using custom system prompt with JSON format enforcement');
+    } else {
+      baseSystemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
 
 - 🧠 CLIP Embeddings: High-level semantic pattern matching
 - 🌀 Depth Map: Structural geometry and layer analysis
@@ -324,6 +342,8 @@ ${ragContext}
 - Gradient slope direction + strength
 - Similar patterns and outcomes in historical/bundled charts
 - Session impact patterns (e.g., NY breakouts after London coil)`;
+    }
+
 
     let systemPrompt = `${baseSystemPrompt}
 
@@ -365,7 +385,7 @@ Respond with a JSON object containing these exact fields:
 
     console.log("📡 Making OpenAI API call with", messageContent.length, "content parts...");
     console.log("📄 Prompt length:", prompt.length, "characters");
-    
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
@@ -381,11 +401,11 @@ Respond with a JSON object containing these exact fields:
     console.log("✅ Received OpenAI response");
     const analysisText = response.choices[0].message.content || "";
     console.log("📄 Response length:", analysisText.length, "characters");
-    
+
     try {
       console.log("🔍 DEBUG - Raw GPT Response:", analysisText);      
       const parsedResult = JSON.parse(analysisText) as ChartPrediction;
-      
+
       // Validate the response format
       if (!parsedResult.prediction || !parsedResult.session || !parsedResult.confidence || !parsedResult.reasoning) {
         console.error("❌ Missing required fields in GPT response:", parsedResult);
@@ -516,7 +536,7 @@ Provide your analysis with detailed technical analysis including:
     });
 
     const analysisText = response.choices[0].message.content || "";
-    
+
     // Parse the response to extract structured data
     const confidence = extractConfidenceScore(analysisText);
     const trends = extractTrends(analysisText);
@@ -546,13 +566,13 @@ function extractConfidenceScore(text: string): number {
 function extractTrends(text: string): string[] {
   const trends: string[] = [];
   const trendKeywords = ['bullish', 'bearish', 'sideways', 'uptrend', 'downtrend', 'consolidation'];
-  
+
   trendKeywords.forEach(keyword => {
     if (text.toLowerCase().includes(keyword)) {
       trends.push(keyword);
     }
   });
-  
+
   return trends;
 }
 
@@ -562,13 +582,13 @@ function extractPatterns(text: string): string[] {
     'triangle', 'flag', 'pennant', 'head and shoulders', 'double top', 'double bottom',
     'support', 'resistance', 'breakout', 'breakdown', 'reversal'
   ];
-  
+
   patternKeywords.forEach(pattern => {
     if (text.toLowerCase().includes(pattern)) {
       patterns.push(pattern);
     }
   });
-  
+
   return patterns;
 }
 
@@ -588,13 +608,13 @@ export async function analyzeChartWithEnhancedContext(
     // Read and encode the main chart image
     const imageBuffer = fs.readFileSync(chartImagePath);
     const base64Image = imageBuffer.toString('base64');
-    
+
     // Try to read additional visual layers if available
     const chartId = chartImagePath.match(/chart[s]?[-_]?(\d+)/)?.[1] || chartImagePath.match(/(\d+)/)?.[1];
     let base64EdgeMap = null;
     let base64GradientMap = null;
     let base64DepthMap = null;
-    
+
     if (chartId) {
       // Try to read edge map
       const edgeMapPath = path.join(process.cwd(), 'server', 'edgemaps', `chart_${chartId}_edge.png`);
@@ -602,7 +622,7 @@ export async function analyzeChartWithEnhancedContext(
         const edgeBuffer = fs.readFileSync(edgeMapPath);
         base64EdgeMap = edgeBuffer.toString('base64');
       }
-      
+
       // Try to read gradient map
       const gradientMapPath = path.join(process.cwd(), 'server', 'gradientmaps', `chart_${chartId}_gradient.png`);
       if (fs.existsSync(gradientMapPath)) {
@@ -639,7 +659,7 @@ For each similar chart, you will be provided:`;
     // Build similar charts context
     enrichedSimilarCharts.forEach((item, index) => {
       const chartNum = index + 1;
-      
+
       if (item.type === 'individual' && item.chart) {
         const chart = item.chart;
         systemPrompt += `
@@ -658,7 +678,7 @@ For each similar chart, you will be provided:`;
       } else if (item.type === 'bundle' && item.bundle && item.charts) {
         const bundle = item.bundle;
         const primaryChart = item.charts[0]; // Use first chart as primary
-        
+
         systemPrompt += `
 📦 Bundle for Chart #${chartNum}:
 - Charts across: [${item.charts.map((c: any) => c.timeframe).join(', ')}]
@@ -666,7 +686,7 @@ For each similar chart, you will be provided:`;
 - Instrument: ${bundle.instrument}
 - Session: ${bundle.session || 'Unknown'}
 - CLIP Similarity: ${(item.similarity * 100).toFixed(1)}%`;
-        
+
         // Add bundle analysis outcome if available
         if (item.analysis) {
           try {
@@ -683,7 +703,7 @@ For each similar chart, you will be provided:`;
           systemPrompt += `
 - Outcome Summary: Not recorded`;
         }
-        
+
         systemPrompt += `
 
 ---`;
@@ -783,10 +803,10 @@ Respond ONLY in this exact JSON format:
     });
 
     const analysisText = response.choices[0].message.content || "";
-    
+
     try {
       const parsedResult = JSON.parse(analysisText);
-      
+
       // Validate the response format
       if (!parsedResult.session || !parsedResult.direction || !parsedResult.confidence || !parsedResult.rationale) {
         throw new Error("Invalid response format from GPT");
@@ -801,7 +821,7 @@ Respond ONLY in this exact JSON format:
       };
     } catch (parseError) {
       console.error("Failed to parse GPT response:", analysisText);
-      
+
       // Fallback to legacy format parsing
       const confidence = extractConfidenceScore(analysisText);
       const trends = extractTrends(analysisText);
@@ -829,7 +849,7 @@ export async function analyzeBundleWithGPT(
 ): Promise<AnalysisResult & { prediction?: string; session?: string; confidence_level?: string; rationale?: string }> {
   try {
     const { instrument, chart_ids, timeframes, session } = bundleMetadata;
-    
+
     // Sort chart data by timeframe priority (5M, 15M, 1H, 4H, Daily)
     const timeframePriority: Record<string, number> = { '5M': 1, '15M': 2, '1H': 3, '4H': 4, 'Daily': 5 };
     const sortedChartData = chartData.sort((a, b) => {
@@ -849,8 +869,26 @@ export async function analyzeBundleWithGPT(
       chartDescriptions += "\n";
     });
 
-    // Build the comprehensive prompt with full visual stack - use custom prompt if provided
-    const baseSystemPrompt = customSystemPrompt || `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
+    // Build the comprehensive prompt with full visual stack - use custom prompt if provided  
+    let baseSystemPrompt;
+    if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
+      // When using custom prompt, ensure it includes JSON output requirement
+      baseSystemPrompt = customSystemPrompt;
+      if (!customSystemPrompt.includes('JSON') && !customSystemPrompt.includes('json')) {
+        baseSystemPrompt += `\n\n🧾 **OUTPUT FORMAT:**
+Respond ONLY in this exact JSON format:
+\`\`\`json
+{
+  "session": "London",
+  "direction": "up",
+  "confidence": "high", 
+  "rationale": "Your detailed analysis reasoning here..."
+}
+\`\`\``;
+      }
+      console.log('✅ Using custom system prompt for bundle analysis with JSON format enforcement');
+    } else {
+      baseSystemPrompt = `You are a financial chart analysis expert. Your task is to analyze a new trading chart using advanced image reasoning across multiple visual layers, including:
 
 - 🧠 CLIP Embeddings: High-level semantic pattern matching
 - 🌀 Depth Map: Structural geometry and layer analysis
@@ -890,6 +928,8 @@ For each similar chart, you will be provided context from historical patterns an
 - Gradient slope direction + strength
 - Multi-timeframe confluence and alignment
 - Session impact patterns (e.g., NY breakouts after London coil)`;
+    }
+
 
     let systemPrompt = `${baseSystemPrompt}
 
@@ -965,7 +1005,7 @@ Respond ONLY in this exact JSON format:
     });
 
     const analysisText = response.choices[0].message.content || "";
-    
+
     // Try to parse JSON response
     let parsedResponse;
     try {
@@ -988,7 +1028,7 @@ Respond ONLY in this exact JSON format:
     const confidence = extractConfidenceScore(analysisText);
     const trends = extractTrends(analysisText);
     const patterns = extractPatterns(analysisText);
-    
+
     return {
       analysis: analysisText,
       confidence,
