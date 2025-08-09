@@ -9,6 +9,7 @@ import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
+import { analyzeChartsUnified, previewSimilarCharts, isDepthModelReady, getInjectTextFromStore } from "./services/unified-analysis";
 import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, insertNoteSchema, type Chart, type Document } from "@shared/schema";
 import debugRoutes from './debug-routes';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -1160,8 +1161,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔍 Starting complete visual analysis for ${tempChartData.length} charts`);
       console.log(`📊 Visual maps generated: ${tempChartData.filter(c => c.depth).length} depth, ${tempChartData.filter(c => c.edge).length} edge, ${tempChartData.filter(c => c.gradient).length} gradient`);
 
-      // 8. Send complete visual stack to GPT-4o for live reasoning
-      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, [], customSystemPrompt); // Pass customSystemPrompt here
+      // 8. Prepare image URLs for unified analysis
+      const imageUrls = files.map(file => file.path);
+
+      // 9. Use unified analysis service for consistent processing
+      const prediction = await analyzeChartsUnified({
+        imageUrls,
+        systemPrompt: customSystemPrompt,
+        includeHistoricalContext: true,
+        maxSimilarCharts: 3
+      });
 
       // 9. Display GPT-4o's response in the Analysis Reasoning panel
       res.json({
@@ -2192,6 +2201,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat analysis endpoint
   const { analyzeChatChartsEndpoint } = await import('./routes/chat-analysis');
   app.post('/api/chat/analyze', analyzeChatChartsEndpoint);
+
+  // ==== UNIFIED ANALYSIS ENDPOINTS ====
+  
+  // Main unified analysis endpoint - processes images with all visual maps and RAG context
+  app.post('/api/analyze/unified', async (req, res) => {
+    try {
+      const { imageUrls, systemPrompt } = req.body;
+
+      if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+        return res.status(400).json({ 
+          error: 'imageUrls array is required and must contain at least one image' 
+        });
+      }
+
+      console.log(`🔍 Unified analysis request - ${imageUrls.length} images, system prompt: ${systemPrompt ? 'Custom' : 'Default'}`);
+
+      const result = await analyzeChartsUnified({
+        imageUrls,
+        systemPrompt,
+        includeHistoricalContext: true,
+        maxSimilarCharts: 3
+      });
+
+      res.json({
+        success: true,
+        ...result
+      });
+
+    } catch (error) {
+      console.error('❌ Unified analysis endpoint error:', error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : 'Analysis failed',
+        details: error instanceof Error ? error.stack : undefined
+      });
+    }
+  });
+
+  // Health check endpoint - no OpenAI call, shows system readiness
+  app.get('/api/analysis/health', async (req, res) => {
+    try {
+      const model = process.env.VISION_MODEL ?? 'gpt-4o';
+      const k = Number(req.query.k ?? 3);
+      const symbol = req.query.symbol as string | undefined;
+
+      console.log(`🏥 Health check request - k=${k}, symbol=${symbol}`);
+
+      // Preview RAG functionality without OpenAI call
+      const rag = await previewSimilarCharts({ k });
+
+      // Get inject text from storage (simulated)
+      const injectText = (await getInjectTextFromStore()) ?? '';
+      
+      // Get base prompt from unified analysis service
+      const BACKEND_RAG_PROMPT_BASE = `You are a professional trading chart analyst with expertise in advanced pattern recognition and multi-timeframe analysis.
+
+You will receive:
+- Original chart images (candlesticks, price action, indicators)
+- Depth maps (3D depth perception for pattern strength assessment)
+- Edge maps (structural boundaries, support/resistance lines)
+- Gradient maps (price momentum and directional bias analysis)
+- Historical similar patterns for context (RAG-enhanced analysis)
+
+CRITICAL ANALYSIS FRAMEWORK:
+1. **Pattern Recognition**: Identify chart patterns using all visual layers
+2. **Multi-Map Synthesis**: Combine insights from depth, edge, and gradient data
+3. **Historical Context**: Reference similar historical patterns for validation
+4. **Session Timing**: Determine optimal trading session based on setup
+5. **Risk Assessment**: Evaluate pattern strength and confluence factors
+
+RESPOND IN JSON FORMAT ONLY:
+{
+  "prediction": "Bullish/Bearish/Neutral",
+  "session": "Asia/London/New York/Sydney",
+  "confidence": "Low/Medium/High",
+  "reasoning": "Detailed technical analysis referencing all visual maps and historical patterns"
+}`;
+
+      // Merge prompts
+      const merged = [injectText.trim(), BACKEND_RAG_PROMPT_BASE].filter(Boolean).join('\n\n');
+      const preview = merged.slice(0, 160);
+
+      // Check processor availability
+      const maps = { 
+        depth: isDepthModelReady(), 
+        edge: true, 
+        gradient: true 
+      };
+
+      const response = {
+        model,
+        rag: { k, found: rag.count || 0 },
+        mapsReady: maps,
+        mergedPromptPreview: preview,
+        mergedPromptLength: merged.length,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        ...(symbol && { symbol }),
+        ...(rag.message && { ragMessage: rag.message }),
+        ...(rag.error && { ragError: rag.error })
+      };
+
+      console.log(`✅ Health check complete - Model: ${model}, RAG found: ${rag.count}, Maps ready: depth=${maps.depth}, edge=${maps.edge}, gradient=${maps.gradient}`);
+
+      res.json(response);
+
+    } catch (error) {
+      console.error('❌ Health check error:', error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : 'Health check failed',
+        status: 'unhealthy',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

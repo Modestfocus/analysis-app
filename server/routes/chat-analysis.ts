@@ -77,8 +77,26 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
 
     console.log(`🔍 Chat analysis request - ${imageCount} images, system prompt: ${systemPrompt.length} chars`);
 
-    // Perform full analysis for messages with images
-    const result = await analyzeChatCharts({ content, systemPrompt });
+    // Extract image URLs from content
+    const imageUrls = content
+      .filter(part => part.type === 'image_url')
+      .map(part => part.image_url.url);
+
+    if (imageUrls.length === 0) {
+      return res.status(422).json({ 
+        error: 'No images found in content for analysis' 
+      });
+    }
+
+    // Use the unified analysis service for consistent processing
+    const { analyzeChartsUnified } = await import('../services/unified-analysis');
+    
+    const result = await analyzeChartsUnified({
+      imageUrls,
+      systemPrompt,
+      includeHistoricalContext: true,
+      maxSimilarCharts: 3
+    });
 
     res.json({
       success: true,
