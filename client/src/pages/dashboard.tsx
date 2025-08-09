@@ -1058,7 +1058,7 @@ export default function DashboardPage() {
       {/* Right Panel - Chat Interface */}
       <div className="h-full flex-1 min-w-0">
         <ChatInterface 
-          systemPrompt={savedCurrentPrompt} 
+          systemPrompt={currentPrompt} 
           isExpanded={isLeftPanelCollapsed}
         />
       </div>

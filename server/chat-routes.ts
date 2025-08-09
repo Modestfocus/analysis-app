@@ -6,6 +6,7 @@ import { z } from 'zod';
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
+import { getSystemPromptMergedFromDB } from './services/system-prompt';
 
 // Configure multer for image uploads
 const upload = multer({
@@ -166,10 +167,28 @@ export const getConversationMessages = async (req: Request, res: Response) => {
 export const sendChatMessage = async (req: Request, res: Response) => {
   try {
     const { conversationId } = req.params;
-    const { content, imageUrls, systemPrompt } = req.body;
+    const { content, systemPrompt } = req.body;
+
+    // Extract text and images from vision content format
+    let textContent = '';
+    let imageUrls: string[] = [];
+    
+    if (Array.isArray(content)) {
+      // New vision content format
+      content.forEach((item: any) => {
+        if (item.type === 'text') {
+          textContent = item.text;
+        } else if (item.type === 'image_url') {
+          imageUrls.push(item.image_url.url);
+        }
+      });
+    } else if (typeof content === 'string') {
+      // Legacy text content
+      textContent = content;
+    }
 
     // Validate input
-    if (!content && (!imageUrls || imageUrls.length === 0)) {
+    if (!textContent && imageUrls.length === 0) {
       return res.status(400).json({ error: 'Message content or images required' });
     }
 
@@ -180,31 +199,56 @@ export const sendChatMessage = async (req: Request, res: Response) => {
     const userMessage = await storage.createChatMessage({
       conversationId,
       role: 'user',
-      content: content || '',
+      content: textContent || '',
       imageUrls: imageUrls || [],
     });
 
-    // Analyze with GPT-4o if images are provided or if it's a follow-up question
+    // Analyze with shared analysis service if images are provided or if it's a follow-up question
     let assistantResponse = '';
     let metadata = null;
 
-    if (imageUrls?.length > 0 || content) {
+    if (imageUrls.length > 0 || textContent) {
       try {
-        assistantResponse = await analyzeChartWithGPT(
-          systemPrompt || 'You are an expert financial chart analyst. Analyze the provided charts and give detailed technical analysis.',
-          content || '',
-          imageUrls || [],
-          conversationHistory
-        );
-
-        // TODO: Add similar chart search and other metadata
-        metadata = {
-          confidence: Math.floor(Math.random() * 20) + 80, // Mock confidence for now
-          analysisType: imageUrls?.length > 0 ? 'chart_analysis' : 'text_response',
-        };
+        // Use shared analysis service
+        const { analyzeCharts } = await import('./services/analyze');
+        
+        if (imageUrls.length > 0) {
+          // Chart analysis with images
+          const finalSystemPrompt = systemPrompt || await getSystemPromptMergedFromDB();
+          const result = await analyzeCharts({
+            imageUrls,
+            systemPrompt: finalSystemPrompt,
+            options: {
+              usePreprocessing: true,
+              useRAG: true,
+              stream: false
+            }
+          });
+          
+          assistantResponse = typeof result.analysis === 'string' ? result.analysis : JSON.stringify(result.analysis, null, 2);
+          metadata = {
+            confidence: result.confidence || 0.85,
+            analysisType: 'chart_analysis',
+            similarChartsCount: result.similarCharts?.length || 0
+          };
+        } else {
+          // Text-only response using GPT-4o
+          const finalSystemPrompt = systemPrompt || await getSystemPromptMergedFromDB();
+          assistantResponse = await analyzeChartWithGPT(
+            finalSystemPrompt,
+            textContent,
+            [],
+            conversationHistory
+          );
+          
+          metadata = {
+            confidence: 0.8,
+            analysisType: 'text_response',
+          };
+        }
       } catch (error) {
         assistantResponse = 'I apologize, but I encountered an error while analyzing your request. Please try again or contact support if the issue persists.';
-        console.error('GPT-4o analysis error:', error);
+        console.error('Analysis error:', error);
       }
     }
 

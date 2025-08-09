@@ -83,9 +83,26 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       content: string; 
       imageUrls?: string[] 
     }) => {
+      // Create OpenAI vision format content
+      const visionContent: any[] = [];
+      
+      // Add text content if present
+      if (content?.trim()) {
+        visionContent.push({ type: 'text', text: content });
+      }
+      
+      // Add images in OpenAI vision format
+      if (imageUrls && imageUrls.length > 0) {
+        imageUrls.forEach(url => {
+          visionContent.push({ 
+            type: 'image_url', 
+            image_url: { url } 
+          });
+        });
+      }
+      
       const response = await apiRequest('POST', `/api/chat/conversations/${conversationId}/messages`, { 
-        content, 
-        imageUrls, 
+        content: visionContent, // Send as vision content array
         systemPrompt 
       });
       return response.json();
