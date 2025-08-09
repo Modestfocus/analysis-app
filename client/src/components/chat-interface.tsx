@@ -19,6 +19,62 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
+// Component to display similar chart images
+function SimilarChartImage({ chartId, filename }: { chartId: number; filename: string }) {
+  const { data: chart, isLoading, error } = useQuery({
+    queryKey: ['/api/charts', chartId],
+    enabled: !!chartId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+      </div>
+    );
+  }
+
+  if (error || !chart) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p>Failed to load chart image</p>
+        <p className="text-sm">{filename}</p>
+      </div>
+    );
+  }
+
+  const imageUrl = `/uploads/${(chart as any).filename}`;
+
+  return (
+    <div className="space-y-3">
+      <img
+        src={imageUrl}
+        alt={`Chart: ${filename}`}
+        className="w-full h-auto rounded-lg border border-gray-200 dark:border-gray-600"
+        onError={(e) => {
+          console.error('Failed to load chart image:', imageUrl);
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+      {(chart as any).depthMapPath && (
+        <div>
+          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Depth Map Analysis:
+          </h5>
+          <img
+            src={(chart as any).depthMapPath}
+            alt={`Depth map for ${filename}`}
+            className="w-full h-auto rounded-lg border border-gray-200 dark:border-gray-600"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -363,7 +419,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                     {/* Display analysis metadata */}
                     {msg.metadata && (
                       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 mb-2">
                           {msg.metadata.confidence && (
                             <Badge variant="secondary">
                               Confidence: {msg.metadata.confidence}%
@@ -375,6 +431,52 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                             </Badge>
                           )}
                         </div>
+                        
+                        {/* Clickable Similar Charts */}
+                        {msg.metadata.similarCharts && msg.metadata.similarCharts.length > 0 && (
+                          <div className="mt-2">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Similar Historical Patterns:
+                            </h4>
+                            <div className="space-y-1">
+                              {msg.metadata.similarCharts.map((chart: any, index: number) => (
+                                <Dialog key={chart.chartId}>
+                                  <DialogTrigger asChild>
+                                    <button className="w-full text-left p-2 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-sm">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-blue-600 dark:text-blue-400 hover:underline">
+                                          {index + 1}. {chart.filename}
+                                        </span>
+                                        <span className="text-green-600 dark:text-green-400 font-medium">
+                                          {(chart.similarity * 100).toFixed(1)}%
+                                        </span>
+                                      </div>
+                                      <div className="text-gray-600 dark:text-gray-400 text-xs">
+                                        {chart.instrument} • {chart.timeframe}
+                                      </div>
+                                    </button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-4xl">
+                                    <DialogTitle>
+                                      Similar Chart: {chart.filename} ({(chart.similarity * 100).toFixed(1)}% match)
+                                    </DialogTitle>
+                                    <div className="space-y-4">
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <span className="font-medium">Instrument:</span> {chart.instrument}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Timeframe:</span> {chart.timeframe}
+                                        </div>
+                                      </div>
+                                      <SimilarChartImage chartId={chart.chartId} filename={chart.filename} />
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -212,7 +212,8 @@ export const sendChatMessage = async (req: Request, res: Response) => {
           confidence: aiResponse.confidence === 'High' ? 0.9 : aiResponse.confidence === 'Medium' ? 0.7 : 0.5,
           analysisType: 'chat_analysis',
           visualMapsIncluded: aiResponse.visualMapsIncluded,
-          similarChartsCount: aiResponse.similarCharts?.length || 0
+          similarChartsCount: aiResponse.similarCharts?.length || 0,
+          similarCharts: aiResponse.similarCharts || [] // Store the full similar charts data
         }
       });
     }

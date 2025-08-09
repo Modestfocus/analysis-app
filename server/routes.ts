@@ -1357,6 +1357,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get individual chart by ID
+  app.get('/api/charts/:id', async (req, res) => {
+    try {
+      const chartId = parseInt(req.params.id);
+      if (isNaN(chartId)) {
+        return res.status(400).json({ error: 'Invalid chart ID' });
+      }
+      
+      const chart = await storage.getChart(chartId);
+      if (!chart) {
+        return res.status(404).json({ error: 'Chart not found' });
+      }
+      
+      // Include all map paths
+      const chartWithPaths = {
+        ...chart,
+        filePath: `/uploads/${chart.filename}`,
+        depthMapUrl: chart.depthMapPath,
+        edgeMapUrl: chart.edgeMapPath,
+        gradientMapUrl: chart.gradientMapPath
+      };
+      
+      res.json(chartWithPaths);
+    } catch (error) {
+      console.error('Get chart error:', error);
+      res.status(500).json({ error: 'Failed to get chart: ' + (error as Error).message });
+    }
+  });
+
   // Get charts grouped by instrument
   app.get('/api/charts/grouped', async (req, res) => {
     try {
