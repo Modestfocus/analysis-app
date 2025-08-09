@@ -26,6 +26,9 @@ interface ChatAnalysisResponse {
   session: string;
   confidence: string;
   reasoning: string;
+  // Support legacy field names
+  direction?: string;
+  rationale?: string;
   similarCharts?: any[];
   visualMapsIncluded?: {
     depth: number;
@@ -339,9 +342,24 @@ Respond with a JSON object containing:
 
     const parsedResult = JSON.parse(analysisText) as ChatAnalysisResponse;
     
-    // Validate required fields
-    if (!parsedResult.prediction || !parsedResult.session || !parsedResult.confidence || !parsedResult.reasoning) {
+    // Validate required fields - handle both old and new field names
+    const hasOldFormat = parsedResult.direction && parsedResult.rationale;
+    const hasNewFormat = parsedResult.prediction && parsedResult.reasoning;
+    
+    if (!hasOldFormat && !hasNewFormat) {
       console.error("❌ Missing required fields in GPT response:", parsedResult);
+      throw new Error("Invalid response format from GPT");
+    }
+    
+    // Convert old format to new format if needed
+    if (hasOldFormat && !hasNewFormat) {
+      parsedResult.prediction = parsedResult.direction!;
+      parsedResult.reasoning = parsedResult.rationale!;
+    }
+    
+    // Final validation
+    if (!parsedResult.prediction || !parsedResult.session || !parsedResult.confidence || !parsedResult.reasoning) {
+      console.error("❌ Missing required fields after conversion:", parsedResult);
       throw new Error("Invalid response format from GPT");
     }
 
