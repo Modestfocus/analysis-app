@@ -10,7 +10,7 @@ import { analyzeChatCharts } from '../services/chat-analysis';
  */
 export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => {
   try {
-    const { content, systemPrompt, conversationId, isFollowUp } = req.body;
+    const { content, systemPrompt, conversationId, isFollowUp, enableFullAnalysis, injectText } = req.body;
 
     // Validate request
     if (!content || !Array.isArray(content)) {
@@ -19,9 +19,10 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       });
     }
 
-    if (!systemPrompt || typeof systemPrompt !== 'string') {
+    // systemPrompt is now optional when enableFullAnalysis is true
+    if (!enableFullAnalysis && (!systemPrompt || typeof systemPrompt !== 'string')) {
       return res.status(400).json({ 
-        error: 'System prompt is required.' 
+        error: 'System prompt is required when enableFullAnalysis is false.' 
       });
     }
 
@@ -75,9 +76,38 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       });
     }
 
-    console.log(`🔍 Chat analysis request - ${imageCount} images, system prompt: ${systemPrompt.length} chars`);
+    // Use unified RAG flow when enableFullAnalysis is true
+    if (enableFullAnalysis) {
+      console.log("[CHAT] /api/chat/analyze -> USING BACKEND RAG FLOW");
+      console.log(`🔍 Chat analysis request (RAG) - ${imageCount} images, conversationId: ${conversationId}`);
+      
+      // Import and use the unified backend analysis service
+      const { analyzeCharts } = await import('../services/analyze');
+      
+      // Extract image URLs from content
+      const imageUrls = content
+        .filter(part => part.type === 'image_url')
+        .map(part => part.image_url.url);
+      
+      // Get the merged system prompt with RAG and inject text
+      const { getSystemPromptMergedFromDB } = await import('../services/system-prompt');
+      const finalSystemPrompt = await getSystemPromptMergedFromDB();
+      
+      const result = await analyzeCharts({ 
+        imageUrls, 
+        systemPrompt: finalSystemPrompt,
+        options: { useRAG: true, usePreprocessing: true }
+      });
+      
+      return res.json({
+        success: true,
+        ...result
+      });
+    }
 
-    // Perform full analysis for messages with images
+    console.log(`🔍 Chat analysis request (legacy) - ${imageCount} images, system prompt: ${systemPrompt?.length || 0} chars`);
+
+    // Legacy path - perform full analysis for messages with images
     const result = await analyzeChatCharts({ content, systemPrompt });
 
     res.json({
