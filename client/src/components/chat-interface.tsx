@@ -341,42 +341,44 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Always show upload area */}
-        <div 
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragActive 
-              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
-              : 'border-gray-300 dark:border-gray-600'
-          }`}
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onDragEnter={() => setDragActive(true)}
-          onDragLeave={() => setDragActive(false)}
-        >
-          <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Start Your Analysis
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Drop a chart image here, paste from clipboard, or upload manually
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            className="mx-auto"
+        {/* Show upload area only when no messages exist in the active conversation */}
+        {(!activeConversationId || !messages || (Array.isArray(messages) && messages.length === 0)) && (
+          <div 
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              dragActive 
+                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+                : 'border-gray-300 dark:border-gray-600'
+            }`}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            onDragEnter={() => setDragActive(true)}
+            onDragLeave={() => setDragActive(false)}
           >
-            <Upload className="w-4 h-4 mr-2" />
-            Upload Chart
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-            className="hidden"
-          />
-        </div>
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              Start Your Analysis
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Drop a chart image here, paste from clipboard, or upload manually
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="mx-auto"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Chart
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+              className="hidden"
+            />
+          </div>
+        )}
 
         {/* Messages */}
         {activeConversationId && (
