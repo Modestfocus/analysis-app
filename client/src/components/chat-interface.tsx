@@ -244,8 +244,8 @@ Respond in this precise JSON format:
       const hasNewImages = imageUrls && imageUrls.length > 0;
       const isFollowUp = hasExistingMessages && !hasNewImages;
       
-      // Use the new chat analysis endpoint with current prompt from dashboard
-      // This will include live RAG context, real-time depth/edge/gradient maps, and bundle context
+      // Use the unified analysis endpoint with current prompt from dashboard
+      // This will include live RAG context, real-time structure/edge/gradient maps, and bundle context
       const currentPrompt = getCurrentPrompt();
       const response = await apiRequest('POST', '/api/chat/analyze', { 
         content: visionContent,

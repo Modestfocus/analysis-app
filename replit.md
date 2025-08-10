@@ -1,7 +1,7 @@
 # Chart Analysis Application
 
 ## Overview
-This full-stack application provides AI-powered analysis of trading charts. Users can upload multiple chart images, which are then automatically analyzed using advanced AI models like GPT-4o. Key capabilities include generating depth, edge, and gradient maps, finding similar charts via CLIP vector embeddings, and supporting multi-timeframe analysis bundles. The project aims to provide comprehensive technical insights and pattern recognition for trading charts, enhancing a user's analytical capabilities in financial markets.
+This full-stack application provides AI-powered analysis of trading charts with unified analysis architecture. Users can upload multiple chart images through either Dashboard or Chat interfaces, which are analyzed using advanced AI models like GPT-4o with strict JSON schema enforcement. Key capabilities include generating Structure/Intensity Maps, Edge Maps, and Gradient Maps, finding similar charts via server-side CLIP vector embeddings, and supporting multi-timeframe analysis bundles. The unified analysis service ensures route parity between Dashboard and Chat endpoints, providing comprehensive technical insights and pattern recognition for trading charts.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -20,14 +20,16 @@ Theme Preferences: Dark mode toggle implemented across all pages with automatic 
 - **Styling**: Tailwind CSS with custom design tokens and full dark mode support.
 - **Theme System**: Custom React Context-based theme management with persistent localStorage and system preference detection.
 - **Build Tool**: Vite.
+- **Analysis Integration**: Unified analysis endpoints for route parity between Dashboard and Chat interfaces.
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript.
 - **File Handling**: Multer for multipart form uploads.
 - **Database**: PostgreSQL with Drizzle ORM and Neon serverless hosting.
-- **AI Services Integration**: OpenAI GPT-4o, CLIP, and MiDaS models.
+- **AI Services Integration**: OpenAI GPT-4o, server-side CLIP embeddings, and Structure/Intensity Maps.
 - **Session Management**: Connect-pg-simple for PostgreSQL session storage.
 - **Storage Layer**: DatabaseStorage class implementing IStorage interface.
+- **Unified Analysis Service**: Central analysis pipeline with strict JSON schema enforcement and route parity.
 
 ### Key Components
 #### Data Storage
@@ -39,20 +41,22 @@ Theme Preferences: Dark mode toggle implemented across all pages with automatic 
 #### Authentication & Authorization
 - Session-based authentication using Express sessions with PostgreSQL storage.
 
-#### AI Integration Pipeline
-1.  **Image Upload**: Supports single and multi-file uploads.
-2.  **Embedding Generation**: OpenCLIP ViT-H/14 generates 1024-dimensional vector embeddings for similarity search.
-3.  **Advanced Image Processing**: Automatic generation of Depth Maps (MiDaS), Edge Maps (Sobel), and Gradient Maps (price slope analysis).
+#### AI Integration Pipeline (Unified Analysis Service)
+1.  **Image Upload**: Supports single and multi-file uploads with route parity across Dashboard and Chat.
+2.  **Server-side Embedding Generation**: CLIP embeddings generated server-side for 1024-dimensional vector similarity search.
+3.  **Advanced Image Processing**: Automatic generation of Structure/Intensity Maps (renamed from Depth Maps), Edge Maps (Laplacian), and Gradient Maps (Sobel filter).
 4.  **Dynamic System Prompts**: Three-view interface allowing custom prompt injection with real-time GPT-4o integration.
-5.  **GPT Analysis**: OpenAI GPT-4o analyzes charts with comprehensive visual data and technical insights using customizable system prompts.
-6.  **Bundle Analysis**: Multi-timeframe GPT-4o analysis for structured predictions with prompt customization.
-7.  **Similarity Search**: Cosine similarity search using 1024D vectors.
+5.  **GPT Analysis**: OpenAI GPT-4o analyzes charts with comprehensive visual data and technical insights using strict JSON schema enforcement.
+6.  **Bundle Analysis**: Multi-timeframe GPT-4o analysis for structured predictions with ordered frame context.
+7.  **RAG Context**: Cosine similarity search using 1024D vectors for historical pattern matching.
+8.  **Schema Validation**: Strict JSON response validation with 422 error codes for invalid responses.
+9.  **Non-destructive Processing**: All image processing preserves original files while generating analysis maps.
 
 ## External Dependencies
 ### AI Services
-- **OpenAI GPT-4o**: For chart analysis and technical insights.
-- **OpenCLIP ViT-H/14**: For 1024-dimensional image embedding generation.
-- **MiDaS Model**: For depth map generation.
+- **OpenAI GPT-4o**: For chart analysis and technical insights with strict JSON schema enforcement.
+- **Server-side CLIP Embeddings**: For 1024-dimensional image embedding generation and RAG similarity search.
+- **Structure/Intensity Maps**: Sharp-based image processing for pattern strength analysis (replaces MiDaS dependency).
 
 ### Database & Storage
 - **Neon Database**: PostgreSQL hosting.
