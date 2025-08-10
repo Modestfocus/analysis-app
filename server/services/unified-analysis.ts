@@ -471,6 +471,33 @@ export async function getInjectTextFromStore(): Promise<string | null> {
 }
 
 /**
+ * Fallback text parsing when JSON parse fails
+ */
+function fallbackFromText(raw: string): any {
+  const prediction = extractField(raw, ['prediction', 'direction'], ['bullish', 'bearish', 'neutral']) || 'Unknown';
+  const session = extractField(raw, ['session'], ['asia', 'london', 'new york', 'sydney']) || 'Unknown';  
+  const confidence = extractField(raw, ['confidence'], ['low', 'medium', 'high']) || 'Medium';
+  const reasoning = raw.slice(0, 500) || 'No reasoning could be extracted';
+  
+  return { prediction, session, confidence, reasoning };
+}
+
+/**
+ * Extract field from text using keywords
+ */
+function extractField(text: string, fieldNames: string[], possibleValues: string[]): string | null {
+  const lowerText = text.toLowerCase();
+  
+  for (const value of possibleValues) {
+    if (lowerText.includes(value)) {
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Full visual stack analysis with proper prompt merging and OpenAI integration
  */
 export async function analyzeWithFullVisualStack(options: {
@@ -480,15 +507,18 @@ export async function analyzeWithFullVisualStack(options: {
   timeframe?: string;
 }) {
   const { imageUrls, userInject, instrument, timeframe } = options;
+  let currentStage = 'prompt-merging';
   
-  // Merge prompt as specified in Task 4
-  const systemPrompt = [
-    (userInject || '').trim(), 
-    BACKEND_RAG_PROMPT_BASE
-  ].filter(Boolean).join('\n\n');
+  try {
+    // Merge prompt as specified in Task 4
+    const systemPrompt = [
+      (userInject || '').trim(), 
+      BACKEND_RAG_PROMPT_BASE
+    ].filter(Boolean).join('\n\n');
 
-  // Process images and generate maps
-  const processedImages: ProcessedImageData[] = [];
+    currentStage = 'image-processing';
+    // Process images and generate maps
+    const processedImages: ProcessedImageData[] = [];
   
   for (let i = 0; i < imageUrls.length; i++) {
     const imageUrl = imageUrls[i];
@@ -514,9 +544,12 @@ export async function analyzeWithFullVisualStack(options: {
     }
   }
 
+  currentStage = 'rag-context';
   // Build RAG context from similar charts
   const ragContext = buildRAGContext(processedImages);
   const finalPrompt = `${systemPrompt}${ragContext}`;
+
+  currentStage = 'openai-preparation';
 
   // Attach images as image_url parts as specified in Task 4
   const userParts: any[] = [
@@ -564,6 +597,7 @@ export async function analyzeWithFullVisualStack(options: {
   const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
   console.log(`📊 Pipeline Stats: {model: ${MODEL}, imageCount: ${imageUrls.length}, maps: {depth: ${mapCounts.depth}, edge: ${mapCounts.edge}, gradient: ${mapCounts.gradient}}, ragCount: ${ragCount}}`);
 
+  currentStage = 'openai-call';
   // OpenAI call with single model flag and streaming as specified in Task 4
   const messages = [{ role: 'user' as const, content: userParts }];
   
@@ -575,6 +609,7 @@ export async function analyzeWithFullVisualStack(options: {
     stream: true
   });
 
+  currentStage = 'response-streaming';
   // Collect streamed response
   let fullResponse = '';
   for await (const chunk of resp) {
@@ -596,6 +631,7 @@ export async function analyzeWithFullVisualStack(options: {
     };
   }
 
+  currentStage = 'response-building';
   // Build unified response
   return {
     prediction: parsedResponse.prediction || "Unknown",
@@ -608,4 +644,8 @@ export async function analyzeWithFullVisualStack(options: {
     similarCharts: processedImages.flatMap(img => img.similarCharts || []).slice(0, 3),
     visualMapsIncluded: mapCounts
   };
+  } catch (error) {
+    console.error(`❌ Analysis failed at ${currentStage}:`, error);
+    throw new Error(`Analysis failed at ${currentStage}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

@@ -186,7 +186,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Analysis failed');
+        throw new Error(`Analysis failed at ${errorData.stage || 'unknown stage'}: ${errorData.error || 'Unknown error'}`);
       }
       
       const result = await response.json();

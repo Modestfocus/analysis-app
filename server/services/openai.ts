@@ -537,8 +537,9 @@ Provide your analysis with detailed technical analysis including:
 
     const prompt = systemPrompt;
 
+    const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
     const response = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      model: MODEL,
       messages: [
         {
           role: "user",
@@ -814,8 +815,9 @@ Respond ONLY in this exact JSON format:
     // Add depth map if available (to be implemented when we have chart record)
     // This could be added later when we pass the chart record to this function
 
+    const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: MODEL,
       messages: [
         {
           role: "user",
@@ -1012,8 +1014,9 @@ Respond ONLY in this exact JSON format:
       }
     });
 
+    const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: MODEL,
       messages: [
         {
           role: "system",

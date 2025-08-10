@@ -309,8 +309,9 @@ Provide detailed technical analysis including:
       }
     ];
 
+    const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: MODEL,
       messages,
       max_tokens: 2000,
       temperature: 0.2,

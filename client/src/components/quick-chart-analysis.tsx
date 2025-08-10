@@ -102,7 +102,7 @@ export function QuickChartAnalysis({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Analysis failed at ${errorData.stage || 'unknown stage'}`);
+        throw new Error(`Analysis failed at ${errorData.stage || 'unknown stage'}: ${errorData.error || 'Unknown error'}`);
       }
 
       return await response.json();

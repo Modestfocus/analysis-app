@@ -53,10 +53,11 @@ export default function AnalysisResultRenderer({
 }: AnalysisResultRendererProps) {
   
   // Normalize the result to handle both old and new formats
+  const norm = String(result.confidence ?? '').toLowerCase();
   const normalizedResult = {
     prediction: result.prediction || result.direction || "Unknown",
-    session: result.session || "Unknown",
-    confidence: (result.confidence || "Medium").toString(),
+    session: result.session || "Unknown", 
+    confidence: norm || "medium",
     reasoning: result.reasoning || result.rationale || "No reasoning provided",
     similarCharts: result.similarCharts || [],
     diagnostics: result.diagnostics

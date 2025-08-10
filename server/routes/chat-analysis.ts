@@ -46,8 +46,9 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       
       const textContent = content.find(part => part.type === 'text')?.text || '';
       
+      const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: MODEL,
         messages: [
           {
             role: 'system',

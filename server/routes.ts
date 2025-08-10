@@ -2252,17 +2252,24 @@ RESPOND IN JSON FORMAT ONLY:
 
   // Chat analysis endpoint - routes to full visual stack
   app.post('/api/chat/analyze', async (req, res) => {
-    const { imageUrls = [], systemPrompt: injectText = '', instrument, timeframe } = req.body;
-    if (!imageUrls.length) return res.status(422).json({ error: 'Attach at least one image' });
+    let currentStage = 'validation';
+    try {
+      const { imageUrls = [], systemPrompt: injectText = '', instrument, timeframe } = req.body;
+      if (!imageUrls.length) return res.status(422).json({ error: 'Attach at least one image', stage: currentStage });
 
-    const out = await analyzeWithFullVisualStack({
-      imageUrls,
-      userInject: injectText,
-      instrument,
-      timeframe,
-    });
+      currentStage = 'analysis';
+      const out = await analyzeWithFullVisualStack({
+        imageUrls,
+        userInject: injectText,
+        instrument,
+        timeframe,
+      });
 
-    return streamJson(out, res);
+      return streamJson(out, res);
+    } catch (err: any) {
+      console.error(`❌ Analysis failed at ${currentStage}:`, err);
+      return res.status(500).json({ error: err.message, stage: currentStage });
+    }
   });
 
   // ==== UNIFIED ANALYSIS ENDPOINTS ====
