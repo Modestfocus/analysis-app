@@ -328,12 +328,6 @@ Respond with a JSON object containing:
   ];
 
   try {
-    // Defensive check: Ensure we have image content
-    const hasImages = visionContent.some(part => part.type === 'image_url');
-    if (!hasImages) {
-      throw new Error("No image parts attached");
-    }
-
     const response = await openai.chat.completions.create({
       model: MODEL,
       messages,

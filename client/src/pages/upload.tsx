@@ -10,7 +10,6 @@ import TimeframeSelector from "@/components/timeframe-selector";
 import DragDropZone from "@/components/drag-drop-zone";
 import InstrumentSelector from "@/components/instrument-selector";
 import AnalysisPanel from "@/components/analysis-panel";
-import AnalysisResultRenderer from "@/components/analysis-result-renderer";
 import ThemeToggle from "@/components/ThemeToggle";
 import type { Timeframe, Session } from "@shared/schema";
 

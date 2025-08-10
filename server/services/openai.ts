@@ -1,13 +1,10 @@
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-import { messageHasImageParts } from './unified-analysis';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
 
 export interface AnalysisResult {
   analysis: string;
@@ -61,11 +58,6 @@ export async function analyzeMultipleChartsWithAllMaps(
         ragContext += `   - Similarity: ${(item.similarity * 100).toFixed(1)}%\n`;
         ragContext += `   - Session: ${chart.session || 'Unknown'}\n\n`;
       });
-    }
-
-    // Defensive check: Ensure we have image content
-    if (!charts.length) {
-      throw new Error("No charts provided for analysis");
     }
 
     // Build comprehensive multi-chart prompt - use custom prompt if provided
@@ -172,19 +164,9 @@ Respond with a JSON object containing:
     console.log("📡 Making OpenAI API call with", content.length, "content parts...");
     console.log("📄 Prompt length:", systemPrompt.length, "characters");
 
-    // Defensive check: Ensure we have image content
-    const hasImages = content.some(part => part.type === 'image_url');
-    if (!hasImages) {
-      throw new Error("No image parts attached");
-    }
-
     const response = await openai.chat.completions.create({
-      model: MODEL,
+      model: "gpt-4o",
       messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
         {
           role: "user",
           content: content
@@ -404,14 +386,8 @@ Respond with a JSON object containing these exact fields:
     console.log("📡 Making OpenAI API call with", messageContent.length, "content parts...");
     console.log("📄 Prompt length:", prompt.length, "characters");
 
-    // Defensive check: Ensure we have image content
-    const hasImages = messageContent.some(part => part.type === 'image_url');
-    if (!hasImages) {
-      throw new Error("No image parts attached");
-    }
-
     const response = await openai.chat.completions.create({
-      model: MODEL,
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "user",
@@ -537,9 +513,8 @@ Provide your analysis with detailed technical analysis including:
 
     const prompt = systemPrompt;
 
-    const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
     const response = await openai.chat.completions.create({
-      model: MODEL,
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "user",
@@ -815,9 +790,8 @@ Respond ONLY in this exact JSON format:
     // Add depth map if available (to be implemented when we have chart record)
     // This could be added later when we pass the chart record to this function
 
-    const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
     const response = await openai.chat.completions.create({
-      model: MODEL,
+      model: "gpt-4o",
       messages: [
         {
           role: "user",
@@ -1014,9 +988,8 @@ Respond ONLY in this exact JSON format:
       }
     });
 
-    const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
     const response = await openai.chat.completions.create({
-      model: MODEL,
+      model: "gpt-4o",
       messages: [
         {
           role: "system",

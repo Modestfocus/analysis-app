@@ -46,9 +46,8 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       
       const textContent = content.find(part => part.type === 'text')?.text || '';
       
-      const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
       const response = await openai.chat.completions.create({
-        model: MODEL,
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -78,26 +77,8 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
 
     console.log(`🔍 Chat analysis request - ${imageCount} images, system prompt: ${systemPrompt.length} chars`);
 
-    // Extract image URLs from content
-    const imageUrls = content
-      .filter(part => part.type === 'image_url')
-      .map(part => part.image_url.url);
-
-    if (imageUrls.length === 0) {
-      return res.status(422).json({ 
-        error: 'No images found in content for analysis' 
-      });
-    }
-
-    // Use the unified analysis service for consistent processing
-    const { analyzeChartsUnified } = await import('../services/unified-analysis');
-    
-    const result = await analyzeChartsUnified({
-      imageUrls,
-      systemPrompt,
-      includeHistoricalContext: true,
-      maxSimilarCharts: 3
-    });
+    // Perform full analysis for messages with images
+    const result = await analyzeChatCharts({ content, systemPrompt });
 
     res.json({
       success: true,

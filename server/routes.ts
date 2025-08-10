@@ -9,7 +9,6 @@ import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
-import { analyzeChartsUnified, previewSimilarCharts, isDepthModelReady, getInjectTextFromStore, analyzeWithFullVisualStack } from "./services/unified-analysis";
 import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, insertNoteSchema, type Chart, type Document } from "@shared/schema";
 import debugRoutes from './debug-routes';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -1161,16 +1160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔍 Starting complete visual analysis for ${tempChartData.length} charts`);
       console.log(`📊 Visual maps generated: ${tempChartData.filter(c => c.depth).length} depth, ${tempChartData.filter(c => c.edge).length} edge, ${tempChartData.filter(c => c.gradient).length} gradient`);
 
-      // 8. Prepare image URLs for unified analysis
-      const imageUrls = files.map(file => file.path);
-
-      // 9. Use unified analysis service for consistent processing
-      const prediction = await analyzeChartsUnified({
-        imageUrls,
-        systemPrompt: customSystemPrompt,
-        includeHistoricalContext: true,
-        maxSimilarCharts: 3
-      });
+      // 8. Send complete visual stack to GPT-4o for live reasoning
+      const prediction = await analyzeMultipleChartsWithAllMaps(tempChartData, [], customSystemPrompt); // Pass customSystemPrompt here
 
       // 9. Display GPT-4o's response in the Analysis Reasoning panel
       res.json({
@@ -1387,58 +1378,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get chart error:', error);
       res.status(500).json({ error: 'Failed to get chart: ' + (error as Error).message });
-    }
-  });
-
-  // Health check endpoint for analysis system
-  app.get("/api/analysis/health", async (req, res) => {
-    try {
-      const model = process.env.VISION_MODEL ?? "gpt-4o";
-      const mapsReady = { depth: isDepthModelReady(), edge: true, gradient: true };
-
-      const k = Number(req.query.k ?? 3);
-      const ragPreview = await previewSimilarCharts({ k }); // return count + sample ids only (no heavy data)
-
-      const injectText = await getInjectTextFromStore(); // same source as dashboard Inject
-      const BACKEND_RAG_PROMPT_BASE = `You are a professional trading chart analyst with expertise in advanced pattern recognition and multi-timeframe analysis.
-
-You will receive:
-- Original chart images (candlesticks, price action, indicators)
-- Depth maps (3D depth perception for pattern strength assessment)
-- Edge maps (structural boundaries, support/resistance lines)
-- Gradient maps (price momentum and directional bias analysis)
-- Historical similar patterns for context (RAG-enhanced analysis)
-
-CRITICAL ANALYSIS FRAMEWORK:
-1. **Pattern Recognition**: Identify chart patterns using all visual layers
-2. **Multi-Map Synthesis**: Combine insights from depth, edge, and gradient data
-3. **Historical Context**: Reference similar historical patterns for validation
-4. **Session Timing**: Determine optimal trading session based on setup
-5. **Risk Assessment**: Evaluate pattern strength and confluence factors
-
-RESPOND IN JSON FORMAT ONLY:
-{
-  "prediction": "Bullish/Bearish/Neutral",
-  "session": "Asia/London/New York/Sydney",
-  "confidence": "Low/Medium/High",
-  "reasoning": "Detailed technical analysis referencing all visual maps and historical patterns"
-}`;
-      
-      const merged = [(injectText || "").trim(), BACKEND_RAG_PROMPT_BASE].filter(Boolean).join("\n\n");
-
-      res.json({
-        model,
-        mapsReady,
-        rag: { k, found: ragPreview.count, sample: ragPreview.ids?.slice(0, 3) },
-        mergedPromptPreview: merged.slice(0, 160),
-        mergedPromptLength: merged.length
-      });
-    } catch (error) {
-      console.error('Health check error:', error);
-      res.status(500).json({ 
-        error: 'Health check failed', 
-        message: error instanceof Error ? error.message : 'Unknown error' 
-      });
     }
   });
 
@@ -2250,112 +2189,10 @@ RESPOND IN JSON FORMAT ONLY:
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
 
-  // Chat analysis endpoint - routes to full visual stack
-  app.post('/api/chat/analyze', async (req, res) => {
-    let currentStage = 'validation';
-    try {
-      const { imageUrls = [], systemPrompt: injectText = '', instrument, timeframe } = req.body;
-      if (!imageUrls.length) return res.status(422).json({ error: 'Attach at least one image', stage: currentStage });
-
-      currentStage = 'analysis';
-      const out = await analyzeWithFullVisualStack({
-        imageUrls,
-        userInject: injectText,
-        instrument,
-        timeframe,
-      });
-
-      return streamJson(out, res);
-    } catch (err: any) {
-      console.error(`❌ Analysis failed at ${currentStage}:`, err);
-      return res.status(500).json({ error: err.message, stage: currentStage });
-    }
-  });
-
-  // ==== UNIFIED ANALYSIS ENDPOINTS ====
-  
-  // Main unified analysis endpoint - processes images with all visual maps and RAG context
-  app.post('/api/analyze/unified', async (req, res) => {
-    try {
-      const { imageUrls, systemPrompt } = req.body;
-
-      if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-        return res.status(400).json({ 
-          error: 'imageUrls array is required and must contain at least one image' 
-        });
-      }
-
-      console.log(`🔍 Unified analysis request - ${imageUrls.length} images, system prompt: ${systemPrompt ? 'Custom' : 'Default'}`);
-
-      const result = await analyzeChartsUnified({
-        imageUrls,
-        systemPrompt,
-        includeHistoricalContext: true,
-        maxSimilarCharts: 3
-      });
-
-      res.json({
-        success: true,
-        ...result
-      });
-
-    } catch (error) {
-      console.error('❌ Unified analysis endpoint error:', error);
-      res.status(500).json({ 
-        error: error instanceof Error ? error.message : 'Analysis failed',
-        details: error instanceof Error ? error.stack : undefined
-      });
-    }
-  });
-
-  // Health check endpoint - verify pipeline wiring as specified in Task 5
-  app.get('/api/analysis/health', async (req, res) => {
-    const model = process.env.VISION_MODEL ?? 'gpt-4o';
-    const k = Number(req.query.k ?? 3);
-    const rag = await previewSimilarCharts({ k });
-    const injectText = await getInjectTextFromStore();
-    
-    // Define the base prompt locally for health check
-    const BACKEND_RAG_PROMPT_BASE = `You are a professional trading chart analyst with expertise in advanced pattern recognition and multi-timeframe analysis.
-
-You will receive:
-- Original chart images (candlesticks, price action, indicators)
-- Depth maps (3D depth perception for pattern strength assessment)
-- Edge maps (structural boundaries, support/resistance lines)
-- Gradient maps (price momentum and directional bias analysis)
-- Historical similar patterns for context (RAG-enhanced analysis)
-
-CRITICAL ANALYSIS FRAMEWORK:
-1. **Pattern Recognition**: Identify chart patterns using all visual layers
-2. **Multi-Map Synthesis**: Combine insights from depth, edge, and gradient data
-3. **Historical Context**: Reference similar historical patterns for validation
-4. **Session Timing**: Determine optimal trading session based on setup
-5. **Risk Assessment**: Evaluate pattern strength and confluence factors
-
-RESPOND IN JSON FORMAT ONLY:
-{
-  "prediction": "Bullish/Bearish/Neutral",
-  "session": "Asia/London/New York/Sydney",
-  "confidence": "Low/Medium/High",
-  "reasoning": "Detailed technical analysis referencing all visual maps and historical patterns"
-}`;
-
-    const merged = [ (injectText||'').trim(), BACKEND_RAG_PROMPT_BASE ].filter(Boolean).join('\n\n');
-    res.json({
-      model,
-      mapsReady: { depth: isDepthModelReady(), edge: true, gradient: true },
-      rag: { k, found: rag.count, sample: rag.ids?.slice(0,3) },
-      mergedPromptPreview: merged.slice(0,160),
-      mergedPromptLength: merged.length
-    });
-  });
+  // Chat analysis endpoint
+  const { analyzeChatChartsEndpoint } = await import('./routes/chat-analysis');
+  app.post('/api/chat/analyze', analyzeChatChartsEndpoint);
 
   const httpServer = createServer(app);
   return httpServer;
-}
-
-// Utility function to stream JSON responses
-function streamJson(data: any, res: express.Response) {
-  res.setHeader('Content-Type', 'application/json');
-  res.json(data);
 }

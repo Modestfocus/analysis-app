@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import DragDropZone from "@/components/drag-drop-zone";
-import AnalysisResultRenderer from "@/components/analysis-result-renderer";
 import { Bolt, Camera, X, Zap, RefreshCw } from "lucide-react";
 
 interface QuickChartAnalysisProps {
@@ -73,43 +72,28 @@ export function QuickChartAnalysis({
     setAnalysisResults([]);
   }, []);
 
-  // Quick analysis mutation - using unified chat/analyze endpoint
+  // Quick analysis mutation
   const quickAnalysisMutation = useMutation({
     mutationFn: async () => {
       if (quickAnalysisFiles.length === 0) {
         throw new Error("No files selected for analysis");
       }
 
-      // Convert files to data URLs for the unified endpoint
-      const uploadedUrls: string[] = [];
-      for (const file of quickAnalysisFiles) {
-        const dataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-        uploadedUrls.push(dataUrl);
-      }
-
-      const response = await fetch('/api/chat/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          imageUrls: uploadedUrls, 
-          systemPrompt: (localStorage.getItem('systemPrompt_inject') || '') 
-        })
+      const formData = new FormData();
+      quickAnalysisFiles.forEach((file, index) => {
+        formData.append('charts', file);
+        formData.append(`timeframe_${index}`, selectedTimeframes[index] || "1H");
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Analysis failed at ${errorData.stage || 'unknown stage'}: ${errorData.error || 'Unknown error'}`);
+      // Add current prompt to the request
+      if (currentPrompt) {
+        formData.append('system_prompt', currentPrompt);
       }
 
-      return await response.json();
+      return apiRequest('POST', '/api/analyze/quick', formData);
     },
     onSuccess: (data: any) => {
-      // The unified endpoint returns a single analysis result, so we wrap it in an array
-      setAnalysisResults([data]);
+      setAnalysisResults(data.analyses || []);
       queryClient.invalidateQueries({ queryKey: ["/api/charts"] });
       
       toast({
@@ -117,11 +101,11 @@ export function QuickChartAnalysis({
         description: `Successfully analyzed ${quickAnalysisFiles.length} chart${quickAnalysisFiles.length !== 1 ? 's' : ''}`,
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       console.error("Quick analysis failed:", error);
       toast({
         title: "Analysis Failed",
-        description: error.message || "Failed to analyze charts. Please try again.",
+        description: "Failed to analyze charts. Please try again.",
         variant: "destructive",
       });
     },
@@ -292,13 +276,21 @@ export function QuickChartAnalysis({
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">Analysis Results</h3>
               {analysisResults.map((result, index) => (
-                <AnalysisResultRenderer
-                  key={index}
-                  result={result}
-                  title={`Chart ${index + 1}${result.timeframe ? ` (${result.timeframe})` : ''}`}
-                  showSimilarCharts={true}
-                  className="mb-4"
-                />
+                <div key={index} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline" className="text-xs">
+                      Chart {index + 1}
+                    </Badge>
+                    {result.timeframe && (
+                      <Badge variant="secondary" className="text-xs">
+                        {result.timeframe}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                    {result.analysis || "Analysis completed"}
+                  </div>
+                </div>
               ))}
             </div>
           )}
