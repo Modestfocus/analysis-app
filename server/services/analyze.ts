@@ -74,16 +74,15 @@ export async function analyzeCharts({
 
       if (usePreprocessing) {
         try {
-          // Generate preprocessing maps using opencv-processing
-          const chartId = Date.now() + i; // Temporary ID for processing
-          const processingResult = await processChartImage(imagePath, chartId);
+          // Generate visual maps using the new non-destructive preprocessing service
+          const { ensureVisualMaps } = await import('./preprocess');
+          const visualMaps = await ensureVisualMaps(imagePath);
           
-          if (processingResult.success) {
-            chartItem.edgeMapPath = processingResult.edgeMapPath;
-            chartItem.gradientMapPath = processingResult.gradientMapPath;
-          }
+          chartItem.depthMapPath = visualMaps.depthMapPath;
+          chartItem.edgeMapPath = visualMaps.edgeMapPath;
+          chartItem.gradientMapPath = visualMaps.gradientMapPath;
         } catch (error) {
-          console.warn(`⚠️ Preprocessing failed for image ${i}:`, error);
+          console.warn(`⚠️ Visual map generation failed for image ${i}:`, error);
         }
       }
 
