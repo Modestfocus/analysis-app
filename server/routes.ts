@@ -2301,23 +2301,15 @@ RESPOND IN JSON FORMAT ONLY:
     }
   });
 
-  // Health check endpoint - no OpenAI call, shows system readiness
+  // Health check endpoint - verify pipeline wiring as specified in Task 5
   app.get('/api/analysis/health', async (req, res) => {
-    try {
-      const model = process.env.VISION_MODEL ?? 'gpt-4o';
-      const k = Number(req.query.k ?? 3);
-      const symbol = req.query.symbol as string | undefined;
-
-      console.log(`🏥 Health check request - k=${k}, symbol=${symbol}`);
-
-      // Preview RAG functionality without OpenAI call
-      const rag = await previewSimilarCharts({ k });
-
-      // Get inject text from storage (simulated)
-      const injectText = (await getInjectTextFromStore()) ?? '';
-      
-      // Get base prompt from unified analysis service
-      const BACKEND_RAG_PROMPT_BASE = `You are a professional trading chart analyst with expertise in advanced pattern recognition and multi-timeframe analysis.
+    const model = process.env.VISION_MODEL ?? 'gpt-4o';
+    const k = Number(req.query.k ?? 3);
+    const rag = await previewSimilarCharts({ k });
+    const injectText = await getInjectTextFromStore();
+    
+    // Define the base prompt locally for health check
+    const BACKEND_RAG_PROMPT_BASE = `You are a professional trading chart analyst with expertise in advanced pattern recognition and multi-timeframe analysis.
 
 You will receive:
 - Original chart images (candlesticks, price action, indicators)
@@ -2341,42 +2333,14 @@ RESPOND IN JSON FORMAT ONLY:
   "reasoning": "Detailed technical analysis referencing all visual maps and historical patterns"
 }`;
 
-      // Merge prompts
-      const merged = [injectText.trim(), BACKEND_RAG_PROMPT_BASE].filter(Boolean).join('\n\n');
-      const preview = merged.slice(0, 160);
-
-      // Check processor availability
-      const maps = { 
-        depth: isDepthModelReady(), 
-        edge: true, 
-        gradient: true 
-      };
-
-      const response = {
-        model,
-        rag: { k, found: rag.count || 0 },
-        mapsReady: maps,
-        mergedPromptPreview: preview,
-        mergedPromptLength: merged.length,
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        ...(symbol && { symbol }),
-        ...(rag.message && { ragMessage: rag.message }),
-        ...(rag.error && { ragError: rag.error })
-      };
-
-      console.log(`✅ Health check complete - Model: ${model}, RAG found: ${rag.count}, Maps ready: depth=${maps.depth}, edge=${maps.edge}, gradient=${maps.gradient}`);
-
-      res.json(response);
-
-    } catch (error) {
-      console.error('❌ Health check error:', error);
-      res.status(500).json({ 
-        error: error instanceof Error ? error.message : 'Health check failed',
-        status: 'unhealthy',
-        timestamp: new Date().toISOString()
-      });
-    }
+    const merged = [ (injectText||'').trim(), BACKEND_RAG_PROMPT_BASE ].filter(Boolean).join('\n\n');
+    res.json({
+      model,
+      mapsReady: { depth: isDepthModelReady(), edge: true, gradient: true },
+      rag: { k, found: rag.count, sample: rag.ids?.slice(0,3) },
+      mergedPromptPreview: merged.slice(0,160),
+      mergedPromptLength: merged.length
+    });
   });
 
   const httpServer = createServer(app);

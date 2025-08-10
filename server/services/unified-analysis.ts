@@ -471,7 +471,7 @@ export async function getInjectTextFromStore(): Promise<string | null> {
 }
 
 /**
- * Wrapper for analyzeChartsUnified to match expected interface
+ * Full visual stack analysis with proper prompt merging and OpenAI integration
  */
 export async function analyzeWithFullVisualStack(options: {
   imageUrls: string[];
@@ -479,12 +479,133 @@ export async function analyzeWithFullVisualStack(options: {
   instrument?: string;
   timeframe?: string;
 }) {
-  console.log(`🔍 Chat analysis request - ${options.imageUrls.length} images, system prompt: ${options.userInject?.length || 0} chars`);
+  const { imageUrls, userInject, instrument, timeframe } = options;
   
-  return await analyzeChartsUnified({
-    imageUrls: options.imageUrls,
-    systemPrompt: options.userInject,
-    includeHistoricalContext: true,
-    maxSimilarCharts: 3
+  // Merge prompt as specified in Task 4
+  const systemPrompt = [
+    (userInject || '').trim(), 
+    BACKEND_RAG_PROMPT_BASE
+  ].filter(Boolean).join('\n\n');
+
+  // Process images and generate maps
+  const processedImages: ProcessedImageData[] = [];
+  
+  for (let i = 0; i < imageUrls.length; i++) {
+    const imageUrl = imageUrls[i];
+    
+    // Handle data URLs or file paths
+    let imagePath: string;
+    if (imageUrl.startsWith('data:')) {
+      // Convert base64 to temporary file
+      const base64Data = imageUrl.split(',')[1];
+      const tempPath = path.join(process.cwd(), 'server', 'temp', `unified_temp_${Date.now()}_${i}.png`);
+      fs.writeFileSync(tempPath, Buffer.from(base64Data, 'base64'));
+      imagePath = tempPath;
+    } else {
+      imagePath = imageUrl;
+    }
+
+    const processedData = await processSingleImage(imagePath, i);
+    processedImages.push(processedData);
+
+    // Clean up temp file if we created one
+    if (imageUrl.startsWith('data:')) {
+      fs.unlinkSync(imagePath);
+    }
+  }
+
+  // Build RAG context from similar charts
+  const ragContext = buildRAGContext(processedImages);
+  const finalPrompt = `${systemPrompt}${ragContext}`;
+
+  // Attach images as image_url parts as specified in Task 4
+  const userParts: any[] = [
+    { type: 'text', text: finalPrompt }
+  ];
+
+  // Add original images
+  processedImages.forEach((imageData, index) => {
+    userParts.push({ 
+      type: 'image_url', 
+      image_url: { url: `data:image/${imageData.metadata.format};base64,${imageData.originalBase64}` }
+    });
+    
+    // Add depth/edge/gradient maps as image_url parts
+    if (imageData.depthBase64) {
+      userParts.push({ 
+        type: 'image_url', 
+        image_url: { url: `data:image/png;base64,${imageData.depthBase64}` }
+      });
+    }
+    if (imageData.edgeBase64) {
+      userParts.push({ 
+        type: 'image_url', 
+        image_url: { url: `data:image/png;base64,${imageData.edgeBase64}` }
+      });
+    }
+    if (imageData.gradientBase64) {
+      userParts.push({ 
+        type: 'image_url', 
+        image_url: { url: `data:image/png;base64,${imageData.gradientBase64}` }
+      });
+    }
   });
+
+  // Count maps for logging
+  const mapCounts = {
+    depth: processedImages.filter(img => img.depthBase64).length,
+    edge: processedImages.filter(img => img.edgeBase64).length,
+    gradient: processedImages.filter(img => img.gradientBase64).length
+  };
+  
+  const ragCount = processedImages.reduce((sum, img) => sum + (img.similarCharts?.length || 0), 0);
+
+  // Server log once per call as specified in Task 4
+  const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
+  console.log(`📊 Pipeline Stats: {model: ${MODEL}, imageCount: ${imageUrls.length}, maps: {depth: ${mapCounts.depth}, edge: ${mapCounts.edge}, gradient: ${mapCounts.gradient}}, ragCount: ${ragCount}}`);
+
+  // OpenAI call with single model flag and streaming as specified in Task 4
+  const messages = [{ role: 'user' as const, content: userParts }];
+  
+  const resp = await openai.chat.completions.create({
+    model: MODEL,
+    messages,
+    response_format: { type: 'json_object' },
+    temperature: 0.1,
+    stream: true
+  });
+
+  // Collect streamed response
+  let fullResponse = '';
+  for await (const chunk of resp) {
+    const content = chunk.choices[0]?.delta?.content || '';
+    fullResponse += content;
+  }
+
+  // Parse JSON response
+  let parsedResponse: any;
+  try {
+    parsedResponse = JSON.parse(fullResponse);
+  } catch (error) {
+    console.error(`❌ Failed to parse GPT JSON response:`, error);
+    parsedResponse = {
+      prediction: "Analysis failed",
+      session: "Unknown", 
+      confidence: "Low",
+      reasoning: "Failed to parse response format"
+    };
+  }
+
+  // Build unified response
+  return {
+    prediction: parsedResponse.prediction || "Unknown",
+    session: parsedResponse.session || "Unknown",
+    confidence: parsedResponse.confidence || "Medium", 
+    reasoning: parsedResponse.reasoning || fullResponse,
+    // Legacy field mapping
+    direction: parsedResponse.prediction?.toLowerCase(),
+    rationale: parsedResponse.reasoning,
+    similarCharts: processedImages.flatMap(img => img.similarCharts || []).slice(0, 3),
+    visualMapsIncluded: mapCounts
+  };
 }
