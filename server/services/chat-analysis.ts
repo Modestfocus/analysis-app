@@ -307,19 +307,39 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest): Promise<C
   console.log(`📡 Making OpenAI API call with ${visionContent.length} content parts`);
   console.log(`🖼️ Image parts: ${visionContent.filter(p => p.type === 'image_url').length}`);
 
+  // Build enhanced system prompt with RAG context
+  let enhancedSystemPrompt = request.systemPrompt;
+  
+  // Add historical context from similar charts if available
+  if (allSimilarCharts.length > 0) {
+    const ragContext = `\n\n📚 **Historical Chart Context:**\n${allSimilarCharts.slice(0, 3).map((item, index) => {
+      const chart = item.chart;
+      return `📊 Similar Chart #${index + 1}:
+- Filename: ${chart.originalName || chart.filename}
+- Instrument: ${chart.instrument}
+- Timeframe: ${chart.timeframe}
+- Session: ${chart.session || 'Unknown'}
+- CLIP Similarity: ${(item.similarity * 100).toFixed(1)}%
+- Outcome: ${chart.comment || 'Not recorded'}`;
+    }).join('\n\n')}`;
+    
+    enhancedSystemPrompt += ragContext;
+  }
+
+  // Add visual processing context
+  const visualContext = `\n\n🖼️ **Visual Processing Data Available:**
+- Original Charts: ${processedData.length}
+- Depth Maps: ${depthCount} (structural geometry analysis)
+- Edge Maps: ${edgeCount} (entry zone outlines, compression detection)  
+- Gradient Maps: ${gradientCount} (slope intensity, momentum analysis)`;
+  
+  enhancedSystemPrompt += visualContext;
+
   // Build messages for OpenAI
   const messages = [
     {
       role: 'system' as const,
-      content: `${request.systemPrompt}
-
-Respond with a JSON object containing:
-{
-  "prediction": "Up/Down/Sideways",
-  "session": "Asia/London/NY/Sydney", 
-  "confidence": "Low/Medium/High",
-  "reasoning": "Detailed analysis explaining your prediction based on ALL visual data from ALL charts"
-}`
+      content: enhancedSystemPrompt
     },
     {
       role: 'user' as const,
