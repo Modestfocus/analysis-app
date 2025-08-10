@@ -245,12 +245,14 @@ Respond in this precise JSON format:
       const isFollowUp = hasExistingMessages && !hasNewImages;
       
       // Use the new chat analysis endpoint with current prompt from dashboard
+      // This will include live RAG context, real-time depth/edge/gradient maps, and bundle context
       const currentPrompt = getCurrentPrompt();
       const response = await apiRequest('POST', '/api/chat/analyze', { 
         content: visionContent,
         systemPrompt: currentPrompt,
         conversationId,
-        isFollowUp
+        isFollowUp,
+        enableFullAnalysis: true  // Enable full RAG + visual processing pipeline
       });
       
       const result = await response.json();

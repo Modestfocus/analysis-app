@@ -2190,8 +2190,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/chat/upload-image', uploadChatImage);
 
   // Chat analysis endpoint
-  const { analyzeChatChartsEndpoint } = await import('./routes/chat-analysis');
-  app.post('/api/chat/analyze', analyzeChatChartsEndpoint);
+  const { analyzeChatContent } = await import('./routes/chat-analysis');
+  app.post('/api/chat/analyze', async (req, res) => {
+    try {
+      const { content, systemPrompt, conversationId, isFollowUp, enableFullAnalysis } = req.body;
+
+      if (!content || !conversationId) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Missing required fields: content, conversationId' 
+        });
+      }
+
+      const result = await analyzeChatContent(content, systemPrompt, conversationId, isFollowUp, enableFullAnalysis);
+
+      res.json({
+        success: true,
+        response: result.response,
+        message: result.message,
+        charts: result.charts,
+        analysisComplete: result.analysisComplete,
+        chartsAnalyzedCount: result.chartsAnalyzedCount,
+        analysisDetails: result.analysisDetails,
+        newConversationId: result.newConversationId
+      });
+    } catch (error) {
+      console.error('Chat analysis error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Chat analysis failed: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
