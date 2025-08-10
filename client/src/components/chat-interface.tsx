@@ -19,6 +19,33 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
+// Utility function to generate UUID
+function generateId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Utility function to compute SHA-256 hash
+async function computeFileHash(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Utility function to get image dimensions
+function getImageDimensions(dataUrl: string): Promise<{width: number, height: number}> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 // Component to display similar chart images
 function SimilarChartImage({ chartId, filename }: { chartId: number; filename: string }) {
   const { data: chart, isLoading, error } = useQuery({
@@ -97,6 +124,17 @@ interface ChatInterfaceProps {
   isExpanded?: boolean;
 }
 
+type UploadedImage = {
+  id: string;              // uuid
+  name: string;
+  sizeBytes: number;
+  mime: string;
+  dataUrl: string;         // base64 data URL
+  width?: number;          // populated after decode (optional)
+  height?: number;         // populated after decode (optional)
+  createdAt: number;       // Date.now()
+};
+
 export default function ChatInterface({ systemPrompt, isExpanded = false }: ChatInterfaceProps) {
   // Get current prompt from localStorage to match dashboard System Prompt tab
   const getCurrentPrompt = () => {
@@ -107,7 +145,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
   const [message, setMessage] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -209,20 +247,88 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle file uploads
-  const handleFileUpload = (files: FileList) => {
-    const validFiles = Array.from(files).filter(file => 
-      file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024
-    );
+  // Global paste listener for images
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      // Only handle paste if we're not in an input field
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        return;
+      }
 
-    if (validFiles.length !== files.length) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') === 0) {
+          const file = item.getAsFile();
+          if (file) {
+            imageFiles.push(file);
+          }
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        // Create a FileList-like object from the files array
+        const fileListData = Object.assign(imageFiles, {
+          item: (index: number) => imageFiles[index] || null,
+        });
+        
+        handleFileUpload(fileListData as unknown as FileList);
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, [uploadedImages, activeConversationId]);
+
+  // Handle file uploads with enhanced validation and deduplication
+  const handleFileUpload = async (files: FileList) => {
+    const fileArray = Array.from(files);
+    
+    // Validate each file
+    const validationResults = await Promise.allSettled(
+      fileArray.map(async (file) => {
+        console.assert(file.size <= 10 * 1024 * 1024, "File too large");
+        
+        // MIME validation
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`Invalid file type: ${file.type}. Only image files are allowed.`);
+        }
+        
+        // Size validation
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`File too large: ${(file.size / (1024 * 1024)).toFixed(2)}MB. Maximum size is 10MB.`);
+        }
+        
+        return file;
+      })
+    );
+    
+    // Extract valid files and collect errors
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+    
+    validationResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        validFiles.push(result.value);
+      } else {
+        errors.push(`${fileArray[index].name}: ${result.reason.message}`);
+      }
+    });
+    
+    // Show error toast if there were validation failures
+    if (errors.length > 0) {
       toast({
         title: "Invalid files",
-        description: "Only image files under 10MB are allowed.",
+        description: errors.join('\n'),
         variant: "destructive",
       });
     }
-
+    
     if (validFiles.length > 0) {
       // Auto-start conversation if this is the first image and no conversation exists
       if (!activeConversationId) {
@@ -231,14 +337,67 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       }
 
       // Process each valid file
-      validFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          setUploadedImages(prev => [...prev, dataUrl]);
-        };
-        reader.readAsDataURL(file);
-      });
+      const newImages: UploadedImage[] = [];
+      
+      for (const file of validFiles) {
+        try {
+          // Compute hash for deduplication
+          const fileHash = await computeFileHash(file);
+          
+          // Check if image already exists (by hash)
+          const existingImage = uploadedImages.find(img => {
+            // Extract hash from data URL if we stored it
+            return img.id.includes(fileHash.substring(0, 8));
+          });
+          
+          if (existingImage) {
+            console.log(`Skipping duplicate image: ${file.name}`);
+            continue;
+          }
+          
+          // Convert to data URL
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          
+          // Get image dimensions
+          const dimensions = await getImageDimensions(dataUrl);
+          
+          // Create UploadedImage object
+          const uploadedImage: UploadedImage = {
+            id: `${generateId()}-${fileHash.substring(0, 8)}`,
+            name: file.name,
+            sizeBytes: file.size,
+            mime: file.type,
+            dataUrl,
+            width: dimensions.width,
+            height: dimensions.height,
+            createdAt: Date.now(),
+          };
+          
+          newImages.push(uploadedImage);
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error);
+          toast({
+            title: "File processing error",
+            description: `Failed to process ${file.name}`,
+            variant: "destructive",
+          });
+        }
+      }
+      
+      // Add new images to state
+      if (newImages.length > 0) {
+        setUploadedImages(prev => [...prev, ...newImages]);
+        
+        // Debug logging
+        if (localStorage.getItem('UPLOAD_DEBUG') === '1') {
+          console.table(newImages.map(({id, name, sizeBytes, mime}) => ({id, name, sizeBytes, mime})));
+        }
+      }
     }
   };
 
@@ -269,19 +428,12 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
     }
 
     if (imageFiles.length > 0) {
-      imageFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          setUploadedImages(prev => [...prev, dataUrl]);
-          
-          if (!activeConversationId) {
-            const title = `Chart Analysis - ${new Date().toLocaleDateString()}`;
-            createConversationMutation.mutate(title);
-          }
-        };
-        reader.readAsDataURL(file);
+      // Create a FileList-like object from the files array
+      const fileListData = Object.assign(imageFiles, {
+        item: (index: number) => imageFiles[index] || null,
       });
+      
+      handleFileUpload(fileListData as unknown as FileList);
     }
   };
 
@@ -309,7 +461,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
     sendMessageMutation.mutate({
       conversationId: activeConversationId,
       content: message.trim(),
-      imageUrls: uploadedImages,
+      imageUrls: uploadedImages.map(img => img.dataUrl),
     });
   };
 
@@ -323,6 +475,11 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    
+    // Debug logging
+    if (localStorage.getItem('UPLOAD_DEBUG') === '1') {
+      console.log(`Removed image at index ${index}`);
+    }
   };
 
   return (
@@ -526,11 +683,12 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
         {/* Uploaded Images Preview */}
         {uploadedImages.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
-            {uploadedImages.map((url, index) => (
-              <div key={index} className="relative">
+            {uploadedImages.map((image, index) => (
+              <div key={image.id} className="relative">
                 <img
-                  src={url}
-                  alt={`Upload preview ${index + 1}`}
+                  src={image.dataUrl}
+                  alt={`Upload preview: ${image.name}`}
+                  title={`${image.name} (${(image.sizeBytes / (1024 * 1024)).toFixed(2)}MB)${image.width && image.height ? ` - ${image.width}x${image.height}` : ''}`}
                   className="w-16 h-16 object-cover rounded border"
                 />
                 <Button
