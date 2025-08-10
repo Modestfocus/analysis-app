@@ -178,53 +178,86 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ conversationId, content, imageUrls }: { 
+    mutationFn: async ({ conversationId, userMessage }: { 
       conversationId: string; 
-      content: string; 
-      imageUrls?: string[] 
+      userMessage: string;
     }) => {
-      // Create OpenAI vision format content
-      const visionContent: any[] = [];
+      // Build vision content array from text and uploaded images
+      const visionContent: any[] = [
+        { type: "text", text: userMessage?.trim() || "Analyze this chart" },
+        ...uploadedImages.map(img => ({
+          type: "image_url",
+          image_url: { url: img.dataUrl, detail: "high" }
+        }))
+      ];
       
-      // Add text content if present
-      if (content?.trim()) {
-        visionContent.push({ type: 'text', text: content });
+      // Calculate total payload size for safety check
+      const totalPayloadSize = uploadedImages.reduce((sum, img) => sum + img.sizeBytes, 0);
+      if (totalPayloadSize > 9 * 1024 * 1024) { // 9MB limit
+        throw new Error(`Payload too large: ${(totalPayloadSize / (1024 * 1024)).toFixed(2)}MB. Maximum is 9MB.`);
       }
       
-      // Add images in OpenAI vision format
-      if (imageUrls && imageUrls.length > 0) {
-        imageUrls.forEach(url => {
-          visionContent.push({ 
-            type: 'image_url', 
-            image_url: { url } 
-          });
-        });
-      }
+      // Get inject text from dashboard if present
+      const injectText = localStorage.getItem('systemPrompt_inject') || '';
       
-      // Check if this is a follow-up (conversation has existing messages and no new images)
+      // Check if this is a follow-up
       const hasExistingMessages = Array.isArray(messages) && messages.length > 0;
-      const hasNewImages = imageUrls && imageUrls.length > 0;
-      const isFollowUp = hasExistingMessages && !hasNewImages;
+      const isFollowUp = Boolean(conversationId) && hasExistingMessages;
       
-      // Use the new chat analysis endpoint with current prompt from dashboard
-      const currentPrompt = getCurrentPrompt();
-      const response = await apiRequest('POST', '/api/chat/analyze', { 
-        content: visionContent,
-        systemPrompt: currentPrompt,
-        conversationId,
-        isFollowUp
-      });
+      // Debug logging
+      if (localStorage.getItem('NET_DEBUG') === '1') {
+        const payloadSummary = {
+          textLength: userMessage?.length || 0,
+          imageCount: uploadedImages.length,
+          totalBytes: totalPayloadSize,
+          dataUrlPreviews: uploadedImages.map(img => img.dataUrl.substring(0, 40) + '...')
+        };
+        console.log('[POST] /api/chat/analyze', payloadSummary);
+      }
       
-      const result = await response.json();
+      // Create abort controller for timeout
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), 45000); // 45s timeout
       
-      // Save both user message and AI response to conversation
-      await apiRequest('POST', `/api/chat/conversations/${conversationId}/messages`, { 
-        content: content || '',
-        imageUrls: imageUrls || [],
-        aiResponse: result
-      });
-      
-      return result;
+      try {
+        // POST to analysis endpoint
+        const response = await fetch("/api/chat/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: visionContent,
+            systemPrompt: undefined,        // let backend build the unified prompt
+            conversationId,
+            isFollowUp,
+            enableFullAnalysis: true,
+            injectText: injectText || undefined,
+          }),
+          signal: abortController.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        // Save both user message and AI response to conversation
+        await apiRequest('POST', `/api/chat/conversations/${conversationId}/messages`, { 
+          content: userMessage || '',
+          imageUrls: uploadedImages.map(img => img.dataUrl),
+          aiResponse: result
+        });
+        
+        return result;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (abortController.signal.aborted) {
+          throw new Error('Request timeout - analysis took too long');
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
@@ -460,8 +493,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
     sendMessageMutation.mutate({
       conversationId: activeConversationId,
-      content: message.trim(),
-      imageUrls: uploadedImages.map(img => img.dataUrl),
+      userMessage: message.trim(),
     });
   };
 
