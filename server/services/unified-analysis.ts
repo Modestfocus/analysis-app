@@ -350,23 +350,37 @@ You will analyze trading charts with their complete visual processing pipeline:
 - Edge Maps (structural boundaries and trend lines)  
 - Gradient Maps (price momentum and slope analysis)
 
-CRITICAL: You must respond ONLY with valid JSON in this exact format:
+CRITICAL: You MUST respond with ONLY valid JSON in this EXACT format. Do not include any text before or after the JSON:
+
 {
-  "session": "Asia|London|NY|Sydney",
-  "direction_bias": "Up|Down|Sideways", 
-  "confidence": 0-100,
-  "rationale": "Detailed analysis explaining your prediction",
-  "pattern_match": ["pattern1", "pattern2"],
-  "risk_notes": "Risk management considerations",
-  "next_steps": "Recommended actions"
+  "session": "Asia",
+  "direction_bias": "Up",
+  "confidence": 75,
+  "rationale": "Your detailed analysis here",
+  "pattern_match": ["Pattern 1", "Pattern 2"],
+  "risk_notes": "Risk considerations",
+  "next_steps": "Action recommendations"
 }
 
-Key Analysis Points:
-1. **Session Timing**: Consider optimal trading session
-2. **Visual Maps**: Use structure/edge/gradient maps for pattern strength
-3. **Historical Context**: Reference similar patterns when available
-4. **Risk Assessment**: Identify key risk factors
-5. **Confidence**: Base on pattern clarity and historical success`;
+STRICT REQUIREMENTS:
+- session: MUST be exactly one of: "Asia", "London", "NY", "Sydney" (use "NY" not "New York")
+- direction_bias: MUST be exactly one of: "Up", "Down", "Sideways" 
+- confidence: MUST be a NUMBER between 0 and 100 (not a string like "high" or "medium")
+- rationale: MUST be a detailed string explaining your analysis
+- pattern_match: OPTIONAL array of pattern names
+- risk_notes: OPTIONAL string with risk considerations
+- next_steps: OPTIONAL string with recommendations
+
+EXAMPLE VALID RESPONSE:
+{
+  "session": "NY",
+  "direction_bias": "Up",
+  "confidence": 82,
+  "rationale": "Strong bullish momentum with support at 1.2300 level",
+  "pattern_match": ["Bull Flag", "Higher Lows"],
+  "risk_notes": "Watch for resistance at 1.2450",
+  "next_steps": "Enter long on pullback to 1.2320"
+}`;
 
     const finalSystemPrompt = `${baseSystemPrompt}${injectText ? `\n\nAdditional Instructions: ${injectText}` : ''}${ragContext}${bundleContext}`;
 
@@ -440,6 +454,12 @@ Key Analysis Points:
       }
     });
 
+    // Add final JSON format reminder
+    content.push({
+      type: "text",
+      text: "\n\nIMPORTANT: Respond with ONLY valid JSON in the exact format specified. Use 'NY' not 'New York', ensure direction_bias is exactly 'Up', 'Down', or 'Sideways', and confidence must be a number 0-100."
+    });
+
     // 6. Debug logging if enabled
     if (debugMode || process.env.PROMPT_DEBUG === 'true') {
       console.log('🐛 PROMPT_DEBUG - System Prompt Length:', finalSystemPrompt.length);
@@ -475,6 +495,41 @@ Key Analysis Points:
       const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
       const jsonText = jsonMatch ? jsonMatch[0] : aiResponseText;
       parsedResponse = JSON.parse(jsonText);
+      
+      // Fix common issues before validation
+      if (parsedResponse.session === 'New York') {
+        parsedResponse.session = 'NY';
+      }
+      if (parsedResponse.direction && !parsedResponse.direction_bias) {
+        parsedResponse.direction_bias = parsedResponse.direction;
+        delete parsedResponse.direction;
+      }
+      if (typeof parsedResponse.confidence === 'string') {
+        // Convert confidence strings to numbers
+        if (parsedResponse.confidence.toLowerCase() === 'high') {
+          parsedResponse.confidence = 85;
+        } else if (parsedResponse.confidence.toLowerCase() === 'medium') {
+          parsedResponse.confidence = 60;
+        } else if (parsedResponse.confidence.toLowerCase() === 'low') {
+          parsedResponse.confidence = 35;
+        } else {
+          // Try to extract number from string
+          const numMatch = parsedResponse.confidence.match(/\d+/);
+          parsedResponse.confidence = numMatch ? parseInt(numMatch[0]) : 50;
+        }
+      }
+      // Ensure direction_bias is capitalized correctly
+      if (parsedResponse.direction_bias) {
+        const dir = parsedResponse.direction_bias.toLowerCase();
+        if (dir === 'up' || dir === 'bullish' || dir === 'long') {
+          parsedResponse.direction_bias = 'Up';
+        } else if (dir === 'down' || dir === 'bearish' || dir === 'short') {
+          parsedResponse.direction_bias = 'Down';
+        } else if (dir === 'sideways' || dir === 'neutral' || dir === 'consolidation') {
+          parsedResponse.direction_bias = 'Sideways';
+        }
+      }
+      
     } catch (parseError) {
       console.error('❌ JSON Parse Error:', parseError);
       console.error('❌ Raw AI Response:', aiResponseText);
