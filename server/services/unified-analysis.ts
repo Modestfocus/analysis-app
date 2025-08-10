@@ -350,7 +350,7 @@ You will analyze trading charts with their complete visual processing pipeline:
 - Edge Maps (structural boundaries and trend lines)  
 - Gradient Maps (price momentum and slope analysis)
 
-CRITICAL: You MUST respond with ONLY valid JSON in this EXACT format. Do not include any text before or after the JSON:
+CRITICAL: You MUST respond with ONLY valid JSON in this EXACT format. Do not include any text before or after the JSON. Even if visual maps are not clearly visible, you must still provide a JSON response with your best analysis based on available data:
 
 {
   "session": "Asia",
@@ -456,8 +456,8 @@ EXAMPLE VALID RESPONSE:
 
     // Add final JSON format reminder
     content.push({
-      type: "text",
-      text: "\n\nIMPORTANT: Respond with ONLY valid JSON in the exact format specified. Use 'NY' not 'New York', ensure direction_bias is exactly 'Up', 'Down', or 'Sideways', and confidence must be a number 0-100."
+      type: "text", 
+      text: "\n\nIMPORTANT: You MUST respond with ONLY valid JSON in the exact format specified. Use 'NY' not 'New York', ensure direction_bias is exactly 'Up', 'Down', or 'Sideways', and confidence must be a number 0-100. Do NOT respond with plain text explanations - only JSON. Even if images are unclear, provide your best analysis in JSON format."
     });
 
     // 6. Debug logging if enabled
@@ -494,46 +494,72 @@ EXAMPLE VALID RESPONSE:
       // Extract JSON from response if it's wrapped in text
       const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
       const jsonText = jsonMatch ? jsonMatch[0] : aiResponseText;
-      parsedResponse = JSON.parse(jsonText);
       
-      // Fix common issues before validation
-      if (parsedResponse.session === 'New York') {
-        parsedResponse.session = 'NY';
-      }
-      if (parsedResponse.direction && !parsedResponse.direction_bias) {
-        parsedResponse.direction_bias = parsedResponse.direction;
-        delete parsedResponse.direction;
-      }
-      if (typeof parsedResponse.confidence === 'string') {
-        // Convert confidence strings to numbers
-        if (parsedResponse.confidence.toLowerCase() === 'high') {
-          parsedResponse.confidence = 85;
-        } else if (parsedResponse.confidence.toLowerCase() === 'medium') {
-          parsedResponse.confidence = 60;
-        } else if (parsedResponse.confidence.toLowerCase() === 'low') {
-          parsedResponse.confidence = 35;
-        } else {
-          // Try to extract number from string
-          const numMatch = parsedResponse.confidence.match(/\d+/);
-          parsedResponse.confidence = numMatch ? parseInt(numMatch[0]) : 50;
+      // Check if response is plain text refusal instead of JSON
+      if (!jsonMatch && (aiResponseText.includes("unable") || aiResponseText.includes("can't") || aiResponseText.includes("cannot"))) {
+        console.log('⚠️ GPT-4o provided text refusal instead of JSON, creating fallback response');
+        parsedResponse = {
+          session: "NY",
+          direction_bias: "Sideways",
+          confidence: 30,
+          rationale: `Analysis limited: ${aiResponseText.substring(0, 200)}...`,
+          pattern_match: ["Limited Analysis"],
+          risk_notes: "Unable to complete full visual analysis due to image processing issues",
+          next_steps: "Please retry analysis or check image quality"
+        };
+      } else {
+        parsedResponse = JSON.parse(jsonText);
+        
+        // Fix common issues before validation
+        if (parsedResponse.session === 'New York') {
+          parsedResponse.session = 'NY';
         }
-      }
-      // Ensure direction_bias is capitalized correctly
-      if (parsedResponse.direction_bias) {
-        const dir = parsedResponse.direction_bias.toLowerCase();
-        if (dir === 'up' || dir === 'bullish' || dir === 'long') {
-          parsedResponse.direction_bias = 'Up';
-        } else if (dir === 'down' || dir === 'bearish' || dir === 'short') {
-          parsedResponse.direction_bias = 'Down';
-        } else if (dir === 'sideways' || dir === 'neutral' || dir === 'consolidation') {
-          parsedResponse.direction_bias = 'Sideways';
+        if (parsedResponse.direction && !parsedResponse.direction_bias) {
+          parsedResponse.direction_bias = parsedResponse.direction;
+          delete parsedResponse.direction;
+        }
+        if (typeof parsedResponse.confidence === 'string') {
+          // Convert confidence strings to numbers
+          if (parsedResponse.confidence.toLowerCase() === 'high') {
+            parsedResponse.confidence = 85;
+          } else if (parsedResponse.confidence.toLowerCase() === 'medium') {
+            parsedResponse.confidence = 60;
+          } else if (parsedResponse.confidence.toLowerCase() === 'low') {
+            parsedResponse.confidence = 35;
+          } else {
+            // Try to extract number from string
+            const numMatch = parsedResponse.confidence.match(/\d+/);
+            parsedResponse.confidence = numMatch ? parseInt(numMatch[0]) : 50;
+          }
+        }
+        // Ensure direction_bias is capitalized correctly
+        if (parsedResponse.direction_bias) {
+          const dir = parsedResponse.direction_bias.toLowerCase();
+          if (dir === 'up' || dir === 'bullish' || dir === 'long') {
+            parsedResponse.direction_bias = 'Up';
+          } else if (dir === 'down' || dir === 'bearish' || dir === 'short') {
+            parsedResponse.direction_bias = 'Down';
+          } else if (dir === 'sideways' || dir === 'neutral' || dir === 'consolidation') {
+            parsedResponse.direction_bias = 'Sideways';
+          }
         }
       }
       
     } catch (parseError) {
       console.error('❌ JSON Parse Error:', parseError);
       console.error('❌ Raw AI Response:', aiResponseText);
-      throw new Error(`Invalid JSON response from AI: ${parseError}`);
+      
+      // Create emergency fallback response for complete parsing failures
+      console.log('⚠️ Creating emergency fallback response due to parse error');
+      parsedResponse = {
+        session: "NY",
+        direction_bias: "Sideways", 
+        confidence: 25,
+        rationale: `Analysis failed due to parsing error. Original response: ${aiResponseText.substring(0, 150)}...`,
+        pattern_match: ["Parse Error"],
+        risk_notes: "Technical analysis error occurred",
+        next_steps: "Please retry the analysis"
+      };
     }
 
     // 9. Validate against schema
