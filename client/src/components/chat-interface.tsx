@@ -169,14 +169,25 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       const hasNewImages = imageUrls && imageUrls.length > 0;
       const isFollowUp = hasExistingMessages && !hasNewImages;
       
-      // Use the new chat analysis endpoint with current prompt from dashboard
-      const currentPrompt = getCurrentPrompt();
-      const response = await apiRequest('POST', '/api/chat/analyze', { 
-        content: visionContent,
-        systemPrompt: currentPrompt,
-        conversationId,
-        isFollowUp
+      // Send only inject text + imageUrls to /api/chat/analyze
+      const injectText = localStorage.getItem('systemPrompt_inject') || '';
+      
+      // Log counts before fetch - if zero images, block send
+      console.log(`Chat analysis request - imageUrls count: ${imageUrls?.length || 0}`);
+      if (!imageUrls || imageUrls.length === 0) {
+        throw new Error('No images attached. Please attach at least one chart image for analysis.');
+      }
+      
+      const response = await fetch('/api/chat/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrls, systemPrompt: injectText })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Analysis failed');
+      }
       
       const result = await response.json();
       

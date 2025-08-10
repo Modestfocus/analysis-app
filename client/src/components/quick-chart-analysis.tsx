@@ -73,28 +73,43 @@ export function QuickChartAnalysis({
     setAnalysisResults([]);
   }, []);
 
-  // Quick analysis mutation
+  // Quick analysis mutation - using unified chat/analyze endpoint
   const quickAnalysisMutation = useMutation({
     mutationFn: async () => {
       if (quickAnalysisFiles.length === 0) {
         throw new Error("No files selected for analysis");
       }
 
-      const formData = new FormData();
-      quickAnalysisFiles.forEach((file, index) => {
-        formData.append('charts', file);
-        formData.append(`timeframe_${index}`, selectedTimeframes[index] || "1H");
-      });
-
-      // Add current prompt to the request
-      if (currentPrompt) {
-        formData.append('system_prompt', currentPrompt);
+      // Convert files to data URLs for the unified endpoint
+      const uploadedUrls: string[] = [];
+      for (const file of quickAnalysisFiles) {
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        uploadedUrls.push(dataUrl);
       }
 
-      return apiRequest('POST', '/api/analyze/quick', formData);
+      const response = await fetch('/api/chat/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          imageUrls: uploadedUrls, 
+          systemPrompt: (localStorage.getItem('systemPrompt_inject') || '') 
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Analysis failed at ${errorData.stage || 'unknown stage'}`);
+      }
+
+      return await response.json();
     },
     onSuccess: (data: any) => {
-      setAnalysisResults(data.analyses || []);
+      // The unified endpoint returns a single analysis result, so we wrap it in an array
+      setAnalysisResults([data]);
       queryClient.invalidateQueries({ queryKey: ["/api/charts"] });
       
       toast({
@@ -102,11 +117,11 @@ export function QuickChartAnalysis({
         description: `Successfully analyzed ${quickAnalysisFiles.length} chart${quickAnalysisFiles.length !== 1 ? 's' : ''}`,
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Quick analysis failed:", error);
       toast({
         title: "Analysis Failed",
-        description: "Failed to analyze charts. Please try again.",
+        description: error.message || "Failed to analyze charts. Please try again.",
         variant: "destructive",
       });
     },

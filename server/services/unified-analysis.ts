@@ -469,3 +469,22 @@ export async function getInjectTextFromStore(): Promise<string | null> {
   // For now, return null to indicate no stored inject text
   return null;
 }
+
+/**
+ * Wrapper for analyzeChartsUnified to match expected interface
+ */
+export async function analyzeWithFullVisualStack(options: {
+  imageUrls: string[];
+  userInject?: string;
+  instrument?: string;
+  timeframe?: string;
+}) {
+  console.log(`🔍 Chat analysis request - ${options.imageUrls.length} images, system prompt: ${options.userInject?.length || 0} chars`);
+  
+  return await analyzeChartsUnified({
+    imageUrls: options.imageUrls,
+    systemPrompt: options.userInject,
+    includeHistoricalContext: true,
+    maxSimilarCharts: 3
+  });
+}

@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { generateCLIPEmbedding } from "./services/transformers-clip";
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
-import { analyzeChartsUnified, previewSimilarCharts, isDepthModelReady, getInjectTextFromStore } from "./services/unified-analysis";
+import { analyzeChartsUnified, previewSimilarCharts, isDepthModelReady, getInjectTextFromStore, analyzeWithFullVisualStack } from "./services/unified-analysis";
 import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, insertNoteSchema, type Chart, type Document } from "@shared/schema";
 import debugRoutes from './debug-routes';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -2250,9 +2250,20 @@ RESPOND IN JSON FORMAT ONLY:
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
 
-  // Chat analysis endpoint
-  const { analyzeChatChartsEndpoint } = await import('./routes/chat-analysis');
-  app.post('/api/chat/analyze', analyzeChatChartsEndpoint);
+  // Chat analysis endpoint - routes to full visual stack
+  app.post('/api/chat/analyze', async (req, res) => {
+    const { imageUrls = [], systemPrompt: injectText = '', instrument, timeframe } = req.body;
+    if (!imageUrls.length) return res.status(422).json({ error: 'Attach at least one image' });
+
+    const out = await analyzeWithFullVisualStack({
+      imageUrls,
+      userInject: injectText,
+      instrument,
+      timeframe,
+    });
+
+    return streamJson(out, res);
+  });
 
   // ==== UNIFIED ANALYSIS ENDPOINTS ====
   
@@ -2370,4 +2381,10 @@ RESPOND IN JSON FORMAT ONLY:
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Utility function to stream JSON responses
+function streamJson(data: any, res: express.Response) {
+  res.setHeader('Content-Type', 'application/json');
+  res.json(data);
 }
