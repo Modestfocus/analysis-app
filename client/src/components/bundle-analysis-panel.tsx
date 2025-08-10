@@ -73,11 +73,10 @@ ${analysisData.rationale}
   };
 
   const getConfidenceBadge = (confidence: string) => {
-    const confidenceLower = confidence?.toLowerCase?.() || '';
-    const variant = confidenceLower === 'high' ? 'default' : 
-                   confidenceLower === 'medium' ? 'secondary' : 'outline';
-    const icon = confidenceLower === 'high' ? CheckCircle : 
-                 confidenceLower === 'medium' ? AlertCircle : AlertCircle;
+    const variant = confidence.toLowerCase() === 'high' ? 'default' : 
+                   confidence.toLowerCase() === 'medium' ? 'secondary' : 'outline';
+    const icon = confidence.toLowerCase() === 'high' ? CheckCircle : 
+                 confidence.toLowerCase() === 'medium' ? AlertCircle : AlertCircle;
     const IconComponent = icon;
     
     return (

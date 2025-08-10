@@ -67,8 +67,8 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       return res.json({
         success: true,
         session: 'Follow-up',
-        direction_bias: 'Sideways',
-        confidence: 50,
+        direction: 'neutral',
+        confidence: 'medium',
         rationale: aiResponse,
         analysis: aiResponse,
         similarCharts: [] // No similar charts for follow-up questions
@@ -77,38 +77,12 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
 
     console.log(`🔍 Chat analysis request - ${imageCount} images, system prompt: ${systemPrompt.length} chars`);
 
-    // Use unified analysis service for chat with images  
-    // Extract image URLs from content
-    const imageUrls = content
-      .filter(part => part.type === 'image_url' && part.image_url?.url)
-      .map(part => part.image_url!.url);
-
-    if (imageUrls.length === 0) {
-      return res.status(400).json({ 
-        error: 'No images found in chat content',
-        code: 'NO_IMAGES'
-      });
-    }
-
-    // Convert to unified analysis format
-    const imageInputs = imageUrls.map(url => ({ url }));
-
-    // Use unified analysis service
-    const { performUnifiedAnalysis } = await import('../services/unified-analysis');
-    const result = await performUnifiedAnalysis(imageInputs, {
-      systemPrompt,
-      enableFullPipeline: true,
-      debugMode: process.env.PROMPT_DEBUG === 'true'
-    });
+    // Perform full analysis for messages with images
+    const result = await analyzeChatCharts({ content, systemPrompt });
 
     res.json({
       success: true,
-      session: result.session,
-      direction_bias: result.direction_bias,
-      confidence: result.confidence,
-      rationale: result.rationale,
-      analysis: result.rationale,
-      similarCharts: [] // Will be populated internally by unified service
+      ...result
     });
 
   } catch (error) {

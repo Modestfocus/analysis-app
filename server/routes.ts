@@ -12,7 +12,6 @@ import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyze
 import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, insertNoteSchema, type Chart, type Document } from "@shared/schema";
 import debugRoutes from './debug-routes';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import unifiedAnalysisRoutes from './routes/unified-analysis';
 
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
@@ -211,9 +210,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register debug routes
   app.use('/debug', debugRoutes);
-  
-  // Register unified analysis routes (route parity between Dashboard and Chat)
-  app.use('/api/unified-analysis', unifiedAnalysisRoutes);
 
   // Document Management API Routes
   const objectStorageService = new ObjectStorageService();

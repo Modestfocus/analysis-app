@@ -317,8 +317,8 @@ export default function UploadPage() {
         formData.append('system_prompt', currentPrompt);
       }
 
-      // Use Unified Analysis endpoint for quick analysis - processes temporarily without saving to dashboard
-      const quickAnalysisResponse = await apiRequest('POST', '/api/unified-analysis/quick', formData);
+      // Use Quick Analysis endpoint - processes temporarily without saving to dashboard
+      const quickAnalysisResponse = await apiRequest('POST', '/api/analyze/quick', formData);
       const quickAnalysisData = await quickAnalysisResponse.json();
       
       // Return comprehensive quick analysis (no database save)

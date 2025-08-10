@@ -1,8 +1,8 @@
-import {
-  users,
-  charts,
-  analysisResults,
-  chartBundles,
+import { 
+  users, 
+  charts, 
+  analysisResults, 
+  chartBundles, 
   watchlists,
   chartLayouts,
   documents,
@@ -12,13 +12,13 @@ import {
   userPromptsHistory,
   chatConversations,
   chatMessages,
-  type User,
-  type InsertUser,
-  type Chart,
-  type InsertChart,
-  type AnalysisResult,
-  type InsertAnalysis,
-  type ChartBundle,
+  type User, 
+  type InsertUser, 
+  type Chart, 
+  type InsertChart, 
+  type AnalysisResult, 
+  type InsertAnalysis, 
+  type ChartBundle, 
   type InsertBundle,
   type Watchlist,
   type InsertWatchlist,
@@ -40,7 +40,7 @@ import {
   type InsertChatMessage
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { existsSync } from "fs";
 import { join } from "path";
 import axios from "axios";
@@ -54,7 +54,7 @@ export interface IStorage {
   getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   linkWalletToUser(userId: string, walletAddress: string, walletType: string): Promise<User | undefined>;
-
+  
   // Chart operations
   createChart(chart: InsertChart): Promise<Chart>;
   getChart(id: number): Promise<Chart | undefined>;
@@ -63,13 +63,13 @@ export interface IStorage {
   updateChart(id: number, updates: Partial<Chart>): Promise<Chart | undefined>;
   deleteChart(id: number): Promise<boolean>;
   deleteCharts(ids: number[]): Promise<boolean>;
-
+  
   // Analysis operations
   createAnalysis(analysis: InsertAnalysis): Promise<AnalysisResult>;
   getAnalysisByChartId(chartId: number): Promise<AnalysisResult | undefined>;
   getAnalysisByBundleId(bundleId: string): Promise<AnalysisResult | undefined>;
   getAllAnalyses(): Promise<AnalysisResult[]>;
-
+  
   // Bundle operations
   createBundle(bundle: InsertBundle): Promise<ChartBundle>;
   getBundle(id: string): Promise<ChartBundle | undefined>;
@@ -77,18 +77,17 @@ export interface IStorage {
   updateBundle(id: string, updates: Partial<ChartBundle>): Promise<ChartBundle | undefined>;
   deleteBundle(id: string): Promise<boolean>;
   getChartsByBundleId(bundleId: string): Promise<Chart[]>;
-  getBundleContextForCharts(chartIds: number[]): Promise<any[]>;
-
+  
   // Watchlist operations
   getUserWatchlist(userId: string): Promise<Watchlist[]>;
   addToWatchlist(watchlistItem: InsertWatchlist): Promise<Watchlist>;
   removeFromWatchlist(userId: string, symbol: string): Promise<void>;
   importWatchlistFromURL(url: string, userId: string): Promise<string[]>;
-
+  
   // Chart layout operations
   getUserChartLayout(userId: string): Promise<ChartLayout | undefined>;
   saveChartLayout(layout: InsertChartLayout): Promise<ChartLayout>;
-
+  
   // Document operations
   createDocument(document: InsertDocument): Promise<Document>;
   getDocument(id: number): Promise<Document | undefined>;
@@ -96,14 +95,14 @@ export interface IStorage {
   getUserDocuments(userId: string): Promise<Document[]>;
   updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
-
+  
   // Note operations
   createNote(note: InsertNote): Promise<Note>;
   getNote(id: string): Promise<Note | undefined>;
   getUserNotes(userId: string): Promise<Note[]>;
   updateNote(id: string, updates: Partial<Note>): Promise<Note | undefined>;
   deleteNote(id: string): Promise<boolean>;
-
+  
   // Trading Rules operations
   createTradingRule(rule: InsertTradingRule): Promise<TradingRule>;
   getTradingRule(id: string): Promise<TradingRule | undefined>;
@@ -111,30 +110,30 @@ export interface IStorage {
   updateTradingRule(id: string, updates: Partial<TradingRule>): Promise<TradingRule | undefined>;
   deleteTradingRule(id: string): Promise<boolean>;
   reorderTradingRules(userId: string, orderedIds: string[]): Promise<boolean>;
-
+  
   // Chart Analysis Sessions operations
   createAnalysisSession(session: InsertChartAnalysisSession): Promise<ChartAnalysisSession>;
   getAnalysisSession(id: string): Promise<ChartAnalysisSession | undefined>;
   getUserAnalysisSessions(userId: string): Promise<ChartAnalysisSession[]>;
-
+  
   // User Prompts History operations
   createPromptHistory(prompt: InsertUserPromptsHistory): Promise<UserPromptsHistory>;
   getUserPromptHistory(userId: string): Promise<UserPromptsHistory[]>;
-
+  
   // Chat Conversation operations
   createChatConversation(conversation: InsertChatConversation): Promise<ChatConversation>;
   getChatConversation(id: string): Promise<ChatConversation | undefined>;
   getUserChatConversations(userId: string): Promise<ChatConversation[]>;
   updateChatConversation(id: string, updates: Partial<ChatConversation>): Promise<ChatConversation | undefined>;
   deleteChatConversation(id: string): Promise<boolean>;
-
+  
   // Chat Messages operations
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   getChatMessage(id: string): Promise<ChatMessage | undefined>;
   getConversationMessages(conversationId: string): Promise<ChatMessage[]>;
   updateChatMessage(id: string, updates: Partial<ChatMessage>): Promise<ChatMessage | undefined>;
   deleteChatMessage(id: string): Promise<boolean>;
-
+  
   // Similarity search
   findSimilarCharts(embedding: number[], limit: number): Promise<Array<{ chart: Chart; similarity: number }>>;
 }
@@ -204,8 +203,8 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const user: User = {
-      ...insertUser,
+    const user: User = { 
+      ...insertUser, 
       id,
       email: insertUser.email || null,
       passwordHash: insertUser.passwordHash || null,
@@ -346,42 +345,6 @@ export class MemStorage implements IStorage {
     return Array.from(this.charts.values()).filter(chart => chart.bundleId === bundleId);
   }
 
-  async getBundleContextForCharts(chartIds: number[]): Promise<any[]> {
-    if (chartIds.length === 0) return [];
-
-    const bundleData: Array<{
-      bundleId: string;
-      instrument: string | null;
-      session: string | null;
-      timeframes: string[] | null;
-      chartCount: number | null;
-    }> = [];
-
-    // Simulate fetching bundle data based on chart IDs
-    // In a real implementation, this would involve querying a database
-    // or a more complex data structure.
-    for (const chartId of chartIds) {
-      const chart = this.charts.get(chartId);
-      if (chart && chart.bundleId) {
-        const bundle = this.bundles.get(chart.bundleId);
-        if (bundle) {
-          const existingBundleData = bundleData.find(bd => bd.bundleId === bundle.id);
-          if (!existingBundleData) {
-            bundleData.push({
-              bundleId: bundle.id,
-              instrument: bundle.instrument,
-              session: bundle.session,
-              timeframes: bundle.timeframes,
-              chartCount: bundle.chartCount
-            });
-          }
-        }
-      }
-    }
-    return bundleData;
-  }
-
-
   async getUserWatchlist(userId: string): Promise<Watchlist[]> {
     return this.watchlists.get(userId) || [];
   }
@@ -393,11 +356,11 @@ export class MemStorage implements IStorage {
       id,
       createdAt: new Date()
     };
-
+    
     const userWatchlist = this.watchlists.get(insertWatchlist.userId) || [];
     userWatchlist.push(watchlistItem);
     this.watchlists.set(insertWatchlist.userId, userWatchlist);
-
+    
     return watchlistItem;
   }
 
@@ -423,7 +386,7 @@ export class MemStorage implements IStorage {
       id,
       updatedAt: new Date()
     };
-
+    
     this.chartLayouts.set(insertLayout.userId, layout);
     return layout;
   }
@@ -472,7 +435,7 @@ export class MemStorage implements IStorage {
 
     for (const chart of Array.from(this.charts.values())) {
       if (!chart.embedding) continue;
-
+      
       const similarity = this.calculateCosineSimilarity(embedding, chart.embedding);
       if (similarity > 0.1) { // Only include charts with some similarity
         similarities.push({ chart, similarity });
@@ -486,17 +449,17 @@ export class MemStorage implements IStorage {
 
   private calculateCosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
-
+    
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
-
+    
     for (let i = 0; i < a.length; i++) {
       dotProduct += a[i] * b[i];
       normA += a[i] * a[i];
       normB += b[i] * b[i];
     }
-
+    
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 }
@@ -569,7 +532,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(charts.instrument, instrument))
         .orderBy(desc(charts.uploadedAt));
     }
-
+    
     return await db.select().from(charts).orderBy(desc(charts.uploadedAt));
   }
 
@@ -589,7 +552,7 @@ export class DatabaseStorage implements IStorage {
   async deleteChart(id: number): Promise<boolean> {
     // First delete any analysis results that reference this chart
     await db.delete(analysisResults).where(eq(analysisResults.chartId, id));
-
+    
     // Then delete the chart
     const result = await db.delete(charts).where(eq(charts.id, id));
     return (result.rowCount ?? 0) > 0;
@@ -600,7 +563,7 @@ export class DatabaseStorage implements IStorage {
     for (const id of ids) {
       await db.delete(analysisResults).where(eq(analysisResults.chartId, id));
     }
-
+    
     // Then delete the charts
     let success = true;
     for (const id of ids) {
@@ -678,26 +641,6 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(charts).where(eq(charts.bundleId, bundleId));
   }
 
-  async getBundleContextForCharts(chartIds: number[]): Promise<any[]> {
-    if (chartIds.length === 0) return [];
-
-    const bundleData = await db
-      .select({
-        bundleId: chartBundles.id,
-        instrument: chartBundles.instrument,
-        session: chartBundles.session,
-        timeframes: chartBundles.timeframes,
-        chartCount: chartBundles.chartCount
-      })
-      .from(chartBundles)
-      .innerJoin(charts, eq(chartBundles.id, charts.bundleId)) // Assuming `charts` table has `bundleId`
-      .where(inArray(charts.id, chartIds))
-      .groupBy(chartBundles.id);
-
-    return bundleData;
-  }
-
-
   async getUserWatchlist(userId: string): Promise<Watchlist[]> {
     return await db.select().from(watchlists).where(eq(watchlists.userId, userId));
   }
@@ -719,7 +662,7 @@ export class DatabaseStorage implements IStorage {
   async importWatchlistFromURL(url: string, userId: string): Promise<string[]> {
     try {
       console.log(`🔍 Importing watchlist from URL: ${url}`);
-
+      
       // Fetch the HTML content from TradingView
       const response = await axios.get(url, {
         headers: {
@@ -754,7 +697,7 @@ export class DatabaseStorage implements IStorage {
       for (const selector of selectors) {
         $(selector).each((_, element) => {
           const symbolElement = $(element);
-
+          
           // Try different ways to extract symbol
           let symbol = symbolElement.attr('data-symbol') ||
                       symbolElement.text().trim() ||
@@ -764,11 +707,11 @@ export class DatabaseStorage implements IStorage {
           if (symbol) {
             // Clean up symbol - remove exchange prefix if present (e.g., "NASDAQ:AAPL" -> "AAPL")
             symbol = symbol.split(':').pop()?.trim().toUpperCase();
-
-            if (symbol &&
-                symbol.length > 0 &&
-                symbol.length <= 20 &&
-                /^[A-Z0-9]+$/.test(symbol) &&
+            
+            if (symbol && 
+                symbol.length > 0 && 
+                symbol.length <= 20 && 
+                /^[A-Z0-9]+$/.test(symbol) && 
                 !symbols.includes(symbol)) {
               symbols.push(symbol);
               console.log(`✓ Found symbol: ${symbol}`);
@@ -785,11 +728,11 @@ export class DatabaseStorage implements IStorage {
       // Alternative: Look for symbol patterns in text content
       if (symbols.length === 0) {
         console.log(`🔍 No symbols found with selectors, trying text pattern matching...`);
-
+        
         const pageText = $.text();
         // Look for common trading symbols pattern
         const symbolMatches = pageText.match(/\b[A-Z]{2,10}(?:USD|EUR|GBP|JPY|CHF|CAD|AUD|NZD|\d{2,4})\b/g);
-
+        
         if (symbolMatches) {
           symbolMatches.forEach(match => {
             const cleanSymbol = match.trim().toUpperCase();
@@ -813,7 +756,7 @@ export class DatabaseStorage implements IStorage {
 
       // Filter out duplicates
       const newSymbols = symbols.filter(symbol => !existingSymbols.includes(symbol.toUpperCase()));
-
+      
       if (newSymbols.length === 0) {
         console.log(`⚠️ All symbols already exist in watchlist`);
         return [];
@@ -822,7 +765,7 @@ export class DatabaseStorage implements IStorage {
       console.log(`💾 Adding ${newSymbols.length} new symbols to watchlist: ${newSymbols.join(', ')}`);
 
       // Add new symbols to watchlist
-      const insertPromises = newSymbols.map(symbol =>
+      const insertPromises = newSymbols.map(symbol => 
         this.addToWatchlist({
           userId,
           symbol: symbol.toUpperCase()
@@ -848,7 +791,7 @@ export class DatabaseStorage implements IStorage {
   async saveChartLayout(insertLayout: InsertChartLayout): Promise<ChartLayout> {
     // Check if layout exists and update, otherwise insert
     const existingLayout = await this.getUserChartLayout(insertLayout.userId);
-
+    
     if (existingLayout) {
       const [layout] = await db
         .update(chartLayouts)
@@ -1048,7 +991,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserChatConversations(userId: string): Promise<ChatConversation[]> {
-    // Assuming userId in chatConversations is a number, adjust if it's a string
     return await db
       .select()
       .from(chatConversations)
@@ -1120,7 +1062,7 @@ export class DatabaseStorage implements IStorage {
 
     for (const chart of allCharts) {
       if (!chart.embedding || !Array.isArray(chart.embedding)) continue;
-
+      
       const similarity = this.calculateCosineSimilarity(embedding, chart.embedding);
       if (similarity > 0.1) { // Only include charts with some similarity
         similarities.push({ chart, similarity });
@@ -1134,17 +1076,17 @@ export class DatabaseStorage implements IStorage {
 
   private calculateCosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
-
+    
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
-
+    
     for (let i = 0; i < a.length; i++) {
       dotProduct += a[i] * b[i];
       normA += a[i] * a[i];
       normB += b[i] * b[i];
     }
-
+    
     const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
     return magnitude === 0 ? 0 : dotProduct / magnitude;
   }

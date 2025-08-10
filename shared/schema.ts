@@ -169,22 +169,9 @@ export const insertAnalysisSchema = createInsertSchema(analysisResults).omit({
   createdAt: true,
 });
 
-// Unified Analysis Response Schema for strict JSON enforcement
-export const UnifiedAnalysisResponseSchema = z.object({
-  session: z.enum(["Asia", "London", "NY", "Sydney"]),
-  direction_bias: z.enum(["Up", "Down", "Sideways"]),
-  confidence: z.number().min(0).max(100),
-  rationale: z.string().min(10),
-  pattern_match: z.array(z.string()).optional(),
-  risk_notes: z.string().optional(),
-  next_steps: z.string().optional()
-});
-
 export const insertBundleSchema = createInsertSchema(chartBundles).omit({
   createdAt: true,
 });
-
-// Timeframe enum for validation - removed duplicate to fix error
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
@@ -261,10 +248,8 @@ export interface BundleMetadata {
   created_at: string;
 }
 
-// Timeframe and other enums for the application
 export const timeframes = ["5M", "15M", "1H", "4H", "Daily"] as const;
 export type Timeframe = typeof timeframes[number];
-export const TimeframeEnum = z.enum(["5M", "15M", "1H", "4H", "Daily"]);
 
 export const sessions = ["Asia", "London", "NY", "Sydney"] as const;
 export type Session = typeof sessions[number];
