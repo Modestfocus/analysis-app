@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { storage } from '../storage';
+import { generateDepthMap } from './depth';
 
 interface VisualMapsResult {
   originalPath: string;
@@ -66,9 +67,9 @@ export async function ensureVisualMaps(chartIdOrPath: string): Promise<VisualMap
   // Ensure output directories exist
   const edgeMapDir = 'server/uploads/edgemaps';
   const gradientMapDir = 'server/uploads/gradientmaps';
-  const depthMapDir = 'server/uploads/depthmaps';
+  const depthMapDir = path.join(process.cwd(), 'public', 'depthmaps');
   
-  [edgeMapDir, gradientMapDir, depthMapDir].forEach(dir => {
+  [edgeMapDir, gradientMapDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -77,7 +78,7 @@ export async function ensureVisualMaps(chartIdOrPath: string): Promise<VisualMap
   // Generate file paths
   const edgeMapPath = `${edgeMapDir}/chart_${chartId}_edge.png`;
   const gradientMapPath = `${gradientMapDir}/chart_${chartId}_gradient.png`;
-  const depthMapPath = `${depthMapDir}/chart_${chartId}_structure.png`; // Using 'structure' since not true depth
+  const depthFilename = `chart_${chartId}_depth.png`;
 
   try {
     // Load and convert to grayscale for processing
@@ -92,8 +93,8 @@ export async function ensureVisualMaps(chartIdOrPath: string): Promise<VisualMap
     // Generate gradient map using Sobel-like gradient detection
     await generateGradientMap(grayscaleBuffer, gradientMapPath);
 
-    // Generate structure/intensity map (blur + normalize, not true depth)
-    await generateStructureMap(grayscaleBuffer, depthMapPath);
+    // Generate true depth map using MiDaS
+    const depthMapPath = await generateDepthMap(originalPath, depthMapDir, depthFilename);
 
     // Update database with new map paths
     await storage.updateChart(chartId, {
@@ -164,16 +165,3 @@ async function generateGradientMap(grayscaleBuffer: Buffer, outputPath: string):
     .toFile(outputPath);
 }
 
-/**
- * Generate structure/intensity map (blur + normalize)
- * Note: This is NOT true depth detection - it's a structure/intensity map
- * that may help identify price level structures in trading charts
- */
-async function generateStructureMap(grayscaleBuffer: Buffer, outputPath: string): Promise<void> {
-  // Apply gaussian blur and normalize to create structure-like visualization
-  await sharp(grayscaleBuffer)
-    .blur(2) // Light blur to smooth structures
-    .normalise() // Enhance contrast
-    .png()
-    .toFile(outputPath);
-}
