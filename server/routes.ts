@@ -6,7 +6,9 @@ import path from "path";
 import fs from "fs/promises";
 import sharp from "sharp";
 import { storage } from "./storage";
-import { generateCLIPEmbedding } from "./services/transformers-clip";
+// Using unified embeddings service for all CLIP embeddings
+import { embedImageToVectorCached, EMB_DIM, EMB_MODEL_ID } from "./services/embeddings";
+import crypto from 'crypto';
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
 import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, insertNoteSchema, type Chart, type Document } from "@shared/schema";
@@ -472,15 +474,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const chart = await storage.createChart(validatedData);
         console.log(`📊 Created chart ${chart.id}: ${chart.originalName} - Timeframe: "${chart.timeframe}", Instrument: "${chart.instrument}"`);
 
-        // Automatically generate CLIP embedding after upload
+        // Automatically generate CLIP embedding after upload using unified embeddings service
         try {
           const imagePath = path.join(uploadsDir, chart.filename);
-          const result = await generateCLIPEmbedding(imagePath);
-          if (result.embedding && result.embedding.length === 1024) {
-            await storage.updateChart(chart.id, { embedding: result.embedding });
-            console.log(`✓ Generated CLIP embedding for chart ${chart.id} (${finalInstrument}) - 1024D vector using ${result.model}`);
+          // Compute hash for caching
+          const buf = await fs.readFile(imagePath);
+          const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
+          
+          const embeddingVec = await embedImageToVectorCached(imagePath, sha);
+          console.assert(embeddingVec.length === EMB_DIM, "query dim mismatch");
+          console.log("[RAG] query sha", sha, "k=0", { dim: embeddingVec.length, model: EMB_MODEL_ID });
+          
+          if (embeddingVec && embeddingVec.length === EMB_DIM) {
+            const embedding = Array.from(embeddingVec);
+            await storage.updateChart(chart.id, { embedding });
+            console.log(`✓ Generated CLIP embedding for chart ${chart.id} (${finalInstrument}) - ${EMB_DIM}D vector using ${EMB_MODEL_ID}`);
           } else {
-            console.error(`CLIP embedding failed for chart ${chart.id}:`, result.error);
+            console.error(`CLIP embedding failed for chart ${chart.id}: wrong dimensions ${embeddingVec?.length || 0}`);
           }
         } catch (embeddingError) {
           console.error(`Failed to generate CLIP embedding for chart ${chart.id}:`, embeddingError);
@@ -534,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Embed route - generates OpenCLIP embedding for chart
+  // Embed route - generates CLIP embedding for chart using unified embeddings service
   app.post('/api/embed', async (req, res) => {
     try {
       const { chartId } = req.body;
@@ -548,19 +558,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const imagePath = path.join(uploadsDir, chart.filename);
-      const result = await generateCLIPEmbedding(imagePath);
+      // Compute hash for caching
+      const buf = await fs.readFile(imagePath);
+      const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
+      
+      const embeddingVec = await embedImageToVectorCached(imagePath, sha);
+      console.assert(embeddingVec.length === EMB_DIM, "query dim mismatch");
+      console.log("[RAG] query sha", sha, "k=0", { dim: embeddingVec.length, model: EMB_MODEL_ID });
 
-      if (result.embedding && result.embedding.length === 1024) {
-        await storage.updateChart(chartId, { embedding: result.embedding });
+      if (embeddingVec && embeddingVec.length === EMB_DIM) {
+        const embedding = Array.from(embeddingVec);
+        await storage.updateChart(chartId, { embedding });
 
         res.json({
           success: true,
-          embedding: result.embedding.slice(0, 10), // Return first 10 values for verification
-          dimensions: result.embedding.length,
-          model: result.model
+          embedding: embedding.slice(0, 10), // Return first 10 values for verification
+          dimensions: embedding.length,
+          model: EMB_MODEL_ID
         });
       } else {
-        res.status(500).json({ message: 'OpenCLIP embedding generation failed: ' + (result.error || 'Unknown error') });
+        res.status(500).json({ message: 'CLIP embedding generation failed: wrong dimensions ' + (embeddingVec?.length || 0) });
       }
     } catch (error) {
       console.error('Embed error:', error);
@@ -707,12 +724,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         chartImagePath = path.join(uploadsDir, chart.filename);
       }
 
-      // Generate CLIP embedding for similarity search
-      const embeddingResult = await generateCLIPEmbedding(chartImagePath);
-      if (!embeddingResult.embedding || embeddingResult.embedding.length !== 1024) {
+      // Generate CLIP embedding for similarity search using unified embeddings service
+      const buf = await fs.readFile(chartImagePath);
+      const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
+      
+      const embeddingVec = await embedImageToVectorCached(chartImagePath, sha);
+      console.assert(embeddingVec.length === EMB_DIM, "query dim mismatch");
+      console.log("[RAG] query sha", sha, "k=3", { dim: embeddingVec.length, model: EMB_MODEL_ID });
+      
+      if (!embeddingVec || embeddingVec.length !== EMB_DIM) {
         return res.status(500).json({ message: 'Failed to generate embedding for similarity search' });
       }
-      const similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3);
+      const embedding = Array.from(embeddingVec);
+      const similarCharts = await storage.findSimilarCharts(embedding, 3);
+      console.table(similarCharts.map(s => ({ id: s.chart.id, sim: Number(s.similarity).toFixed(4) })));
 
       // ENHANCED: Check if any similar charts belong to bundles and include bundle context
       const enrichedSimilarCharts: Array<{
@@ -1019,14 +1044,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const originalBuffer = await fs.readFile(file.path);
         const originalBase64 = originalBuffer.toString('base64');
 
-        // 1. Generate CLIP embedding for vector similarity search
+        // 1. Generate CLIP embedding for vector similarity search using unified embeddings service
         console.log(`🧠 Generating CLIP embedding for ${file.originalname}`);
-        const embeddingResult = await generateCLIPEmbedding(file.path);
+        const buf = await fs.readFile(file.path);
+        const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
+        
+        const embeddingVec = await embedImageToVectorCached(file.path, sha);
         let similarCharts: Array<{ chart: any; similarity: number }> = [];
 
-        if (embeddingResult.embedding && embeddingResult.embedding.length === 1024) {
+        console.assert(embeddingVec.length === EMB_DIM, "query dim mismatch");
+        console.log("[RAG] query sha", sha, "k=3", { dim: embeddingVec.length, model: EMB_MODEL_ID });
+
+        if (embeddingVec && embeddingVec.length === EMB_DIM) {
           console.log(`🔍 Performing vector similarity search for ${file.originalname}`);
-          similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3);
+          const embedding = Array.from(embeddingVec);
+          similarCharts = await storage.findSimilarCharts(embedding, 3);
+          console.table(similarCharts.map(s => ({ id: s.chart.id, sim: Number(s.similarity).toFixed(4) })));
           console.log(`✓ Found ${similarCharts.length} similar charts for RAG context`);
         } else {
           console.warn(`⚠️ Failed to generate embedding for ${file.originalname}, using random charts`);
@@ -1140,7 +1173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           depth: depthBase64,
           edge: edgeBase64,
           gradient: gradientBase64,
-          embedding: embeddingResult.embedding, // Store embedding temporarily
+          embedding: Array.from(embeddingVec), // Store embedding temporarily
           similarCharts, // Store similar charts for this specific image
           metadata: {
             id: 0, // Temporary ID for quick analysis
@@ -1802,16 +1835,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          // Generate CLIP embedding
-          const embeddingResult = await generateCLIPEmbedding(chartPath);
+          // Generate CLIP embedding using unified embeddings service
+          const buf = await fs.readFile(chartPath);
+          const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
+          
+          const embeddingVec = await embedImageToVectorCached(chartPath, sha);
+          console.assert(embeddingVec.length === EMB_DIM, "query dim mismatch");
+          console.log("[RAG] query sha", sha, "k=0", { dim: embeddingVec.length, model: EMB_MODEL_ID });
 
-          if (embeddingResult.embedding && embeddingResult.embedding.length === 1024) {
+          if (embeddingVec && embeddingVec.length === EMB_DIM) {
             // Update chart with new embedding
-            await storage.updateChart(chart.id, { embedding: embeddingResult.embedding });
-            console.log(`✅ Updated CLIP embedding for chart ${chart.id} (${chart.filename})`);
+            const embedding = Array.from(embeddingVec);
+            await storage.updateChart(chart.id, { embedding });
+            console.log(`✅ Updated CLIP embedding for chart ${chart.id} (${chart.filename}) - ${EMB_DIM}D vector using ${EMB_MODEL_ID}`);
             successCount++;
           } else {
-            console.log(`❌ Failed to generate valid embedding for chart ${chart.id} (${chart.filename})`);
+            console.log(`❌ Failed to generate valid embedding for chart ${chart.id} (${chart.filename}) - wrong dimensions ${embeddingVec?.length || 0}`);
             errorCount++;
           }
         } catch (error) {

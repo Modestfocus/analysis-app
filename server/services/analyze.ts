@@ -1,5 +1,5 @@
 import { analyzeMultipleChartsWithAllMaps } from './openai';
-import { generateCLIPEmbedding } from './transformers-clip';
+// Removed transformers-clip import - using unified embeddings service
 import { processChartImage } from './opencv-processing';
 import { storage } from '../storage';
 import fs from 'fs';
@@ -19,6 +19,7 @@ export interface ChartAnalysisResult {
   analysis: any;
   confidence?: number;
   similarCharts?: any[];
+  targetVisuals?: any;
 }
 
 /**
@@ -89,7 +90,7 @@ export async function analyzeCharts({
       if (useRAG) {
         try {
           // Generate CLIP embedding and find similar charts using new vector search
-          const { embedImageToVectorCached } = await import('./embeddings');
+          const { embedImageToVectorCached, EMB_DIM, EMB_MODEL_ID } = await import('./embeddings');
           const { getTopSimilarCharts } = await import('./retrieval');
           
           // Compute hash for caching (same approach as preprocessing)
@@ -100,7 +101,9 @@ export async function analyzeCharts({
           
           const vec = await embedImageToVectorCached(imagePath, sha);
           
-          console.log('[RAG] query sha', sha, 'k=3', { dim: vec.length });
+          // Dimension guardrail
+          console.assert(vec.length === EMB_DIM, "query dim mismatch");
+          console.log('[RAG] query sha', sha, 'k=3', { dim: vec.length, model: EMB_MODEL_ID });
           
           const similar = await getTopSimilarCharts(vec, 3);
           

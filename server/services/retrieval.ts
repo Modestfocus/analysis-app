@@ -2,6 +2,7 @@ import { db } from '../db';
 import { charts } from '../../shared/schema';
 import { isNotNull } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
+import { EMB_DIM } from './embeddings';
 
 export type SimilarChart = {
   chart: {
@@ -49,6 +50,13 @@ export async function getTopSimilarCharts(
   queryVec: Float32Array,
   k = 3
 ): Promise<SimilarChart[]> {
+  // Dimension guardrail - abort pgvector call if not 512
+  console.assert(queryVec.length === EMB_DIM, "query dim mismatch");
+  if (queryVec.length !== EMB_DIM) {
+    console.warn(`⚠️ Query vector dimension mismatch: expected ${EMB_DIM}, got ${queryVec.length}. Aborting pgvector query.`);
+    return [];
+  }
+  
   try {
     // Convert Float32Array to array for SQL query
     const queryArray = Array.from(queryVec);
@@ -87,13 +95,19 @@ export async function getTopSimilarCharts(
   } catch (error) {
     console.warn("⚠️ pgvector search failed, falling back to in-memory search:", error);
     
-    // Fallback to in-memory computation
+    // Fallback to in-memory computation (only when the DB call actually fails)
     try {
       const allCharts = await db.select().from(charts).where(isNotNull(charts.embedding));
       const candidates: SimilarChart[] = [];
       
       for (const chart of allCharts) {
         if (chart.embedding && chart.embedding.length > 0) {
+          // Verify both vectors are unit-norm 512 before computing similarity
+          if (chart.embedding.length !== EMB_DIM) {
+            console.warn(`⚠️ Skipping chart ${chart.id} with wrong embedding dimension: ${chart.embedding.length}`);
+            continue;
+          }
+          
           const similarity = cosineSimilarity(queryVec, chart.embedding);
           
           candidates.push({

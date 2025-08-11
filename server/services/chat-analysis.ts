@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import OpenAI from 'openai';
-import { embedImageToVector } from './embeddings';
+import { embedImageToVectorCached, EMB_DIM, EMB_MODEL_ID } from './embeddings';
 import { storage } from '../storage';
 
 const openai = new OpenAI({
@@ -60,18 +60,29 @@ async function processImagesWithMaps(imageUrls: string[]) {
     }
 
     try {
-      // 1. Generate CLIP embedding for RAG search
+      // 1. Generate CLIP embedding for RAG search using cached method
       console.log(`🧠 Generating CLIP embedding for chat image ${i + 1}`);
-      const embeddingVec = await embedImageToVector(imagePath);
+      
+      // Compute hash for caching
+      const crypto = await import('crypto');
+      const buf = fs.readFileSync(imagePath);
+      const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
+      
+      const embeddingVec = await embedImageToVectorCached(imagePath, sha);
       let similarCharts: Array<{ chart: any; similarity: number }> = [];
       
-      if (embeddingVec && embeddingVec.length === 512) {
+      // Dimension guardrail
+      console.assert(embeddingVec.length === EMB_DIM, "query dim mismatch");
+      console.log("[RAG] query sha", sha, "k=3", { dim: embeddingVec.length, model: EMB_MODEL_ID });
+      
+      if (embeddingVec && embeddingVec.length === EMB_DIM) {
         console.log(`🔍 Performing vector similarity search for chat image ${i + 1}`);
         const embedding = Array.from(embeddingVec);
         similarCharts = await storage.findSimilarCharts(embedding, 3);
+        console.table(similarCharts.map(s => ({ id: s.chart.id, sim: Number(s.similarity).toFixed(4) })));
         console.log(`✓ Found ${similarCharts.length} similar charts for RAG context`);
       } else {
-        console.warn(`⚠️ Invalid embedding dimensions for chat image ${i + 1}: expected 512, got ${embeddingVec?.length || 0}`);
+        console.warn(`⚠️ Invalid embedding dimensions for chat image ${i + 1}: expected ${EMB_DIM}, got ${embeddingVec?.length || 0}`);
       }
 
       // 2. Create temp grayscale version for map generation
