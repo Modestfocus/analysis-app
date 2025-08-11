@@ -61,6 +61,7 @@ export interface IStorage {
   getAllCharts(timeframe?: string, instrument?: string): Promise<Chart[]>;
   getChartsByInstrument(instrument: string): Promise<Chart[]>;
   updateChart(id: number, updates: Partial<Chart>): Promise<Chart | undefined>;
+  updateChartEmbedding(id: number, embedding: number[]): Promise<Chart | undefined>;
   deleteChart(id: number): Promise<boolean>;
   deleteCharts(ids: number[]): Promise<boolean>;
   
@@ -264,6 +265,14 @@ export class MemStorage implements IStorage {
     const chart = this.charts.get(id);
     if (!chart) return undefined;
     const updatedChart = { ...chart, ...updates };
+    this.charts.set(id, updatedChart);
+    return updatedChart;
+  }
+
+  async updateChartEmbedding(id: number, embedding: number[]): Promise<Chart | undefined> {
+    const chart = this.charts.get(id);
+    if (!chart) return undefined;
+    const updatedChart = { ...chart, embedding };
     this.charts.set(id, updatedChart);
     return updatedChart;
   }
@@ -544,6 +553,15 @@ export class DatabaseStorage implements IStorage {
     const [chart] = await db
       .update(charts)
       .set(updates)
+      .where(eq(charts.id, id))
+      .returning();
+    return chart || undefined;
+  }
+
+  async updateChartEmbedding(id: number, embedding: number[]): Promise<Chart | undefined> {
+    const [chart] = await db
+      .update(charts)
+      .set({ embedding })
       .where(eq(charts.id, id))
       .returning();
     return chart || undefined;

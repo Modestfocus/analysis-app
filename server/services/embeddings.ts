@@ -5,10 +5,10 @@ import crypto from 'crypto';
 let imagePipe: any;
 async function getImagePipe() {
   if (!imagePipe) {
-    // Vision tower of CLIP
+    // Vision tower of CLIP - using base model for consistent 768 dimensions
     imagePipe = await pipeline(
       'image-feature-extraction',
-      'Xenova/clip-vit-large-patch14', // ok; or -base-patch32 for speed
+      'Xenova/clip-vit-base-patch32', // 768 dimensions 
       { quantized: true }              // optional: smaller & faster
     );
   }
@@ -24,6 +24,10 @@ export async function embedImageToVector(imagePath: string): Promise<Float32Arra
   });
   // output.data is a Float32Array
   const v = output.data as Float32Array;
+  
+  // Assert correct dimensions for CLIP base model
+  console.assert(v.length === 768, `bad dim: expected 768, got ${v.length}`);
+  
   // L2 normalize
   let sum = 0;
   for (let i = 0; i < v.length; i++) sum += v[i] * v[i];

@@ -1,4 +1,7 @@
-import { storage } from '../storage';
+import { db } from '../db';
+import { charts } from '../../shared/schema';
+import { isNotNull } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 export type SimilarChart = {
   chart: {
@@ -15,7 +18,7 @@ export type SimilarChart = {
 };
 
 /**
- * Compute cosine similarity between two normalized vectors
+ * Compute cosine similarity between two normalized vectors (fallback)
  */
 function cosineSimilarity(a: Float32Array, b: number[]): number {
   if (a.length !== b.length) return 0;
@@ -30,46 +33,81 @@ function cosineSimilarity(a: Float32Array, b: number[]): number {
 }
 
 /**
- * Retrieve top-k similar charts using cosine similarity
- * Falls back to in-memory cosine computation if no dedicated vector DB
+ * Retrieve top-k similar charts using pgvector cosine similarity
+ * Falls back to in-memory computation if pgvector fails
  */
 export async function getTopSimilarCharts(
   queryVec: Float32Array,
   k = 3
 ): Promise<SimilarChart[]> {
   try {
-    // Get all charts with embeddings from storage
-    const allCharts = await storage.getAllCharts();
-    const candidates: SimilarChart[] = [];
+    // Convert Float32Array to array for SQL query
+    const queryArray = Array.from(queryVec);
+    const queryVectorString = `[${queryArray.join(',')}]`;
     
-    for (const chart of allCharts) {
-      if (chart.embedding && chart.embedding.length > 0) {
-        const similarity = cosineSimilarity(queryVec, chart.embedding);
-        
-        candidates.push({
-          chart: {
-            id: chart.id!,
-            filename: chart.filename,
-            timeframe: chart.timeframe,
-            instrument: chart.instrument,
-            depthMapPath: chart.depthMapPath,
-            edgeMapPath: chart.edgeMapPath,
-            gradientMapPath: chart.gradientMapPath,
-            uploadedAt: chart.uploadedAt ? 
-              (typeof chart.uploadedAt === 'string' ? chart.uploadedAt : chart.uploadedAt.toISOString()) 
-              : null
-          },
-          similarity
-        });
-      }
-    }
+    // Use pgvector for optimal similarity search
+    // Since vectors are normalized, cosine distance equals 1 - dot product
+    const results = await db.execute(
+      sql`
+        SELECT id, filename, timeframe, instrument,
+               depth_map_path, edge_map_path, gradient_map_path, uploaded_at,
+               1 - (embedding <=> ${queryVectorString}::vector) AS similarity
+        FROM charts
+        WHERE embedding IS NOT NULL
+        ORDER BY embedding <=> ${queryVectorString}::vector
+        LIMIT ${k}
+      `
+    );
     
-    // Sort by similarity (descending) and take top k
-    candidates.sort((a, b) => b.similarity - a.similarity);
-    return candidates.slice(0, k);
+    return results.rows.map((row: any) => ({
+      chart: {
+        id: row.id,
+        filename: row.filename,
+        timeframe: row.timeframe,
+        instrument: row.instrument,
+        depthMapPath: row.depth_map_path,
+        edgeMapPath: row.edge_map_path,
+        gradientMapPath: row.gradient_map_path,
+        uploadedAt: row.uploaded_at
+      },
+      similarity: Math.max(0, Math.min(1, parseFloat(row.similarity) || 0))
+    }));
     
   } catch (error) {
-    console.warn("⚠️ Error in similarity search:", error);
-    return []; // Return empty array on error to avoid breaking the request
+    console.warn("⚠️ pgvector search failed, falling back to in-memory search:", error);
+    
+    // Fallback to in-memory computation
+    try {
+      const allCharts = await db.select().from(charts).where(isNotNull(charts.embedding));
+      const candidates: SimilarChart[] = [];
+      
+      for (const chart of allCharts) {
+        if (chart.embedding && chart.embedding.length > 0) {
+          const similarity = cosineSimilarity(queryVec, chart.embedding);
+          
+          candidates.push({
+            chart: {
+              id: chart.id!,
+              filename: chart.filename,
+              timeframe: chart.timeframe,
+              instrument: chart.instrument,
+              depthMapPath: chart.depthMapPath,
+              edgeMapPath: chart.edgeMapPath,
+              gradientMapPath: chart.gradientMapPath,
+              uploadedAt: chart.uploadedAt
+            },
+            similarity
+          });
+        }
+      }
+      
+      // Sort by similarity (descending) and take top k
+      candidates.sort((a, b) => b.similarity - a.similarity);
+      return candidates.slice(0, k);
+      
+    } catch (fallbackError) {
+      console.error("❌ Both pgvector and fallback search failed:", fallbackError);
+      return [];
+    }
   }
 }
