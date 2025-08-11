@@ -20,11 +20,9 @@ async function ensureDir(p: string) {
 
 export async function generateDepthMap(
   originalPath: string,
-  outDir: string,
-  outFilename: string // e.g., "chart_58_depth.png"
+  outPath: string // Full output path
 ): Promise<string> {
-  await ensureDir(outDir);
-  const outPath = path.join(outDir, outFilename);
+  await ensureDir(path.dirname(outPath));
 
   // If already exists, reuse
   try {

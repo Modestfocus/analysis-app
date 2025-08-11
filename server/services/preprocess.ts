@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import crypto from 'crypto';
 import { storage } from '../storage';
 import { generateDepthMap } from './depth';
 
@@ -11,9 +12,14 @@ interface VisualMapsResult {
   gradientMapPath: string;
 }
 
+// Helper function to check if file exists
+const exists = (p: string): Promise<boolean> => 
+  fs.promises.access(p).then(() => true).catch(() => false);
+
 /**
  * Ensures visual maps (depth/structure, edge, gradient) exist for a chart.
  * Non-destructive: originals are never modified, maps are stored alongside.
+ * Uses hash-based caching to reuse identical image processing.
  */
 export async function ensureVisualMaps(chartIdOrPath: string): Promise<VisualMapsResult> {
   let chartId: number;
@@ -37,49 +43,40 @@ export async function ensureVisualMaps(chartIdOrPath: string): Promise<VisualMap
     originalPath = chart.filename.startsWith('/') ? chart.filename.substring(1) : chart.filename;
   }
 
-  // Check if maps already exist in DB
-  const existingChart = await storage.getChart(chartId);
-  if (existingChart?.depthMapPath && existingChart?.edgeMapPath && existingChart?.gradientMapPath) {
-    // Verify files still exist on disk
-    const depthExists = fs.existsSync(existingChart.depthMapPath);
-    const edgeExists = fs.existsSync(existingChart.edgeMapPath);
-    const gradientExists = fs.existsSync(existingChart.gradientMapPath);
-    
-    if (depthExists && edgeExists && gradientExists) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log("[PREPROCESS] maps", {
-          originalPath,
-          depthMapPath: existingChart.depthMapPath,
-          edgeMapPath: existingChart.edgeMapPath,
-          gradientMapPath: existingChart.gradientMapPath
-        });
-      }
-      
-      return {
-        originalPath,
-        depthMapPath: existingChart.depthMapPath,
-        edgeMapPath: existingChart.edgeMapPath,
-        gradientMapPath: existingChart.gradientMapPath
-      };
-    }
-  }
+  // Compute hash for caching
+  const buf = await fs.promises.readFile(originalPath);
+  const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16); // short id
 
-  // Ensure output directories exist
-  const edgeMapDir = 'server/uploads/edgemaps';
-  const gradientMapDir = 'server/uploads/gradientmaps';
+  // Define hash-based output paths in /public/ directories for web accessibility
   const depthMapDir = path.join(process.cwd(), 'public', 'depthmaps');
+  const edgeMapDir = path.join(process.cwd(), 'public', 'edgemaps');
+  const gradientMapDir = path.join(process.cwd(), 'public', 'gradientmaps');
   
-  [edgeMapDir, gradientMapDir].forEach(dir => {
+  // Ensure output directories exist
+  [depthMapDir, edgeMapDir, gradientMapDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
   });
 
-  // Generate file paths
-  const edgeMapPath = `${edgeMapDir}/chart_${chartId}_edge.png`;
-  const gradientMapPath = `${gradientMapDir}/chart_${chartId}_gradient.png`;
-  const depthFilename = `chart_${chartId}_depth.png`;
+  // Hash-based file paths for caching
+  const depthOut = path.join(depthMapDir, `chart_${sha}_depth.png`);
+  const edgeOut = path.join(edgeMapDir, `chart_${sha}_edge.png`);
+  const gradOut = path.join(gradientMapDir, `chart_${sha}_gradient.png`);
 
+  // Check if hash-based cached files exist
+  if (await exists(depthOut) && await exists(edgeOut) && await exists(gradOut)) {
+    console.log("[PREPROCESS] Reusing maps by hash", { sha });
+    return {
+      originalPath,
+      depthMapPath: `/depthmaps/chart_${sha}_depth.png`,
+      edgeMapPath: `/edgemaps/chart_${sha}_edge.png`,
+      gradientMapPath: `/gradientmaps/chart_${sha}_gradient.png`
+    };
+  }
+  // Generate new maps using hash-based naming
+  console.log("[PREPROCESS] Generating new maps", { sha, originalPath });
+  
   try {
     // Load and convert to grayscale for processing
     const grayscaleBuffer = await sharp(originalPath)
@@ -88,39 +85,32 @@ export async function ensureVisualMaps(chartIdOrPath: string): Promise<VisualMap
       .toBuffer();
 
     // Generate edge map using Laplacian-like edge detection
-    await generateEdgeMap(grayscaleBuffer, edgeMapPath);
+    await generateEdgeMap(grayscaleBuffer, edgeOut);
 
     // Generate gradient map using Sobel-like gradient detection
-    await generateGradientMap(grayscaleBuffer, gradientMapPath);
+    await generateGradientMap(grayscaleBuffer, gradOut);
 
-    // Generate true depth map using MiDaS
-    const depthMapPath = await generateDepthMap(originalPath, depthMapDir, depthFilename);
-
-    // Update database with new map paths
-    await storage.updateChart(chartId, {
-      depthMapPath,
-      edgeMapPath,
-      gradientMapPath
-    });
+    // Generate true depth map using MiDaS (pass full output path)
+    await generateDepthMap(originalPath, depthOut);
 
     if (process.env.NODE_ENV === 'development') {
       console.log("[PREPROCESS] maps", {
         originalPath,
-        depthMapPath,
-        edgeMapPath,
-        gradientMapPath
+        depthMapPath: `/depthmaps/chart_${sha}_depth.png`,
+        edgeMapPath: `/edgemaps/chart_${sha}_edge.png`,
+        gradientMapPath: `/gradientmaps/chart_${sha}_gradient.png`
       });
     }
 
     return {
       originalPath,
-      depthMapPath,
-      edgeMapPath,
-      gradientMapPath
+      depthMapPath: `/depthmaps/chart_${sha}_depth.png`,
+      edgeMapPath: `/edgemaps/chart_${sha}_edge.png`,
+      gradientMapPath: `/gradientmaps/chart_${sha}_gradient.png`
     };
 
   } catch (error) {
-    console.error(`❌ Error generating visual maps for chart ${chartId}:`, error);
+    console.error(`❌ Error generating visual maps for hash ${sha}:`, error);
     throw error;
   }
 }
