@@ -100,16 +100,14 @@ export async function analyzeCharts({
           
           const vec = await embedImageToVectorCached(imagePath, sha);
           
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[RAG] query sha', sha, 'k=3', { dim: vec.length });
-          }
+          console.log('[RAG] query sha', sha, 'k=3', { dim: vec.length });
           
           const similar = await getTopSimilarCharts(vec, 3);
           
-          if (process.env.NODE_ENV === 'development' && similar.length > 0) {
+          if (similar.length > 0) {
             console.table(similar.map(s => ({ 
               id: s.chart.id, 
-              sim: +s.similarity.toFixed(4) 
+              sim: Number(s.similarity).toFixed(4) 
             })));
           }
           

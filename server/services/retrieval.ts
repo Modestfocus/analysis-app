@@ -18,7 +18,16 @@ export type SimilarChart = {
 };
 
 /**
- * Compute cosine similarity between two normalized vectors (fallback)
+ * Compute cosine similarity between two normalized unit vectors (Node fallback)
+ */
+function cosine(a: Float32Array, b: Float32Array): number {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return Math.max(0, Math.min(1, s)); // a and b are unit norm
+}
+
+/**
+ * Compute cosine similarity between query vector and chart embedding array
  */
 function cosineSimilarity(a: Float32Array, b: number[]): number {
   if (a.length !== b.length) return 0;
@@ -58,6 +67,8 @@ export async function getTopSimilarCharts(
         LIMIT ${k}
       `
     );
+    
+    console.log(`[RAG] pgvector found ${results.rows.length} similar charts`);
     
     return results.rows.map((row: any) => ({
       chart: {
