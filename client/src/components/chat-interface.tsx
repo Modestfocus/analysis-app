@@ -554,6 +554,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               className="mx-auto"
+              disabled={sendMessageMutation.isPending}
             >
               <Upload className="w-4 h-4 mr-2" />
               Upload Chart
@@ -757,6 +758,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
               variant="ghost"
               className="absolute bottom-2 right-2"
               onClick={() => fileInputRef.current?.click()}
+              disabled={sendMessageMutation.isPending}
             >
               <Paperclip className="w-4 h-4" />
             </Button>
