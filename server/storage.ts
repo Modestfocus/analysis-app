@@ -202,7 +202,7 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = `user_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substr(2, 9)}`;
     const user: User = { 
       ...insertUser, 
       id,
@@ -350,7 +350,7 @@ export class MemStorage implements IStorage {
   }
 
   async addToWatchlist(insertWatchlist: InsertWatchlist): Promise<Watchlist> {
-    const id = `watchlist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = `watchlist_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substr(2, 9)}`;
     const watchlistItem: Watchlist = {
       ...insertWatchlist,
       id,
@@ -380,7 +380,7 @@ export class MemStorage implements IStorage {
   }
 
   async saveChartLayout(insertLayout: InsertChartLayout): Promise<ChartLayout> {
-    const id = `layout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = `layout_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substr(2, 9)}`;
     const layout: ChartLayout = {
       ...insertLayout,
       id,

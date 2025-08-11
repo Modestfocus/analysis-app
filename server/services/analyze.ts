@@ -55,7 +55,7 @@ export async function analyzeCharts({
       if (imageUrl.startsWith('data:')) {
         // Convert base64 to file
         const base64Data = imageUrl.split(',')[1];
-        const tempPath = `server/uploads/temp_chat_${Date.now()}_${i}.png`;
+        const tempPath = `server/uploads/temp_chat_${Math.floor(Date.now() / 1000)}_${i}.png`;
         fs.writeFileSync(tempPath, base64Data, 'base64');
         imagePath = tempPath;
       } else if (imageUrl.startsWith('/')) {

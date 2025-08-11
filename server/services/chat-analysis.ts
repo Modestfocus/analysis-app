@@ -52,7 +52,7 @@ async function processImagesWithMaps(imageUrls: string[]) {
     if (imageUrl.startsWith('data:')) {
       // Convert base64 to temporary file
       const base64Data = imageUrl.split(',')[1];
-      const tempPath = path.join(process.cwd(), 'server', 'temp', `chat_temp_${Date.now()}_${i}.png`);
+      const tempPath = path.join(process.cwd(), 'server', 'temp', `chat_temp_${Math.floor(Date.now() / 1000)}_${i}.png`);
       fs.writeFileSync(tempPath, Buffer.from(base64Data, 'base64'));
       imagePath = tempPath;
     } else {
@@ -72,7 +72,7 @@ async function processImagesWithMaps(imageUrls: string[]) {
       }
 
       // 2. Create temp grayscale version for map generation
-      const tempGrayscalePath = path.join(process.cwd(), 'server', 'temp', `chat_gray_${Date.now()}_${i}.png`);
+      const tempGrayscalePath = path.join(process.cwd(), 'server', 'temp', `chat_gray_${Math.floor(Date.now() / 1000)}_${i}.png`);
       await sharp(imagePath)
         .grayscale()
         .png()
@@ -81,7 +81,7 @@ async function processImagesWithMaps(imageUrls: string[]) {
       // 3. Generate Depth Map (using fallback method since MiDaS has dependency issues)
       let depthBase64: string | undefined;
       try {
-        const tempDepthPath = path.join(process.cwd(), 'server', 'temp', `chat_depth_${Date.now()}_${i}.png`);
+        const tempDepthPath = path.join(process.cwd(), 'server', 'temp', `chat_depth_${Math.floor(Date.now() / 1000)}_${i}.png`);
         
         console.log(`🌀 Generating depth map for chat image ${i + 1}`);
         // Fallback depth simulation using blur and contrast
@@ -104,7 +104,7 @@ async function processImagesWithMaps(imageUrls: string[]) {
       // 4. Generate Edge Map
       let edgeBase64: string | undefined;
       try {
-        const tempEdgePath = path.join(process.cwd(), 'server', 'temp', `chat_edge_${Date.now()}_${i}.png`);
+        const tempEdgePath = path.join(process.cwd(), 'server', 'temp', `chat_edge_${Math.floor(Date.now() / 1000)}_${i}.png`);
         
         console.log(`🔲 Generating edge map for chat image ${i + 1}`);
         await sharp(tempGrayscalePath)
@@ -130,7 +130,7 @@ async function processImagesWithMaps(imageUrls: string[]) {
       // 5. Generate Gradient Map
       let gradientBase64: string | undefined;
       try {
-        const tempGradientPath = path.join(process.cwd(), 'server', 'temp', `chat_gradient_${Date.now()}_${i}.png`);
+        const tempGradientPath = path.join(process.cwd(), 'server', 'temp', `chat_gradient_${Math.floor(Date.now() / 1000)}_${i}.png`);
         
         console.log(`📉 Generating gradient map for chat image ${i + 1}`);
         await sharp(tempGrayscalePath)

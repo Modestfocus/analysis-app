@@ -38,7 +38,7 @@ const upload = multer({
       cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const uniqueSuffix = Math.floor(Date.now() / 1000) + '-' + Math.round(Math.random() * 1E9);
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
   }),
@@ -1041,7 +1041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 2. Generate MiDaS Depth Map (using same method as normal analysis)
         let depthBase64: string | undefined;
         try {
-          const tempDepthPath = path.join(process.cwd(), 'server', 'temp', `quick_depth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
+          const tempDepthPath = path.join(process.cwd(), 'server', 'temp', `quick_depth_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substr(2, 9)}.png`);
           await fs.mkdir(path.dirname(tempDepthPath), { recursive: true });
 
           console.log(`🌀 Generating MiDaS depth map for ${file.originalname}`);
@@ -1071,7 +1071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // 3. Convert to Grayscale (intermediate step for edge/gradient maps)
-        const tempGrayscalePath = path.join(process.cwd(), 'server', 'temp', `quick_grayscale_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
+        const tempGrayscalePath = path.join(process.cwd(), 'server', 'temp', `quick_grayscale_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substr(2, 9)}.png`);
         await sharp(file.path)
           .grayscale()
           .png()
@@ -1080,7 +1080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 4. Create Edge Map (Sobel/Canny from grayscale)
         let edgeBase64: string | undefined;
         try {
-          const tempEdgePath = path.join(process.cwd(), 'server', 'temp', `quick_edge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
+          const tempEdgePath = path.join(process.cwd(), 'server', 'temp', `quick_edge_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substr(2, 9)}.png`);
 
           console.log(`🔲 Generating edge map for ${file.originalname}`);
           // Enhanced edge detection using Sobel operator
@@ -1107,7 +1107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 5. Create Gradient Map (slope/momentum from grayscale)
         let gradientBase64: string | undefined;
         try {
-          const tempGradientPath = path.join(process.cwd(), 'server', 'temp', `quick_gradient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`);
+          const tempGradientPath = path.join(process.cwd(), 'server', 'temp', `quick_gradient_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substr(2, 9)}.png`);
 
           console.log(`📉 Generating gradient map for ${file.originalname}`);
           // Sobel X operator for horizontal gradient (price momentum)

@@ -26,7 +26,7 @@ export async function ensureVisualMaps(chartIdOrPath: string): Promise<VisualMap
     
     // For file paths, we'll need to work with a temporary chart ID
     // Since we can't reliably find charts by filename without more context
-    chartId = Date.now(); // Use timestamp as temporary ID for file-based processing
+    chartId = Math.floor(Date.now() / 1000); // Use timestamp in seconds as temporary ID for file-based processing
   } else {
     // It's a chart ID
     chartId = parseInt(chartIdOrPath);
