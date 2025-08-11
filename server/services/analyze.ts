@@ -88,12 +88,32 @@ export async function analyzeCharts({
 
       if (useRAG) {
         try {
-          // Generate embedding and find similar charts
-          const embeddingResult = await generateCLIPEmbedding(imagePath);
-          if (embeddingResult.embedding) {
-            const similar = await storage.findSimilarCharts(embeddingResult.embedding, 3);
-            similarCharts = [...similarCharts, ...similar];
+          // Generate CLIP embedding and find similar charts using new vector search
+          const { embedImageToVector } = await import('./embeddings');
+          const { getTopSimilarCharts } = await import('./retrieval');
+          
+          const queryVector = await embedImageToVector(imagePath);
+          
+          // Compute hash for logging (same approach as preprocessing)
+          const fs = await import('fs');
+          const crypto = await import('crypto');
+          const buf = await fs.promises.readFile(imagePath);
+          const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log("[RAG] query sha", sha, "k=3");
           }
+          
+          const similar = await getTopSimilarCharts(queryVector, 3);
+          
+          if (process.env.NODE_ENV === 'development' && similar.length > 0) {
+            console.table(similar.map(s => ({ 
+              id: s.chart.id, 
+              sim: +s.similarity.toFixed(4) 
+            })));
+          }
+          
+          similarCharts = [...similarCharts, ...similar];
         } catch (error) {
           console.warn(`⚠️ RAG search failed for image ${i}:`, error);
         }
@@ -119,7 +139,12 @@ export async function analyzeCharts({
         confidence: typeof result.confidence === 'string' ? 
           (result.confidence === 'High' ? 0.9 : result.confidence === 'Medium' ? 0.7 : 0.5) : 
           result.confidence || 0.85,
-        similarCharts
+        similarCharts,
+        targetVisuals: chartData.length > 0 ? {
+          depthMapPath: chartData[0].depthMapPath,
+          edgeMapPath: chartData[0].edgeMapPath,
+          gradientMapPath: chartData[0].gradientMapPath
+        } : undefined
       };
     } else {
       // Single chart analysis using OpenAI vision directly
@@ -135,7 +160,12 @@ export async function analyzeCharts({
       return {
         analysis: formattedAnalysis,
         confidence: result.confidence || 0.85,
-        similarCharts
+        similarCharts,
+        targetVisuals: chartData.length > 0 ? {
+          depthMapPath: chartData[0].depthMapPath,
+          edgeMapPath: chartData[0].edgeMapPath,
+          gradientMapPath: chartData[0].gradientMapPath
+        } : undefined
       };
     }
 
