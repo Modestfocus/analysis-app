@@ -3,6 +3,7 @@ import { charts } from '../../shared/schema';
 import { isNotNull } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { EMB_DIM } from './embeddings';
+import { ensureVisualMapsForChart } from './visual-maps';
 
 export type SimilarChart = {
   chart: {
@@ -78,19 +79,28 @@ export async function getTopSimilarCharts(
     
     console.log(`[RAG] pgvector found ${results.rows.length} similar charts`);
     
-    return results.rows.map((row: any) => ({
-      chart: {
-        id: row.id,
-        filename: row.filename,
-        timeframe: row.timeframe,
-        instrument: row.instrument,
-        depthMapPath: row.depth_map_path,
-        edgeMapPath: row.edge_map_path,
-        gradientMapPath: row.gradient_map_path,
-        uploadedAt: row.uploaded_at
-      },
-      similarity: Math.max(0, Math.min(1, parseFloat(row.similarity) || 0))
-    }));
+    // Ensure visual maps exist for all similar charts before returning
+    const similarChartsWithMaps = await Promise.all(
+      results.rows.map(async (row: any) => {
+        const visualMaps = await ensureVisualMapsForChart(row.id, row.filename);
+        
+        return {
+          chart: {
+            id: row.id,
+            filename: row.filename,
+            timeframe: row.timeframe,
+            instrument: row.instrument,
+            depthMapPath: visualMaps.depthMapPath || row.depth_map_path,
+            edgeMapPath: visualMaps.edgeMapPath || row.edge_map_path,
+            gradientMapPath: visualMaps.gradientMapPath || row.gradient_map_path,
+            uploadedAt: row.uploaded_at
+          },
+          similarity: Math.max(0, Math.min(1, parseFloat(row.similarity) || 0))
+        };
+      })
+    );
+    
+    return similarChartsWithMaps;
     
   } catch (error) {
     console.warn("⚠️ pgvector search failed, falling back to in-memory search:", error);
@@ -128,7 +138,26 @@ export async function getTopSimilarCharts(
       
       // Sort by similarity (descending) and take top k
       candidates.sort((a, b) => b.similarity - a.similarity);
-      return candidates.slice(0, k);
+      const topCandidates = candidates.slice(0, k);
+      
+      // Ensure visual maps exist for top candidates
+      const candidatesWithMaps = await Promise.all(
+        topCandidates.map(async (candidate) => {
+          const visualMaps = await ensureVisualMapsForChart(candidate.chart.id, candidate.chart.filename);
+          
+          return {
+            ...candidate,
+            chart: {
+              ...candidate.chart,
+              depthMapPath: visualMaps.depthMapPath || candidate.chart.depthMapPath,
+              edgeMapPath: visualMaps.edgeMapPath || candidate.chart.edgeMapPath,
+              gradientMapPath: visualMaps.gradientMapPath || candidate.chart.gradientMapPath,
+            }
+          };
+        })
+      );
+      
+      return candidatesWithMaps;
       
     } catch (fallbackError) {
       console.error("❌ Both pgvector and fallback search failed:", fallbackError);

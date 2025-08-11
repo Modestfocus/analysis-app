@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { storage } from "./storage";
 // Using unified embeddings service for all CLIP embeddings
 import { embedImageToVectorCached, EMB_DIM, EMB_MODEL_ID } from "./services/embeddings";
+import { backfillAllVisualMaps } from "./services/visual-maps";
 import crypto from 'crypto';
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
 import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
@@ -1876,6 +1877,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: 'CLIP index rebuild failed: ' + (error as Error).message 
+      });
+    }
+  });
+
+  // Admin route for backfilling visual maps
+  app.post('/api/admin/backfill-visual-maps', async (req, res) => {
+    try {
+      console.log('🔧 Starting visual maps backfill...');
+      const result = await backfillAllVisualMaps();
+      
+      res.json({
+        success: true,
+        message: `Visual maps backfill complete`,
+        details: {
+          successful: result.success,
+          failed: result.failed,
+          total: result.success + result.failed
+        }
+      });
+    } catch (error) {
+      console.error('Visual maps backfill error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Visual maps backfill failed: ' + (error as Error).message 
       });
     }
   });
