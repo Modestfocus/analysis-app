@@ -3,7 +3,7 @@ import { charts } from '../../shared/schema';
 import { isNotNull } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { EMB_DIM } from './embeddings';
-import { ensureVisualMapsForChart } from './visual-maps';
+import { ensureVisualMapsForChart, toAbsoluteUrl } from './visual-maps';
 
 export type SimilarChart = {
   chart: {
@@ -49,7 +49,8 @@ function cosineSimilarity(a: Float32Array, b: number[]): number {
  */
 export async function getTopSimilarCharts(
   queryVec: Float32Array,
-  k = 3
+  k = 3,
+  req?: any
 ): Promise<SimilarChart[]> {
   // Dimension guardrail - abort pgvector call if not 512
   console.assert(queryVec.length === EMB_DIM, "query dim mismatch");
@@ -90,9 +91,9 @@ export async function getTopSimilarCharts(
             filename: row.filename,
             timeframe: row.timeframe,
             instrument: row.instrument,
-            depthMapPath: visualMaps.depthMapPath || row.depth_map_path,
-            edgeMapPath: visualMaps.edgeMapPath || row.edge_map_path,
-            gradientMapPath: visualMaps.gradientMapPath || row.gradient_map_path,
+            depthMapPath: toAbsoluteUrl(visualMaps.depthMapPath || row.depth_map_path || '', req),
+            edgeMapPath: toAbsoluteUrl(visualMaps.edgeMapPath || row.edge_map_path || '', req),
+            gradientMapPath: toAbsoluteUrl(visualMaps.gradientMapPath || row.gradient_map_path || '', req),
             uploadedAt: row.uploaded_at
           },
           similarity: Math.max(0, Math.min(1, parseFloat(row.similarity) || 0))
@@ -149,9 +150,9 @@ export async function getTopSimilarCharts(
             ...candidate,
             chart: {
               ...candidate.chart,
-              depthMapPath: visualMaps.depthMapPath || candidate.chart.depthMapPath,
-              edgeMapPath: visualMaps.edgeMapPath || candidate.chart.edgeMapPath,
-              gradientMapPath: visualMaps.gradientMapPath || candidate.chart.gradientMapPath,
+              depthMapPath: toAbsoluteUrl(visualMaps.depthMapPath || candidate.chart.depthMapPath || '', req),
+              edgeMapPath: toAbsoluteUrl(visualMaps.edgeMapPath || candidate.chart.edgeMapPath || '', req),
+              gradientMapPath: toAbsoluteUrl(visualMaps.gradientMapPath || candidate.chart.gradientMapPath || '', req),
             }
           };
         })

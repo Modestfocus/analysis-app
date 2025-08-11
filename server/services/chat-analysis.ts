@@ -8,6 +8,7 @@ import path from 'path';
 import sharp from 'sharp';
 import OpenAI from 'openai';
 import { embedImageToVectorCached, EMB_DIM, EMB_MODEL_ID } from './embeddings';
+import { getTopSimilarCharts } from './retrieval';
 import { storage } from '../storage';
 
 const openai = new OpenAI({
@@ -40,7 +41,7 @@ interface ChatAnalysisResponse {
 /**
  * Process uploaded images and generate visual maps (same as Quick Chart Analysis)
  */
-async function processImagesWithMaps(imageUrls: string[]) {
+async function processImagesWithMaps(imageUrls: string[], req?: any) {
   const processedData = [];
   
   for (let i = 0; i < imageUrls.length; i++) {
@@ -78,7 +79,7 @@ async function processImagesWithMaps(imageUrls: string[]) {
       if (embeddingVec && embeddingVec.length === EMB_DIM) {
         console.log(`🔍 Performing vector similarity search for chat image ${i + 1}`);
         const embedding = Array.from(embeddingVec);
-        similarCharts = await storage.findSimilarCharts(embedding, 3);
+        similarCharts = await getTopSimilarCharts(new Float32Array(embeddingVec), 3, req);
         console.table(similarCharts.map(s => ({ id: s.chart.id, sim: Number(s.similarity).toFixed(4) })));
         console.log(`✓ Found ${similarCharts.length} similar charts for RAG context`);
       } else {
@@ -200,7 +201,7 @@ async function processImagesWithMaps(imageUrls: string[]) {
 /**
  * Analyze charts using the same pipeline as Quick Chart Analysis
  */
-export async function analyzeChatCharts(request: ChatAnalysisRequest): Promise<ChatAnalysisResponse> {
+export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any): Promise<ChatAnalysisResponse> {
   console.log(`🔍 Starting chat chart analysis with model: ${MODEL}`);
   
   // Extract image URLs from content
@@ -223,7 +224,7 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest): Promise<C
   }
 
   // Process images with visual maps (same as Quick Chart Analysis)
-  const processedData = await processImagesWithMaps(imageUrls);
+  const processedData = await processImagesWithMaps(imageUrls, req);
   
   // Build content array with all visual data
   const visionContent: any[] = [];

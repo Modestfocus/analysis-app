@@ -97,7 +97,7 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
         imageUrls, 
         systemPrompt: finalSystemPrompt,
         options: { useRAG: true, usePreprocessing: true }
-      });
+      }, req);
       
       return res.json({
         success: true,
@@ -108,7 +108,7 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
     console.log(`🔍 Chat analysis request (legacy) - ${imageCount} images, system prompt: ${systemPrompt?.length || 0} chars`);
 
     // Legacy path - perform full analysis for messages with images
-    const result = await analyzeChatCharts({ content, systemPrompt });
+    const result = await analyzeChatCharts({ content, systemPrompt }, req);
 
     res.json({
       success: true,

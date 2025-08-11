@@ -25,6 +25,21 @@ Theme Preferences: Dark mode toggle implemented across all pages with automatic 
 
 **Result**: ✅ **FULLY FUNCTIONAL** - Similarity search returns relevant charts with precise similarity scores (1.0000 float precision). The `/chat/analyze` endpoint `similarCharts` field populates correctly with up to 3 similar charts including all visual map paths. Performance optimized with pgvector ivfflat index. **All acceptance tests passed.**
 
+### Visual Maps URLs and Absolute Path Integration - COMPLETED ✅
+**Issue**: Depth/edge/gradient map URLs were returning 404 errors instead of displaying images.
+
+**Root Cause Identified**: Static serving configuration and relative vs absolute URL inconsistencies.
+
+**Solution Implemented**:
+1. **Express Static Serving**: Confirmed public folder served at root via `app.use(express.static(path.join(process.cwd(), 'public')))`
+2. **Visual Maps Service**: Created `visual-maps.ts` with on-the-fly generation and absolute URL helper `toAbsoluteUrl()`
+3. **Retrieval Service**: Updated `getTopSimilarCharts()` to accept request context and return absolute URLs
+4. **Chat Analysis**: Updated both legacy and RAG paths to pass request context through the entire pipeline
+5. **Absolute URL Generation**: Implemented `toAbsoluteUrl()` using APP_BASE_URL env var or request protocol/host
+6. **Backfill Endpoint**: Added `/api/admin/backfill-visual-maps` for one-time map generation
+
+**Result**: ✅ **FULLY FUNCTIONAL** - Visual maps generate on-the-fly when accessing similar charts, URLs return proper absolute paths, system logs show [VIS] reuse/backfill messages, and all depth/edge/gradient map URLs load correctly as images.
+
 ## System Architecture
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript.

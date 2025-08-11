@@ -3,6 +3,20 @@ import path from 'path';
 import sharp from 'sharp';
 import { storage } from '../storage';
 
+/**
+ * Helper to convert relative paths to absolute URLs using APP_BASE_URL or request context
+ */
+export function toAbsoluteUrl(relativePath: string, req?: any): string {
+  if (process.env.APP_BASE_URL) {
+    return new URL(relativePath, process.env.APP_BASE_URL).toString();
+  }
+  if (req) {
+    return new URL(relativePath, `${req.protocol}://${req.get('host')}`).toString();
+  }
+  // Fallback for cases where we don't have request context
+  return relativePath;
+}
+
 export interface VisualMapPaths {
   depthMapPath?: string | null;
   edgeMapPath?: string | null;
