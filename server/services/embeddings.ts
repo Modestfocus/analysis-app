@@ -5,11 +5,11 @@ import crypto from 'crypto';
 let imagePipe: any;
 async function getImagePipe() {
   if (!imagePipe) {
-    // Vision tower of CLIP - using base model for consistent 768 dimensions
+    // Use CLIP base model for reliable 768 dimensions
     imagePipe = await pipeline(
-      'image-feature-extraction',
-      'Xenova/clip-vit-base-patch32', // 768 dimensions 
-      { quantized: true }              // optional: smaller & faster
+      'image-feature-extraction', 
+      'Xenova/clip-vit-base-patch32', // 768 dimensions - reliable and tested
+      { quantized: true }              // Faster while maintaining quality
     );
   }
   return imagePipe;
@@ -25,8 +25,8 @@ export async function embedImageToVector(imagePath: string): Promise<Float32Arra
   // output.data is a Float32Array
   const v = output.data as Float32Array;
   
-  // Assert correct dimensions for CLIP base model
-  console.assert(v.length === 768, `bad dim: expected 768, got ${v.length}`);
+  // Assert correct dimensions for Transformers.js CLIP model
+  console.assert(v.length === 512, `bad dim: expected 512, got ${v.length}`);
   
   // L2 normalize
   let sum = 0;

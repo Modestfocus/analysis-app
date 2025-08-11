@@ -46,7 +46,7 @@ export const charts = pgTable("charts", {
   depthMapPath: text("depth_map_path"),
   edgeMapPath: text("edge_map_path"),
   gradientMapPath: text("gradient_map_path"),
-  embedding: real("embedding").array(), // pgvector(768) - updated via migration
+  embedding: real("embedding").array(), // pgvector(512) - Transformers.js CLIP model embeddings
   bundleId: text("bundle_id"), // Group related charts together
 });
 

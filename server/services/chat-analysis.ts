@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import OpenAI from 'openai';
-import { generateCLIPEmbedding } from './transformers-clip';
+import { embedImageToVector } from './embeddings';
 import { storage } from '../storage';
 
 const openai = new OpenAI({
@@ -62,13 +62,16 @@ async function processImagesWithMaps(imageUrls: string[]) {
     try {
       // 1. Generate CLIP embedding for RAG search
       console.log(`🧠 Generating CLIP embedding for chat image ${i + 1}`);
-      const embeddingResult = await generateCLIPEmbedding(imagePath);
+      const embeddingVec = await embedImageToVector(imagePath);
       let similarCharts: Array<{ chart: any; similarity: number }> = [];
       
-      if (embeddingResult.embedding && embeddingResult.embedding.length === 1024) {
+      if (embeddingVec && embeddingVec.length === 512) {
         console.log(`🔍 Performing vector similarity search for chat image ${i + 1}`);
-        similarCharts = await storage.findSimilarCharts(embeddingResult.embedding, 3);
+        const embedding = Array.from(embeddingVec);
+        similarCharts = await storage.findSimilarCharts(embedding, 3);
         console.log(`✓ Found ${similarCharts.length} similar charts for RAG context`);
+      } else {
+        console.warn(`⚠️ Invalid embedding dimensions for chat image ${i + 1}: expected 512, got ${embeddingVec?.length || 0}`);
       }
 
       // 2. Create temp grayscale version for map generation

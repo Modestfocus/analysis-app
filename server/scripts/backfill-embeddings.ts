@@ -3,7 +3,7 @@
 import { db } from '../db';
 import { charts } from '../../shared/schema';
 import { embedImageToVector } from '../services/embeddings';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, isNull, sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 
@@ -46,19 +46,21 @@ async function backfillEmbeddings() {
         
         console.log(`🔍 Processing chart ${chart.id}: ${chart.filename}`);
         
-        // Generate embedding
+        // Generate CLIP embedding (512 dimensions) 
         const vec = await embedImageToVector(imagePath);
         
-        console.log(`✅ Generated embedding for chart ${chart.id}, vec.length: ${vec.length}`);
+        console.log(`✅ Generated CLIP embedding for chart ${chart.id}, dimensions: ${vec.length}`);
         
-        // Convert Float32Array to regular array for database storage
+        // Convert to pgvector format using raw SQL
         const embedding = Array.from(vec);
+        const vectorStr = `[${embedding.join(',')}]`;
         
-        // Update the database with the embedding
-        await db
-          .update(charts)
-          .set({ embedding })
-          .where(eq(charts.id, chart.id));
+        // Update the database with the embedding using raw SQL for pgvector compatibility
+        await db.execute(sql`
+          UPDATE charts 
+          SET embedding = ${vectorStr}::vector 
+          WHERE id = ${chart.id}
+        `);
         
         processed++;
         console.log(`📝 Updated chart ${chart.id} with embedding (${processed}/${chartsWithoutEmbeddings.length})`);
