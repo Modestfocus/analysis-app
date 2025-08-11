@@ -44,45 +44,116 @@ function cosineSimilarity(a: Float32Array, b: number[]): number {
 }
 
 /**
+ * L2 normalize a vector in-place
+ */
+function l2Normalize(vec: Float32Array): Float32Array {
+  let sum = 0;
+  for (let i = 0; i < vec.length; i++) sum += vec[i] * vec[i];
+  const inv = 1 / Math.max(Math.sqrt(sum), 1e-12);
+  for (let i = 0; i < vec.length; i++) vec[i] *= inv;
+  return vec;
+}
+
+/**
  * Retrieve top-k similar charts using pgvector cosine similarity
- * Falls back to in-memory computation if pgvector fails
+ * Minimal, no-filter query that returns k=3 real neighbors every time
  */
 export async function getTopSimilarCharts(
   queryVec: Float32Array,
   k = 3,
-  req?: any
+  req?: any,
+  sha?: string
 ): Promise<SimilarChart[]> {
-  // Dimension guardrail - abort pgvector call if not 512
-  console.assert(queryVec.length === EMB_DIM, "query dim mismatch");
-  if (queryVec.length !== EMB_DIM) {
-    console.warn(`⚠️ Query vector dimension mismatch: expected ${EMB_DIM}, got ${queryVec.length}. Aborting pgvector query.`);
+  // Normalize the query vector and guard dimensions
+  const q = l2Normalize(queryVec);
+  console.assert(q.length === EMB_DIM, "query dim mismatch");
+  
+  if (q.length !== EMB_DIM) {
+    console.warn(`⚠️ Query vector dimension mismatch: expected ${EMB_DIM}, got ${q.length}. Aborting pgvector query.`);
     return [];
   }
   
   try {
     // Convert Float32Array to array for SQL query
-    const queryArray = Array.from(queryVec);
-    const queryVectorString = `[${queryArray.join(',')}]`;
+    const queryArray = Array.from(q);
     
-    // Use pgvector for optimal similarity search
-    // Since vectors are normalized, cosine distance equals 1 - dot product
+    // Minimal, no-filter query - exactly as specified
     const results = await db.execute(
       sql`
-        SELECT id, filename, timeframe, instrument,
-               depth_map_path, edge_map_path, gradient_map_path, uploaded_at,
-               1 - (embedding <=> ${queryVectorString}::vector) AS similarity
+        WITH q(v) AS (VALUES (${queryArray}::vector(512)))
+        SELECT
+          id, filename, timeframe, instrument,
+          depth_map_path, edge_map_path, gradient_map_path, uploaded_at,
+          (1 - (embedding <=> (SELECT v FROM q)))::double precision AS similarity
         FROM charts
         WHERE embedding IS NOT NULL
-        ORDER BY embedding <=> ${queryVectorString}::vector
+        ORDER BY embedding <=> (SELECT v FROM q)
         LIMIT ${k}
       `
     );
     
-    console.log(`[RAG] pgvector found ${results.rows.length} similar charts`);
+    // Log exactly as specified for acceptance testing  
+    console.log(`[RAG] query sha ${sha || 'unknown'} k=${k} { dim: ${EMB_DIM} }`);
+    console.table(results.rows.map((r: any) => ({ id: r.id, sim: Number(r.similarity).toFixed(4) })));
+    console.log(`[RAG] rows: ${results.rows.length}`);
     
-    // Ensure visual maps exist for all similar charts before returning
+    // If fewer than k rows returned, try wider search with ivfflat probes
+    let finalResults = results;
+    if (results.rows.length < k) {
+      console.log(`[RAG] Got ${results.rows.length} < ${k}, trying wider ivfflat search...`);
+      try {
+        finalResults = await db.execute(
+          sql`
+            SET LOCAL ivfflat.probes = 10;
+            WITH q(v) AS (VALUES (${queryArray}::vector(512)))
+            SELECT
+              id, filename, timeframe, instrument,
+              depth_map_path, edge_map_path, gradient_map_path, uploaded_at,
+              (1 - (embedding <=> (SELECT v FROM q)))::double precision AS similarity
+            FROM charts
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> (SELECT v FROM q)
+            LIMIT ${k}
+          `
+        );
+        console.log(`[RAG] Wider search returned ${finalResults.rows.length} rows`);
+      } catch (probeError) {
+        console.warn(`[RAG] ivfflat.probes adjustment failed:`, probeError);
+        finalResults = results; // Use original results
+      }
+    }
+    
+    // If still fewer than k, try exact scan without index
+    if (finalResults.rows.length < k) {
+      console.log(`[RAG] Still got ${finalResults.rows.length} < ${k}, trying exact scan...`);
+      try {
+        finalResults = await db.execute(
+          sql`
+            SET LOCAL enable_indexscan = off;
+            SET LOCAL enable_bitmapscan = off; 
+            SET LOCAL enable_seqscan = on;
+            WITH q(v) AS (VALUES (${queryArray}::vector(512)))
+            SELECT
+              id, filename, timeframe, instrument,
+              depth_map_path, edge_map_path, gradient_map_path, uploaded_at,
+              (1 - (embedding <=> (SELECT v FROM q)))::double precision AS similarity
+            FROM charts
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> (SELECT v FROM q)
+            LIMIT ${k}
+          `
+        );
+        console.log(`[RAG] Exact scan returned ${finalResults.rows.length} rows`);
+      } catch (exactError) {
+        console.warn(`[RAG] Exact scan failed:`, exactError);
+        finalResults = results; // Use original results
+      }
+    }
+    
+    // Select first, then generate missing maps for the returned neighbors
+    // Do not drop results because maps are missing - fill after selection
     const similarChartsWithMaps = await Promise.all(
-      results.rows.map(async (row: any) => {
+      finalResults.rows.map(async (row: any) => {
         const visualMaps = await ensureVisualMapsForChart(row.id, row.filename);
         
         return {
@@ -104,65 +175,7 @@ export async function getTopSimilarCharts(
     return similarChartsWithMaps;
     
   } catch (error) {
-    console.warn("⚠️ pgvector search failed, falling back to in-memory search:", error);
-    
-    // Fallback to in-memory computation (only when the DB call actually fails)
-    try {
-      const allCharts = await db.select().from(charts).where(isNotNull(charts.embedding));
-      const candidates: SimilarChart[] = [];
-      
-      for (const chart of allCharts) {
-        if (chart.embedding && chart.embedding.length > 0) {
-          // Verify both vectors are unit-norm 512 before computing similarity
-          if (chart.embedding.length !== EMB_DIM) {
-            console.warn(`⚠️ Skipping chart ${chart.id} with wrong embedding dimension: ${chart.embedding.length}`);
-            continue;
-          }
-          
-          const similarity = cosineSimilarity(queryVec, chart.embedding);
-          
-          candidates.push({
-            chart: {
-              id: chart.id!,
-              filename: chart.filename,
-              timeframe: chart.timeframe,
-              instrument: chart.instrument,
-              depthMapPath: chart.depthMapPath,
-              edgeMapPath: chart.edgeMapPath,
-              gradientMapPath: chart.gradientMapPath,
-              uploadedAt: chart.uploadedAt
-            },
-            similarity
-          });
-        }
-      }
-      
-      // Sort by similarity (descending) and take top k
-      candidates.sort((a, b) => b.similarity - a.similarity);
-      const topCandidates = candidates.slice(0, k);
-      
-      // Ensure visual maps exist for top candidates
-      const candidatesWithMaps = await Promise.all(
-        topCandidates.map(async (candidate) => {
-          const visualMaps = await ensureVisualMapsForChart(candidate.chart.id, candidate.chart.filename);
-          
-          return {
-            ...candidate,
-            chart: {
-              ...candidate.chart,
-              depthMapPath: toAbsoluteUrl(visualMaps.depthMapPath || candidate.chart.depthMapPath || '', req),
-              edgeMapPath: toAbsoluteUrl(visualMaps.edgeMapPath || candidate.chart.edgeMapPath || '', req),
-              gradientMapPath: toAbsoluteUrl(visualMaps.gradientMapPath || candidate.chart.gradientMapPath || '', req),
-            }
-          };
-        })
-      );
-      
-      return candidatesWithMaps;
-      
-    } catch (fallbackError) {
-      console.error("❌ Both pgvector and fallback search failed:", fallbackError);
-      return [];
-    }
+    console.error("❌ pgvector search failed:", error);
+    return [];
   }
 }

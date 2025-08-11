@@ -105,7 +105,7 @@ export async function analyzeCharts({
           console.assert(vec.length === EMB_DIM, "query dim mismatch");
           console.log('[RAG] query sha', sha, 'k=3', { dim: vec.length, model: EMB_MODEL_ID });
           
-          const similar = await getTopSimilarCharts(vec, 3, req);
+          const similar = await getTopSimilarCharts(vec, 3, req, sha);
           
           if (similar.length > 0) {
             console.table(similar.map(s => ({ 
