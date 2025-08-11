@@ -89,22 +89,22 @@ export async function analyzeCharts({
       if (useRAG) {
         try {
           // Generate CLIP embedding and find similar charts using new vector search
-          const { embedImageToVector } = await import('./embeddings');
+          const { embedImageToVectorCached } = await import('./embeddings');
           const { getTopSimilarCharts } = await import('./retrieval');
           
-          const queryVector = await embedImageToVector(imagePath);
-          
-          // Compute hash for logging (same approach as preprocessing)
+          // Compute hash for caching (same approach as preprocessing)
           const fs = await import('fs');
           const crypto = await import('crypto');
           const buf = await fs.promises.readFile(imagePath);
           const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
           
+          const vec = await embedImageToVectorCached(imagePath, sha);
+          
           if (process.env.NODE_ENV === 'development') {
-            console.log("[RAG] query sha", sha, "k=3");
+            console.log('[RAG] query sha', sha, 'k=3', { dim: vec.length });
           }
           
-          const similar = await getTopSimilarCharts(queryVector, 3);
+          const similar = await getTopSimilarCharts(vec, 3);
           
           if (process.env.NODE_ENV === 'development' && similar.length > 0) {
             console.table(similar.map(s => ({ 
