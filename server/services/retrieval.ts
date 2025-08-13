@@ -141,25 +141,40 @@ const VEC_DIM = 512; // must match pgvector column dim
  */
 export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: number) {
   const q = l2Normalize(vec);
-  const qLit = toVectorLiteral(q);
 
-  // 1) SQL probe (no filters)
-  const probe = await db.execute(sql`
+  // 1) SQL probe (no filters) with better IVFFlat recall
+  try {
+    // Set IVFFlat probes for better recall
+    await db.execute(sql`SET LOCAL ivfflat.probes = 20`);
+  } catch (error) {
+    console.warn('[RAG] Failed to set ivfflat probes:', error);
+  }
+  
+  // Use parameterized query without sql.raw to avoid prepared statement issues
+  const vectorStr = `[${q.join(',')}]`;
+  
+  // Build the base query
+  let query = `
     SELECT
       c.id,
       c.filename,
       c.timeframe,
       c.instrument,
-      (1 - (c.embedding <=> ${sql.raw(qLit)}))::float8 AS similarity,
+      (1 - (c.embedding <=> '${vectorStr}'::vector(512)))::float8 AS similarity,
       c.depth_map_path,
       c.edge_map_path,
       c.gradient_map_path
     FROM charts c
-    WHERE c.embedding IS NOT NULL
-    ${excludeId ? sql`AND c.id <> ${excludeId}` : sql``}
-    ORDER BY c.embedding <=> ${sql.raw(qLit)}
-    LIMIT ${k}
-  `);
+    WHERE c.embedding IS NOT NULL`;
+  
+  // Add optional exclusion
+  if (excludeId) {
+    query += ` AND c.id <> ${excludeId}`;
+  }
+  
+  query += ` ORDER BY c.embedding <=> '${vectorStr}'::vector(512) LIMIT ${k}`;
+  
+  const probe = await db.execute(sql.raw(query));
 
   // Ensure SQL probe similarity is numeric
   const probeRowsTyped = probe.rows.map(r => ({
@@ -204,19 +219,31 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
   for (let i = 0; i < qv.length; i++) qv[i] /= nq;
 
   // Get all embeddings as text and compute similarities
-  const all = await db.execute(sql`
+  let fallbackQuery = `
     SELECT id, embedding::text AS embedding_text, filename, timeframe, instrument,
            depth_map_path, edge_map_path, gradient_map_path
     FROM charts
-    WHERE embedding IS NOT NULL
-    ${excludeId ? sql`AND id <> ${excludeId}` : sql``}
-  `);
+    WHERE embedding IS NOT NULL`;
+  
+  if (excludeId) {
+    fallbackQuery += ` AND id <> ${excludeId}`;
+  }
+  
+  const all = await db.execute(sql.raw(fallbackQuery));
 
   // score every row
+  let firstRow = true;
   const scored = (all.rows as { id: number; embedding_text: string; filename: string; timeframe: string; instrument: string; depth_map_path: string; edge_map_path: string; gradient_map_path: string }[])
     .map(r => {
       try {
         const ev = fromTextToFloat32(r.embedding_text);
+        
+        // Log vector lengths once per request to catch dimension drift
+        if (firstRow) {
+          console.log('[RAG] dims', 'qv:', qv.length, 'db:', ev.length);
+          firstRow = false;
+        }
+        
         return { 
           id: Number(r.id), 
           sim: cosine(qv, ev),
@@ -239,32 +266,40 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
           gradient_map_path: r.gradient_map_path,
         };
       }
-    })
+    });
+
+  // Sort after joining fallback results with metadata and dedupe by id
+  const finalRows = scored
     .sort((a, b) => b.sim - a.sim)
-    .slice(0, k);
+    .slice(0, k * 2) // Get extra rows in case of duplicates
+    .reduce((acc, r) => {
+      // Dedupe by id and exclude exact duplicates
+      if (!acc.find(item => item.id === r.id)) {
+        acc.push({
+          id: r.id,
+          similarity: Number(r.sim), // KEEP as numeric, never stringify
+          filename: r.filename,
+          timeframe: r.timeframe,
+          instrument: r.instrument,
+          depth_map_path: r.depth_map_path,
+          edge_map_path: r.edge_map_path,
+          gradient_map_path: r.gradient_map_path,
+        });
+      }
+      return acc;
+    }, [] as any[])
+    .slice(0, k); // Final k results
 
-  // KEEP similarity as a number
-  const scored2 = scored.map(r => ({
-    id: r.id,
-    similarity: Number(r.sim), // numeric
-    filename: r.filename,
-    timeframe: r.timeframe,
-    instrument: r.instrument,
-    depth_map_path: r.depth_map_path,
-    edge_map_path: r.edge_map_path,
-    gradient_map_path: r.gradient_map_path,
-  }));
-
-  console.table(scored2.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
-  console.log(`[RAG] fallback=cpu rows: ${scored2.length}`);
+  console.table(finalRows.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
+  console.log(`[RAG] fallback=cpu rows: ${finalRows.length}`);
 
   // Convert paths to absolute and return
-  const result = scored2.map(r => ({
+  const result = finalRows.map(r => ({
     id: r.id,
     filename: r.filename,
     timeframe: r.timeframe,
     instrument: r.instrument,
-    similarity: r.similarity,
+    similarity: r.similarity, // Keep as number
     depthMapPath: abs(r.depth_map_path),
     edgeMapPath: abs(r.edge_map_path),
     gradientMapPath: abs(r.gradient_map_path),

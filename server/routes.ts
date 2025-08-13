@@ -213,6 +213,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register debug routes
   app.use('/debug', debugRoutes);
+  
+  // Smoke test route for RAG validation
+  const { smokeTestRAG } = await import('./routes/smoke-test');
+  app.get('/api/smoke-test/rag', smokeTestRAG);
 
   // Document Management API Routes
   const objectStorageService = new ObjectStorageService();

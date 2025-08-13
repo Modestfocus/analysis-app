@@ -13,7 +13,8 @@ import {
   Loader2,
   Maximize2,
   Copy,
-  Paperclip
+  Paperclip,
+  Activity
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -653,38 +654,79 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                         
                         {/* Similar Historical Patterns */}
                         {msg.metadata.similarCharts && msg.metadata.similarCharts.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            <div className="text-sm font-medium">
+                          <div className="mt-3 space-y-3">
+                            <div className="text-sm font-medium flex items-center gap-2">
+                              <Activity className="h-4 w-4 text-purple-600" />
                               Similar Historical Patterns ({msg.metadata.similarCharts.length})
                             </div>
-                            <ul className="space-y-2">
-                              {msg.metadata.similarCharts.map((s: any, i: number) => {
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              {msg.metadata.similarCharts.slice(0, 3).map((s: any, i: number) => {
                                 const c = s.chart;
-                                const label = `${c.instrument ?? "UNKNOWN"} • ${c.timeframe ?? ""} • ${(s.similarity*100).toFixed(1)}%`;
+                                const similarity = (s.similarity * 100).toFixed(1);
+                                const originalChartPath = `/charts/${c.filename}`;
+                                
                                 return (
-                                  <li key={c.id} className="text-sm">
-                                    <div className="font-medium">{i + 1}. {label}</div>
-                                    <div className="flex gap-3 text-xs underline">
+                                  <div key={c.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                    {/* Chart thumbnail - clickable to open original */}
+                                    <div className="cursor-pointer" onClick={() => window.open(originalChartPath, '_blank')}>
+                                      <div className="relative mb-2">
+                                        <img 
+                                          src={originalChartPath} 
+                                          alt={`${c.instrument} ${c.timeframe} chart`}
+                                          className="w-full h-20 object-cover rounded border"
+                                          onError={(e) => {
+                                            e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="60"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Chart</text></svg>';
+                                          }}
+                                        />
+                                        <div className="absolute top-1 right-1">
+                                          <Badge variant="secondary" className="text-xs bg-white/90 text-gray-800">
+                                            {similarity}%
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Chart info */}
+                                    <div className="space-y-1 mb-2">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {c.instrument ?? "UNKNOWN"}
+                                      </div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                                        {c.timeframe ?? "Unknown timeframe"}
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Action links */}
+                                    <div className="flex gap-2">
                                       {c.depthMapPath && (
-                                        <a href={c.depthMapPath} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-                                          depth
-                                        </a>
+                                        <button 
+                                          onClick={() => window.open(c.depthMapPath, '_blank')}
+                                          className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                                        >
+                                          Depth
+                                        </button>
                                       )}
                                       {c.edgeMapPath && (
-                                        <a href={c.edgeMapPath} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-                                          edge
-                                        </a>
+                                        <button 
+                                          onClick={() => window.open(c.edgeMapPath, '_blank')}
+                                          className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
+                                        >
+                                          Edge
+                                        </button>
                                       )}
                                       {c.gradientMapPath && (
-                                        <a href={c.gradientMapPath} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-                                          gradient
-                                        </a>
+                                        <button 
+                                          onClick={() => window.open(c.gradientMapPath, '_blank')}
+                                          className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
+                                        >
+                                          Gradient
+                                        </button>
                                       )}
                                     </div>
-                                  </li>
+                                  </div>
                                 );
                               })}
-                            </ul>
+                            </div>
                           </div>
                         )}
                       </div>
