@@ -641,7 +641,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                         <div className="flex flex-wrap gap-2 mb-2">
                           {msg.metadata.confidence && (
                             <Badge variant="secondary">
-                              Confidence: {msg.metadata.confidence}%
+                              Confidence: {(typeof msg.metadata.confidence === 'number' ? (msg.metadata.confidence * 100) : msg.metadata.confidence).toString().replace('%', '')}%
                             </Badge>
                           )}
                           {msg.metadata.similarCharts && (
@@ -651,52 +651,40 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                           )}
                         </div>
                         
-                        {/* Clickable Similar Charts */}
+                        {/* Similar Historical Patterns */}
                         {msg.metadata.similarCharts && msg.metadata.similarCharts.length > 0 && (
-                          <div className="mt-2">
-                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Similar Historical Patterns:
-                            </h4>
-                            <div className="space-y-1">
-                              {msg.metadata.similarCharts.map((chart: any, index: number) => (
-                                <Dialog key={chart.chartId}>
-                                  <DialogTrigger asChild>
-                                    <button className="w-full text-left p-2 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-sm">
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-blue-600 dark:text-blue-400 hover:underline">
-                                          {index + 1}. {chart.filename}
-                                        </span>
-                                        <span className="text-green-600 dark:text-green-400 font-medium">
-                                          {(chart.similarity * 100).toFixed(1)}%
-                                        </span>
-                                      </div>
-                                      <div className="text-gray-600 dark:text-gray-400 text-xs">
-                                        {chart.instrument} • {chart.timeframe}
-                                      </div>
-                                    </button>
-                                  </DialogTrigger>
-                                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                                    <DialogTitle>
-                                      Similar Chart: {chart.filename} ({(chart.similarity * 100).toFixed(1)}% match)
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                      View the full chart image and depth map analysis for this similar trading pattern
-                                    </DialogDescription>
-                                    <div className="space-y-4 pb-4">
-                                      <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div>
-                                          <span className="font-medium">Instrument:</span> {chart.instrument}
-                                        </div>
-                                        <div>
-                                          <span className="font-medium">Timeframe:</span> {chart.timeframe}
-                                        </div>
-                                      </div>
-                                      <SimilarChartImage chartId={chart.chartId} filename={chart.filename} />
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                              ))}
+                          <div className="mt-3 space-y-2">
+                            <div className="text-sm font-medium">
+                              Similar Historical Patterns ({msg.metadata.similarCharts.length})
                             </div>
+                            <ul className="space-y-2">
+                              {msg.metadata.similarCharts.map((s: any, i: number) => {
+                                const c = s.chart;
+                                const label = `${c.instrument ?? "UNKNOWN"} • ${c.timeframe ?? ""} • ${(s.similarity*100).toFixed(1)}%`;
+                                return (
+                                  <li key={c.id} className="text-sm">
+                                    <div className="font-medium">{i + 1}. {label}</div>
+                                    <div className="flex gap-3 text-xs underline">
+                                      {c.depthMapPath && (
+                                        <a href={c.depthMapPath} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                                          depth
+                                        </a>
+                                      )}
+                                      {c.edgeMapPath && (
+                                        <a href={c.edgeMapPath} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                                          edge
+                                        </a>
+                                      )}
+                                      {c.gradientMapPath && (
+                                        <a href={c.gradientMapPath} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                                          gradient
+                                        </a>
+                                      )}
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
                           </div>
                         )}
                       </div>
