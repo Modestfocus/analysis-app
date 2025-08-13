@@ -137,19 +137,19 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
     ORDER BY s.similarity DESC
   `);
 
-  const finalRowsTyped = finalRows.rows as {
-    id: number;
-    similarity: number;
-    filename: string;
-    timeframe: string | null;
-    instrument: string | null;
-    depth_map_path: string | null;
-    edge_map_path: string | null;
-    gradient_map_path: string | null;
-  }[];
+  const finalRowsTyped = (finalRows.rows as any[]).map(r => ({
+    id: r.id,
+    similarity: Number(r.similarity),
+    filename: r.filename,
+    timeframe: r.timeframe,
+    instrument: r.instrument,
+    depth_map_path: r.depth_map_path,
+    edge_map_path: r.edge_map_path,
+    gradient_map_path: r.gradient_map_path,
+  }));
 
   // Log like: [RAG] rows: 3 (id/sim table)
-  console.table(finalRowsTyped.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
+  console.table(finalRowsTyped.map(r => ({ id: r.id, sim: Number(r.similarity).toFixed(4) })));
   console.log(`[RAG] rows: ${finalRowsTyped.length}`);
 
   // ------------- backfill visual maps with filename now available -------------
