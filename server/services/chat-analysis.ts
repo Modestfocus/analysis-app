@@ -392,14 +392,21 @@ Respond with a JSON object containing:
       throw new Error("Invalid response format from GPT");
     }
 
-    // Add metadata
-    parsedResult.similarCharts = allSimilarCharts.slice(0, 3).map(item => ({
-      chartId: item.chart.id,
-      filename: item.chart.originalName || item.chart.filename,
-      instrument: item.chart.instrument,
-      timeframe: item.chart.timeframe,
-      similarity: item.similarity
+    // Add metadata in new format
+    parsedResult.similarCharts = allSimilarCharts.map(item => ({
+      chart: {
+        id: item.chart.id,
+        filename: item.chart.filename,
+        timeframe: item.chart.timeframe,
+        instrument: item.chart.instrument,
+        depthMapPath: item.chart.depthMapPath ?? `/depthmaps/depth_chart_${item.chart.id}.png`,
+        edgeMapPath: item.chart.edgeMapPath ?? `/edgemaps/edge_chart_${item.chart.id}.png`,
+        gradientMapPath: item.chart.gradientMapPath ?? `/gradientmaps/gradient_chart_${item.chart.id}.png`,
+      },
+      similarity: item.similarity,
     }));
+    
+    console.log("[RAG] similarCharts in response:", parsedResult.similarCharts?.length);
 
     parsedResult.visualMapsIncluded = {
       depth: depthCount,

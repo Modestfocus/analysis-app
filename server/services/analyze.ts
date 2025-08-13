@@ -152,6 +152,7 @@ export async function analyzeCharts({
       // Format the result for chat display
       const formattedAnalysis = formatAnalysisForChat(result, similarCharts);
       
+      console.log("[RAG] similarCharts in response:", similarCharts?.length);
       return {
         analysis: formattedAnalysis,
         confidence: typeof result.confidence === 'string' ? 
@@ -175,6 +176,7 @@ export async function analyzeCharts({
       // Format the result for chat display
       const formattedAnalysis = typeof result === 'string' ? result : formatAnalysisForChat(result, similarCharts);
       
+      console.log("[RAG] similarCharts in response:", similarCharts?.length);
       return {
         analysis: formattedAnalysis,
         confidence: result.confidence || 0.85,

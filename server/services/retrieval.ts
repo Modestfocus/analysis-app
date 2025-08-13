@@ -57,11 +57,42 @@ const VEC_DIM = 512; // must match pgvector column dim
  * - k: number of neighbors to fetch (default 3)
  */
 export async function getTopSimilarCharts(vec: number[], k = 3) {
+  console.log("[RAG] getTopSimilarCharts called with k=", k, "vecDims=", vec?.length);
+  
   // 1) normalize query vector
   const qv = l2Normalize(vec);
 
   // 2) inline pgvector literal. IMPORTANT: pgvector expects JSON-like "[a,b,...]"
   const vectorLiteral = `'[${qv.map(x => x.toFixed(6)).join(",")}]'::vector(512)`;
+
+  const sqlText = `
+SELECT
+  c.id,
+  c.filename,
+  c.timeframe,
+  c.instrument,
+  (1 - (c.embedding <=> ${vectorLiteral}))::double precision AS similarity,
+  c.depth_map_path,
+  c.edge_map_path,
+  c.gradient_map_path
+FROM charts c
+WHERE c.embedding IS NOT NULL
+ORDER BY c.embedding <=> ${vectorLiteral}
+LIMIT ${k};
+  `.trim();
+
+  console.log("[RAG] SQL to execute ===>");
+  console.log(sqlText);
+
+  // 4) Probe query to verify DB returns 3 rows
+  const probe = await db.execute(sql`
+    SELECT id, (1 - (embedding <=> ${sql.raw(vectorLiteral)}))::double precision AS similarity
+    FROM charts
+    WHERE embedding IS NOT NULL
+    ORDER BY embedding <=> ${sql.raw(vectorLiteral)}
+    LIMIT 3
+  `);
+  console.log("[RAG] probe rows:", probe.rows);
 
   // 3) exact scan — no filters, order by distance, limit k
   //    Use sql.raw to inject the vector literal; do NOT parameterize it.
@@ -71,35 +102,27 @@ export async function getTopSimilarCharts(vec: number[], k = 3) {
       c.filename,
       c.timeframe,
       c.instrument,
-      -- cosine similarity in [0..1]
       (1 - (c.embedding <=> ${sql.raw(vectorLiteral)}))::double precision AS similarity,
       c.depth_map_path,
       c.edge_map_path,
       c.gradient_map_path
-    FROM charts AS c
+    FROM charts c
     WHERE c.embedding IS NOT NULL
     ORDER BY c.embedding <=> ${sql.raw(vectorLiteral)}
     LIMIT ${k}
   `);
 
-  // 4) normalize types
   const result = rows.rows.map((r: any) => ({
     id: Number(r.id),
-    filename: r.filename as string,
-    timeframe: r.timeframe as (string | null),
-    instrument: r.instrument as (string | null),
+    filename: r.filename,
+    timeframe: r.timeframe,
+    instrument: r.instrument,
     similarity: Number(r.similarity),
-    depthMapPath: r.depth_map_path as (string | null),
-    edgeMapPath: r.edge_map_path as (string | null),
-    gradientMapPath: r.gradient_map_path as (string | null),
+    depthMapPath: r.depth_map_path,
+    edgeMapPath: r.edge_map_path,
+    gradientMapPath: r.gradient_map_path,
   }));
 
-  // 5) Backfill visual maps if any are missing, but DO NOT drop rows.
-  //    Call your existing helper (whatever it's named) per row; run in parallel.
-  //    Example (adjust names/imports as in your codebase):
-  // await Promise.all(result.map(r => ensureChartMaps(r.id)));
-
-  // 6) Log for verification
   console.table(result.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
-  return result;
+  return result; // NO filtering/slicing here
 }
