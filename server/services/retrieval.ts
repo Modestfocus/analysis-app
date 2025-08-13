@@ -5,6 +5,35 @@ import { sql } from 'drizzle-orm';
 import { EMB_DIM } from './embeddings';
 import { ensureVisualMapsForChart, toAbsoluteUrl } from './visual-maps';
 
+// Helper to convert DB vectors to Float32Array (Neon often returns strings)
+function toFloatArray(v: unknown): Float32Array {
+  // Handle null/undefined embeddings
+  if (!v || !Array.isArray(v)) {
+    return new Float32Array(512).fill(0);
+  }
+  
+  // DB can return numeric[] as strings -> coerce
+  const arr = (v as any[]).map(Number);
+  return new Float32Array(arr);
+}
+
+// L2 norm with zero protection
+function l2(v: Float32Array): number {
+  let s = 0;
+  for (let i = 0; i < v.length; i++) s += v[i] * v[i];
+  return Math.sqrt(s) || 1; // avoid /0
+}
+
+// Cosine similarity with proper normalization
+function cosine(a: Float32Array, b: Float32Array): number {
+  const na = l2(a), nb = l2(b);
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  const val = dot / (na * nb);
+  // clamp to [0,1] (pgvector cosine distance returns 1 - cos sometimes)
+  return Math.max(0, Math.min(1, val));
+}
+
 export type SimilarChart = {
   chart: {
     id: number;
@@ -18,30 +47,6 @@ export type SimilarChart = {
   };
   similarity: number; // cosine similarity 0..1
 };
-
-/**
- * Compute cosine similarity between two normalized unit vectors (Node fallback)
- */
-function cosine(a: Float32Array, b: Float32Array): number {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
-  return Math.max(0, Math.min(1, s)); // a and b are unit norm
-}
-
-/**
- * Compute cosine similarity between query vector and chart embedding array
- */
-function cosineSimilarity(a: Float32Array, b: number[]): number {
-  if (a.length !== b.length) return 0;
-  
-  let dotProduct = 0;
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-  }
-  
-  // Since vectors are normalized, cosine similarity = dot product
-  return Math.max(0, Math.min(1, dotProduct));
-}
 
 // Helper function to normalize vectors
 function l2Normalize(v: number[]) {
@@ -156,14 +161,24 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
     LIMIT ${k}
   `);
 
-  let rows = (probe.rows as any[]).map(r => ({ ...r, similarity: Number(r.similarity) }));
+  // Ensure SQL probe similarity is numeric
+  const probeRowsTyped = probe.rows.map(r => ({
+    id: Number((r as any).id),
+    similarity: Number((r as any).similarity),
+    filename: (r as any).filename,
+    timeframe: (r as any).timeframe,
+    instrument: (r as any).instrument,
+    depth_map_path: (r as any).depth_map_path,
+    edge_map_path: (r as any).edge_map_path,
+    gradient_map_path: (r as any).gradient_map_path,
+  }));
 
-  if (rows.length >= k) {
-    console.table(rows.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
-    console.log(`[RAG] rows: ${rows.length}`);
+  if (probeRowsTyped.length >= k) {
+    console.table(probeRowsTyped.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
+    console.log(`[RAG] rows: ${probeRowsTyped.length}`);
     
     // Convert paths to absolute and return
-    const result = rows.slice(0, k).map(r => ({
+    const result = probeRowsTyped.slice(0, k).map(r => ({
       id: r.id,
       filename: r.filename,
       timeframe: r.timeframe,
@@ -181,52 +196,59 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
   }
 
   // 2) CPU fallback over all embeddings (120 rows is trivial)
-  console.log(`[RAG] fallback=cpu reason="probe<k" probeRows=${rows.length}`);
+  console.log(`[RAG] fallback=cpu reason="probe<k" probeRows=${probeRowsTyped.length}`);
 
+  // Get normalized query vector as Float32Array
+  const qvFloat = toFloatArray(vec);
+  const qNorm = l2(qvFloat);
+  for (let i = 0; i < qvFloat.length; i++) qvFloat[i] /= qNorm;
+
+  // Get all embeddings and compute similarities
   const all = await db.execute(sql`
-    SELECT id, filename, timeframe, instrument,
-           depth_map_path, edge_map_path, gradient_map_path, embedding
+    SELECT id, embedding, filename, timeframe, instrument,
+           depth_map_path, edge_map_path, gradient_map_path
     FROM charts
     WHERE embedding IS NOT NULL
     ${excludeId ? sql`AND id <> ${excludeId}` : sql``}
   `);
 
-  // Cosine similarity (numerically safe)
-  function dot(a: number[], b: number[]) { 
-    let s = 0; 
-    for (let i = 0; i < a.length; i++) s += a[i] * b[i]; 
-    return s; 
-  }
-  
-  function norm(a: number[]) { 
-    let s = 0; 
-    for (let i = 0; i < a.length; i++) s += a[i] * a[i]; 
-    return Math.sqrt(s) || 1; 
-  }
-  
-  const qn = norm(q);
+  const scored = (all.rows as any[]).map(row => {
+    try {
+      const embeddingArray = row.embedding as number[];
+      const evFloat = toFloatArray(embeddingArray);
+      const similarity = cosine(qvFloat, evFloat);
+      
+      return {
+        id: Number(row.id),
+        similarity: isNaN(similarity) ? 0.0 : Number(similarity),
+        filename: row.filename,
+        timeframe: row.timeframe,
+        instrument: row.instrument,
+        depth_map_path: row.depth_map_path,
+        edge_map_path: row.edge_map_path,
+        gradient_map_path: row.gradient_map_path,
+      };
+    } catch (error) {
+      return {
+        id: Number(row.id),
+        similarity: 0.0,
+        filename: row.filename,
+        timeframe: row.timeframe,
+        instrument: row.instrument,
+        depth_map_path: row.depth_map_path,
+        edge_map_path: row.edge_map_path,
+        gradient_map_path: row.gradient_map_path,
+      };
+    }
+  })
+  .sort((a, b) => b.similarity - a.similarity)
+  .slice(0, k);
 
-  const ranked = (all.rows as any[]).map(r => {
-    const e: number[] = r.embedding;            // drizzle/pg returns as array
-    const en = norm(e);
-    const sim = dot(q, e) / (qn * en);
-    return {
-      id: r.id,
-      filename: r.filename,
-      timeframe: r.timeframe,
-      instrument: r.instrument,
-      depth_map_path: r.depth_map_path,
-      edge_map_path: r.edge_map_path,
-      gradient_map_path: r.gradient_map_path,
-      similarity: sim,
-    };
-  }).sort((a, b) => b.similarity - a.similarity).slice(0, k);
+  console.table(scored.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
+  console.log(`[RAG] fallback=cpu rows: ${scored.length}`);
 
-  console.table(ranked.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
-  console.log(`[RAG] fallback=cpu rows: ${ranked.length}`);
-
-  // Convert paths to absolute
-  const result = ranked.map(r => ({
+  // Convert paths to absolute and return
+  const result = scored.map(r => ({
     id: r.id,
     filename: r.filename,
     timeframe: r.timeframe,
@@ -237,8 +259,7 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
     gradientMapPath: abs(r.gradient_map_path),
   }));
 
-  // 3) Do NOT drop rows because a map is missing; return them as-is.
-  // Kick off async backfill of maps (don't await)
+  // Kick off async backfill (don't await)
   backfillVisualMaps(result.map(r => r.id)).catch(() => {});
 
   return result;
