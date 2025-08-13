@@ -44,14 +44,11 @@ function cosineSimilarity(a: Float32Array, b: number[]): number {
 }
 
 /**
- * L2 normalize a vector in-place
+ * L2 normalize a vector (returns new array)
  */
-function l2Normalize(vec: Float32Array): Float32Array {
-  let sum = 0;
-  for (let i = 0; i < vec.length; i++) sum += vec[i] * vec[i];
-  const inv = 1 / Math.max(Math.sqrt(sum), 1e-12);
-  for (let i = 0; i < vec.length; i++) vec[i] *= inv;
-  return vec;
+function l2Normalize(v: number[]): number[] {
+  const n = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
+  return v.map(x => x / n);
 }
 
 /**
@@ -62,98 +59,61 @@ export async function getTopSimilarCharts(
   queryVec: Float32Array,
   k = 3,
   req?: any,
-  sha?: string
+  sha?: string,
+  excludeId?: number | null
 ): Promise<SimilarChart[]> {
-  // Normalize the query vector and guard dimensions
-  const q = l2Normalize(queryVec);
-  console.assert(q.length === EMB_DIM, "query dim mismatch");
+  // Convert to array and normalize the query vector
+  const vec = Array.from(queryVec);
+  const qv = l2Normalize(vec);
+  const qvStr = `[${qv.join(',')}]`; // IMPORTANT: pass as text, not array param
   
-  if (q.length !== EMB_DIM) {
-    console.warn(`⚠️ Query vector dimension mismatch: expected ${EMB_DIM}, got ${q.length}. Aborting pgvector query.`);
-    return [];
-  }
+  console.log(`[RAG] query sha ${sha || 'unknown'} k=${k} { dim: ${EMB_DIM}, model: 'Xenova/clip-vit-base-patch32' }`);
   
   try {
-    // Convert Float32Array to array for SQL query
-    const queryArray = Array.from(q);
+    // Minimal, no-filter query with string literal vector casting
+    let rows = await db.execute(sql`
+      SET LOCAL ivfflat.probes = 10;
+      WITH q(v) AS (SELECT ${qvStr}::vector(512))
+      SELECT
+        c.id,
+        1 - (c.embedding <=> (SELECT v FROM q))::double precision AS similarity,
+        c.filename, c.timeframe, c.instrument,
+        c.depth_map_path, c.edge_map_path, c.gradient_map_path
+      FROM charts c
+      WHERE c.embedding IS NOT NULL
+        ${excludeId ? sql`AND c.id <> ${excludeId}` : sql``}
+      ORDER BY c.embedding <=> (SELECT v FROM q)
+      LIMIT ${k};
+    `);
     
-    // Minimal, no-filter query - exactly as specified
-    const results = await db.execute(
-      sql`
-        WITH q(v) AS (VALUES (${queryArray}::vector(512)))
+    // If fewer than k rows returned, try exact scan (no index) as fallback
+    if (rows.rows.length < 3) {
+      const exact = await db.execute(sql`
+        SET LOCAL enable_indexscan = off;
+        SET LOCAL enable_bitmapscan = off;
+        SET LOCAL enable_seqscan = on;
+        WITH q(v) AS (SELECT ${qvStr}::vector(512))
         SELECT
-          id, filename, timeframe, instrument,
-          depth_map_path, edge_map_path, gradient_map_path, uploaded_at,
-          (1 - (embedding <=> (SELECT v FROM q)))::double precision AS similarity
-        FROM charts
-        WHERE embedding IS NOT NULL
-        ORDER BY embedding <=> (SELECT v FROM q)
-        LIMIT ${k}
-      `
-    );
-    
-    // Log exactly as specified for acceptance testing  
-    console.log(`[RAG] query sha ${sha || 'unknown'} k=${k} { dim: ${EMB_DIM} }`);
-    console.table(results.rows.map((r: any) => ({ id: r.id, sim: Number(r.similarity).toFixed(4) })));
-    console.log(`[RAG] rows: ${results.rows.length}`);
-    
-    // If fewer than k rows returned, try wider search with ivfflat probes
-    let finalResults = results;
-    if (results.rows.length < k) {
-      console.log(`[RAG] Got ${results.rows.length} < ${k}, trying wider ivfflat search...`);
-      try {
-        finalResults = await db.execute(
-          sql`
-            SET LOCAL ivfflat.probes = 10;
-            WITH q(v) AS (VALUES (${queryArray}::vector(512)))
-            SELECT
-              id, filename, timeframe, instrument,
-              depth_map_path, edge_map_path, gradient_map_path, uploaded_at,
-              (1 - (embedding <=> (SELECT v FROM q)))::double precision AS similarity
-            FROM charts
-            WHERE embedding IS NOT NULL
-            ORDER BY embedding <=> (SELECT v FROM q)
-            LIMIT ${k}
-          `
-        );
-        console.log(`[RAG] Wider search returned ${finalResults.rows.length} rows`);
-      } catch (probeError) {
-        console.warn(`[RAG] ivfflat.probes adjustment failed:`, probeError);
-        finalResults = results; // Use original results
-      }
+          c.id,
+          1 - (c.embedding <=> (SELECT v FROM q))::double precision AS similarity,
+          c.filename, c.timeframe, c.instrument,
+          c.depth_map_path, c.edge_map_path, c.gradient_map_path
+        FROM charts c
+        WHERE c.embedding IS NOT NULL
+          ${excludeId ? sql`AND c.id <> ${excludeId}` : sql``}
+        ORDER BY c.embedding <=> (SELECT v FROM q)
+        LIMIT ${k};
+      `);
+      rows = exact;
     }
     
-    // If still fewer than k, try exact scan without index
-    if (finalResults.rows.length < k) {
-      console.log(`[RAG] Still got ${finalResults.rows.length} < ${k}, trying exact scan...`);
-      try {
-        finalResults = await db.execute(
-          sql`
-            SET LOCAL enable_indexscan = off;
-            SET LOCAL enable_bitmapscan = off; 
-            SET LOCAL enable_seqscan = on;
-            WITH q(v) AS (VALUES (${queryArray}::vector(512)))
-            SELECT
-              id, filename, timeframe, instrument,
-              depth_map_path, edge_map_path, gradient_map_path, uploaded_at,
-              (1 - (embedding <=> (SELECT v FROM q)))::double precision AS similarity
-            FROM charts
-            WHERE embedding IS NOT NULL
-            ORDER BY embedding <=> (SELECT v FROM q)
-            LIMIT ${k}
-          `
-        );
-        console.log(`[RAG] Exact scan returned ${finalResults.rows.length} rows`);
-      } catch (exactError) {
-        console.warn(`[RAG] Exact scan failed:`, exactError);
-        finalResults = results; // Use original results
-      }
-    }
+    // Logging for verification
+    console.table(rows.rows.map((r: any) => ({ id: r.id, sim: Number(r.similarity).toFixed(4) })));
+    console.log(`[RAG] rows: ${rows.rows.length}`);
     
-    // Select first, then generate missing maps for the returned neighbors
-    // Do not drop results because maps are missing - fill after selection
+    // Return the rows even if their map paths are missing; generate/backfill maps after selection
     const similarChartsWithMaps = await Promise.all(
-      finalResults.rows.map(async (row: any) => {
+      rows.rows.map(async (row: any) => {
         const visualMaps = await ensureVisualMapsForChart(row.id, row.filename);
         
         return {
