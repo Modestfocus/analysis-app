@@ -107,29 +107,21 @@ export async function analyzeCharts({
           
           // Convert Float32Array to number[] for new function signature
           const vecArray = Array.from(vec);
-          const similarRows = await getTopSimilarCharts(vecArray, 3);
+          const similar = await getTopSimilarCharts(vecArray, 3);
           
-          // Transform raw rows to SimilarChart format with visual maps
-          const { ensureVisualMapsForChart, toAbsoluteUrl } = await import('./visual-maps');
-          const similar = await Promise.all(
-            similarRows.map(async (row: any) => {
-              const visualMaps = await ensureVisualMapsForChart(row.id, row.filename);
-              
-              return {
-                chart: {
-                  id: row.id,
-                  filename: row.filename,
-                  timeframe: row.timeframe,
-                  instrument: row.instrument,
-                  depthMapPath: toAbsoluteUrl(visualMaps.depthMapPath || row.depth_map_path || '', req),
-                  edgeMapPath: toAbsoluteUrl(visualMaps.edgeMapPath || row.edge_map_path || '', req),
-                  gradientMapPath: toAbsoluteUrl(visualMaps.gradientMapPath || row.gradient_map_path || '', req),
-                  uploadedAt: row.uploaded_at
-                },
-                similarity: Math.max(0, Math.min(1, parseFloat(row.similarity) || 0))
-              };
-            })
-          );
+          // Apply absolute URLs for visual maps
+          const { toAbsoluteUrl } = await import('./visual-maps');
+          similar.forEach(item => {
+            if (item.chart.depthMapPath) {
+              item.chart.depthMapPath = toAbsoluteUrl(item.chart.depthMapPath, req);
+            }
+            if (item.chart.edgeMapPath) {
+              item.chart.edgeMapPath = toAbsoluteUrl(item.chart.edgeMapPath, req);
+            }
+            if (item.chart.gradientMapPath) {
+              item.chart.gradientMapPath = toAbsoluteUrl(item.chart.gradientMapPath, req);
+            }
+          });
           
           if (similar.length > 0) {
             console.table(similar.map(s => ({ 

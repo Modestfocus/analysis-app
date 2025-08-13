@@ -79,7 +79,7 @@ async function processImagesWithMaps(imageUrls: string[], req?: any) {
       if (embeddingVec && embeddingVec.length === EMB_DIM) {
         console.log(`🔍 Performing vector similarity search for chat image ${i + 1}`);
         const embedding = Array.from(embeddingVec);
-        similarCharts = await getTopSimilarCharts(new Float32Array(embeddingVec), 3, req, sha);
+        similarCharts = await getTopSimilarCharts(embedding, 3);
         console.table(similarCharts.map(s => ({ id: s.chart.id, sim: Number(s.similarity).toFixed(4) })));
         console.log(`✓ Found ${similarCharts.length} similar charts for RAG context`);
       } else {
