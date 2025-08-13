@@ -107,21 +107,22 @@ export async function analyzeCharts({
           
           // Convert Float32Array to number[] for new function signature
           const vecArray = Array.from(vec);
-          const similar = await getTopSimilarCharts(vecArray, 3);
-          
-          // Apply absolute URLs for visual maps
+          const neighbors = await getTopSimilarCharts(vecArray, 3);
+
+          // Map to expected format with proper paths
           const { toAbsoluteUrl } = await import('./visual-maps');
-          similar.forEach(item => {
-            if (item.chart.depthMapPath) {
-              item.chart.depthMapPath = toAbsoluteUrl(item.chart.depthMapPath, req);
-            }
-            if (item.chart.edgeMapPath) {
-              item.chart.edgeMapPath = toAbsoluteUrl(item.chart.edgeMapPath, req);
-            }
-            if (item.chart.gradientMapPath) {
-              item.chart.gradientMapPath = toAbsoluteUrl(item.chart.gradientMapPath, req);
-            }
-          });
+          const similar = neighbors.map(n => ({
+            chart: {
+              id: n.id,
+              filename: n.filename,
+              timeframe: n.timeframe,
+              instrument: n.instrument,
+              depthMapPath: toAbsoluteUrl(n.depthMapPath ?? `/depthmaps/depth_chart_${n.id}.png`, req),
+              edgeMapPath: toAbsoluteUrl(n.edgeMapPath ?? `/edgemaps/edge_chart_${n.id}.png`, req),
+              gradientMapPath: toAbsoluteUrl(n.gradientMapPath ?? `/gradientmaps/gradient_chart_${n.id}.png`, req),
+            },
+            similarity: n.similarity, // float 0..1
+          }));
           
           if (similar.length > 0) {
             console.table(similar.map(s => ({ 

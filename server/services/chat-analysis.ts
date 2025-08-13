@@ -79,8 +79,22 @@ async function processImagesWithMaps(imageUrls: string[], req?: any) {
       if (embeddingVec && embeddingVec.length === EMB_DIM) {
         console.log(`🔍 Performing vector similarity search for chat image ${i + 1}`);
         const embedding = Array.from(embeddingVec);
-        similarCharts = await getTopSimilarCharts(embedding, 3);
-        console.table(similarCharts.map(s => ({ id: s.chart.id, sim: Number(s.similarity).toFixed(4) })));
+        const neighbors = await getTopSimilarCharts(embedding, 3);
+        
+        // Map to expected format
+        similarCharts = neighbors.map(n => ({
+          chart: {
+            id: n.id,
+            filename: n.filename,
+            timeframe: n.timeframe,
+            instrument: n.instrument,
+            depthMapPath: n.depthMapPath ?? `/depthmaps/depth_chart_${n.id}.png`,
+            edgeMapPath: n.edgeMapPath ?? `/edgemaps/edge_chart_${n.id}.png`,
+            gradientMapPath: n.gradientMapPath ?? `/gradientmaps/gradient_chart_${n.id}.png`,
+          },
+          similarity: n.similarity, // float 0..1
+        }));
+        
         console.log(`✓ Found ${similarCharts.length} similar charts for RAG context`);
       } else {
         console.warn(`⚠️ Invalid embedding dimensions for chat image ${i + 1}: expected ${EMB_DIM}, got ${embeddingVec?.length || 0}`);
