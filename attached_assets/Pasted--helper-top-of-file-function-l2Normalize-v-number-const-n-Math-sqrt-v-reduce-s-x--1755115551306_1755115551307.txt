@@ -1,0 +1,82 @@
+// helper (top of file)
+function l2Normalize(v: number[]) {
+  const n = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
+  return v.map(x => x / n);
+}
+
+function toVectorLiteral(v: number[]) {
+  // String literal: '[0.1,0.2,...]'::vector(512)
+  return `'[${v.join(",")} ]'::vector(512)`;
+}
+
+export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: number) {
+  const q = l2Normalize(vec);
+  const qLit = toVectorLiteral(q);
+
+  // 1) SQL probe (no filters)
+  const probe = await db.execute(`
+    SELECT
+      c.id,
+      c.filename,
+      c.timeframe,
+      c.instrument,
+      (1 - (c.embedding <=> ${qLit}))::float8 AS similarity,
+      c.depth_map_path,
+      c.edge_map_path,
+      c.gradient_map_path
+    FROM charts c
+    WHERE c.embedding IS NOT NULL
+    ${excludeId ? `AND c.id <> ${excludeId}` : ""}
+    ORDER BY c.embedding <=> ${qLit}
+    LIMIT ${k};
+  `);
+
+  let rows = (probe.rows as any[]).map(r => ({ ...r, similarity: Number(r.similarity) }));
+
+  if (rows.length >= k) {
+    console.table(rows.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
+    console.log(`[RAG] rows: ${rows.length}`);
+    return rows.slice(0, k);
+  }
+
+  // 2) CPU fallback over all embeddings (120 rows is trivial)
+  console.log(`[RAG] fallback=cpu reason="probe<k" probeRows=${rows.length}`);
+
+  const all = await db.execute(`
+    SELECT id, filename, timeframe, instrument,
+           depth_map_path, edge_map_path, gradient_map_path, embedding
+    FROM charts
+    WHERE embedding IS NOT NULL
+    ${excludeId ? `AND id <> ${excludeId}` : ""}
+  `);
+
+  // Cosine similarity (numerically safe)
+  function dot(a:number[], b:number[]){let s=0; for (let i=0;i<a.length;i++) s+=a[i]*b[i]; return s;}
+  function norm(a:number[]){let s=0; for (let i=0;i<a.length;i++) s+=a[i]*a[i]; return Math.sqrt(s)||1;}
+  const qn = norm(q);
+
+  const ranked = (all.rows as any[]).map(r => {
+    const e: number[] = r.embedding;            // drizzle/pg returns as array
+    const en = norm(e);
+    const sim = dot(q, e) / (qn * en);
+    return {
+      id: r.id,
+      filename: r.filename,
+      timeframe: r.timeframe,
+      instrument: r.instrument,
+      depth_map_path: r.depth_map_path,
+      edge_map_path: r.edge_map_path,
+      gradient_map_path: r.gradient_map_path,
+      similarity: sim,
+    };
+  }).sort((a,b)=> b.similarity - a.similarity).slice(0, k);
+
+  console.table(ranked.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
+  console.log(`[RAG] fallback=cpu rows: ${ranked.length}`);
+
+  // 3) Do NOT drop rows because a map is missing; return them as-is.
+  // Kick off async backfill of maps (don’t await)
+  backfillVisualMaps(ranked.map(r => r.id)).catch(()=>{});
+
+  return ranked;
+}
