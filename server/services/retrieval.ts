@@ -5,32 +5,32 @@ import { sql } from 'drizzle-orm';
 import { EMB_DIM } from './embeddings';
 import { ensureVisualMapsForChart, toAbsoluteUrl } from './visual-maps';
 
-// Helper to convert DB vectors to Float32Array (Neon often returns strings)
-function toFloatArray(v: unknown): Float32Array {
-  // Handle null/undefined embeddings
-  if (!v || !Array.isArray(v)) {
-    return new Float32Array(512).fill(0);
-  }
-  
-  // DB can return numeric[] as strings -> coerce
-  const arr = (v as any[]).map(Number);
-  return new Float32Array(arr);
+// Helper to parse pgvector::text format to Float32Array
+function fromTextToFloat32(text: string): Float32Array {
+  // pgvector::text comes as "[0.1,0.2,...]": valid JSON
+  const arr = JSON.parse(text) as number[];     // now real numbers
+  return new Float32Array(arr.map(Number));
 }
 
-// L2 norm with zero protection
+// Helper to convert number array to Float32Array
+function toFloat32(arr: number[]): Float32Array {
+  return new Float32Array(arr.map(Number));
+}
+
+// L2 norm
 function l2(v: Float32Array): number {
   let s = 0;
   for (let i = 0; i < v.length; i++) s += v[i] * v[i];
-  return Math.sqrt(s) || 1; // avoid /0
+  return Math.sqrt(s) || 1;
 }
 
-// Cosine similarity with proper normalization
+// Cosine similarity
 function cosine(a: Float32Array, b: Float32Array): number {
   const na = l2(a), nb = l2(b);
   let dot = 0;
-  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  const n = Math.min(a.length, b.length);  // guard dim mismatch
+  for (let i = 0; i < n; i++) dot += a[i] * b[i];
   const val = dot / (na * nb);
-  // clamp to [0,1] (pgvector cosine distance returns 1 - cos sometimes)
   return Math.max(0, Math.min(1, val));
 }
 
@@ -198,57 +198,68 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
   // 2) CPU fallback over all embeddings (120 rows is trivial)
   console.log(`[RAG] fallback=cpu reason="probe<k" probeRows=${probeRowsTyped.length}`);
 
-  // Get normalized query vector as Float32Array
-  const qvFloat = toFloatArray(vec);
-  const qNorm = l2(qvFloat);
-  for (let i = 0; i < qvFloat.length; i++) qvFloat[i] /= qNorm;
+  // query vector → Float32 & normalize once
+  const qv = toFloat32(vec);
+  const nq = l2(qv);
+  for (let i = 0; i < qv.length; i++) qv[i] /= nq;
 
-  // Get all embeddings and compute similarities
+  // Get all embeddings as text and compute similarities
   const all = await db.execute(sql`
-    SELECT id, embedding, filename, timeframe, instrument,
+    SELECT id, embedding::text AS embedding_text, filename, timeframe, instrument,
            depth_map_path, edge_map_path, gradient_map_path
     FROM charts
     WHERE embedding IS NOT NULL
     ${excludeId ? sql`AND id <> ${excludeId}` : sql``}
   `);
 
-  const scored = (all.rows as any[]).map(row => {
-    try {
-      const embeddingArray = row.embedding as number[];
-      const evFloat = toFloatArray(embeddingArray);
-      const similarity = cosine(qvFloat, evFloat);
-      
-      return {
-        id: Number(row.id),
-        similarity: isNaN(similarity) ? 0.0 : Number(similarity),
-        filename: row.filename,
-        timeframe: row.timeframe,
-        instrument: row.instrument,
-        depth_map_path: row.depth_map_path,
-        edge_map_path: row.edge_map_path,
-        gradient_map_path: row.gradient_map_path,
-      };
-    } catch (error) {
-      return {
-        id: Number(row.id),
-        similarity: 0.0,
-        filename: row.filename,
-        timeframe: row.timeframe,
-        instrument: row.instrument,
-        depth_map_path: row.depth_map_path,
-        edge_map_path: row.edge_map_path,
-        gradient_map_path: row.gradient_map_path,
-      };
-    }
-  })
-  .sort((a, b) => b.similarity - a.similarity)
-  .slice(0, k);
+  // score every row
+  const scored = (all.rows as { id: number; embedding_text: string; filename: string; timeframe: string; instrument: string; depth_map_path: string; edge_map_path: string; gradient_map_path: string }[])
+    .map(r => {
+      try {
+        const ev = fromTextToFloat32(r.embedding_text);
+        return { 
+          id: Number(r.id), 
+          sim: cosine(qv, ev),
+          filename: r.filename,
+          timeframe: r.timeframe,
+          instrument: r.instrument,
+          depth_map_path: r.depth_map_path,
+          edge_map_path: r.edge_map_path,
+          gradient_map_path: r.gradient_map_path,
+        };
+      } catch (error) {
+        return { 
+          id: Number(r.id), 
+          sim: 0.0,
+          filename: r.filename,
+          timeframe: r.timeframe,
+          instrument: r.instrument,
+          depth_map_path: r.depth_map_path,
+          edge_map_path: r.edge_map_path,
+          gradient_map_path: r.gradient_map_path,
+        };
+      }
+    })
+    .sort((a, b) => b.sim - a.sim)
+    .slice(0, k);
 
-  console.table(scored.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
-  console.log(`[RAG] fallback=cpu rows: ${scored.length}`);
+  // KEEP similarity as a number
+  const scored2 = scored.map(r => ({
+    id: r.id,
+    similarity: Number(r.sim), // numeric
+    filename: r.filename,
+    timeframe: r.timeframe,
+    instrument: r.instrument,
+    depth_map_path: r.depth_map_path,
+    edge_map_path: r.edge_map_path,
+    gradient_map_path: r.gradient_map_path,
+  }));
+
+  console.table(scored2.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
+  console.log(`[RAG] fallback=cpu rows: ${scored2.length}`);
 
   // Convert paths to absolute and return
-  const result = scored.map(r => ({
+  const result = scored2.map(r => ({
     id: r.id,
     filename: r.filename,
     timeframe: r.timeframe,
