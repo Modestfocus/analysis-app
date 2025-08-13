@@ -1,0 +1,108 @@
+import { sql } from "../db"; // whatever you use to run raw SQL
+import { backfillVisualMapsIfMissing } from "./visuals"; // or your existing util
+
+const VEC_DIM = 512; // must match pgvector column dim
+
+export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: number) {
+  const q = l2Normalize(vec);
+
+  // pgvector needs a string literal like '[0.1,0.2,...]' then CAST ::vector(512)
+  const qLiteral = `[${q.map(x => Number.isFinite(x) ? x.toFixed(6) : "0.000000").join(",")}]`;
+
+  // ------------- pass 1: IVFFlat (no SET LOCAL; single statement only) -------------
+  const pass1 = await sql<{
+    id: number;
+    similarity: number;
+    depth_map_path: string | null;
+    edge_map_path: string | null;
+    gradient_map_path: string | null;
+  }[]>`
+    SELECT
+      c.id,
+      (1 - (c.embedding <=> ${sql.raw(`'${qLiteral}'::vector(${VEC_DIM})`)}))::double precision AS similarity,
+      c.depth_map_path,
+      c.edge_map_path,
+      c.gradient_map_path
+    FROM charts c
+    WHERE c.embedding IS NOT NULL
+      ${excludeId ? sql.raw(`AND c.id <> ${excludeId}`) : sql.raw("")}
+    ORDER BY c.embedding <=> ${sql.raw(`'${qLiteral}'::vector(${VEC_DIM})`)}
+    LIMIT ${k};
+  `;
+
+  let rows = pass1;
+
+  // ------------- pass 2: exact scan fallback if < k -------------
+  if (rows.length < k) {
+    const pass2 = await sql<typeof pass1[0][]>`
+      SELECT
+        c.id,
+        (1 - (c.embedding <=> ${sql.raw(`'${qLiteral}'::vector(${VEC_DIM})`)}))::double precision AS similarity,
+        c.depth_map_path,
+        c.edge_map_path,
+        c.gradient_map_path
+      FROM charts c
+      WHERE c.embedding IS NOT NULL
+        ${excludeId ? sql.raw(`AND c.id <> ${excludeId}`) : sql.raw("")}
+      ORDER BY (c.embedding <=> ${sql.raw(`'${qLiteral}'::vector(${VEC_DIM})`)})
+      LIMIT ${k};
+    `;
+    // Merge uniques (keep best)
+    const seen = new Set<number>(rows.map(r => r.id));
+    for (const r of pass2) if (!seen.has(r.id)) rows.push(r);
+    rows = rows.slice(0, k);
+  }
+
+  // ------------- ensure visual maps exist (DON'T drop rows) -------------
+  for (const r of rows) {
+    await backfillVisualMapsIfMissing(r.id); // create depth/edge/gradient if missing
+  }
+
+  // ------------- fetch final rows with paths (guaranteed) -------------
+  const ids = rows.map(r => r.id);
+  if (ids.length === 0) return [];
+
+  const finalRows = await sql<{
+    id: number;
+    similarity: number;
+    filename: string;
+    timeframe: string | null;
+    instrument: string | null;
+    depth_map_path: string | null;
+    edge_map_path: string | null;
+    gradient_map_path: string | null;
+  }[]>`
+    SELECT
+      c.id,
+      c.filename,
+      c.timeframe,
+      c.instrument,
+      c.depth_map_path,
+      c.edge_map_path,
+      c.gradient_map_path,
+      s.similarity
+    FROM charts c
+    JOIN (VALUES ${sql.raw(
+      ids
+        .map((id, i) => `(${id}, ${rows[i].similarity.toFixed(6)})`)
+        .join(",")
+    )}) AS s(id, similarity) ON s.id = c.id
+    ORDER BY s.similarity DESC
+  `;
+
+  // Log like: [RAG] rows: 3 (id/sim table)
+  console.table(finalRows.map(r => ({ id: r.id, sim: r.similarity.toFixed(4) })));
+
+  return finalRows.map(r => ({
+    chart: {
+      id: r.id,
+      filename: r.filename,
+      timeframe: r.timeframe ?? "UNKNOWN",
+      instrument: r.instrument ?? "UNKNOWN",
+      depthMapPath: r.depth_map_path ?? null,
+      edgeMapPath: r.edge_map_path ?? null,
+      gradientMapPath: r.gradient_map_path ?? null,
+    },
+    similarity: r.similarity,
+  }));
+}
