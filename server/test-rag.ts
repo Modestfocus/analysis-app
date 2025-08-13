@@ -25,18 +25,19 @@ async function testRAGSystem() {
     console.log(`✅ Generated embedding: dim=${vec.length}, first 5 values: [${Array.from(vec.slice(0, 5)).map(v => v.toFixed(4)).join(', ')}]`);
     
     // Test console.assert for dimension check
-    console.assert(vec.length === 768, `Expected 768 dimensions, got ${vec.length}`);
+    console.assert(vec.length === 512, `Expected 512 dimensions, got ${vec.length}`);
     console.log('✅ Dimension assertion passed');
     
     // Test similarity search (will be empty initially)
-    const similar = await getTopSimilarCharts(vec, 3);
+    const vecArray = Array.from(vec);
+    const similar = await getTopSimilarCharts(vecArray, 3);
     console.log(`🔍 Similarity search returned ${similar.length} results`);
     
     if (similar.length > 0) {
       console.table(similar.map(s => ({ 
-        id: s.chart.id, 
+        id: s.id, 
         sim: +s.similarity.toFixed(4),
-        filename: s.chart.filename
+        filename: s.filename
       })));
     }
     
@@ -54,15 +55,15 @@ async function testRAGSystem() {
     console.log(`✅ Created test chart with ID: ${testChart.id}`);
     
     // Test similarity search with new data
-    const similarAfter = await getTopSimilarCharts(vec, 3);
+    const similarAfter = await getTopSimilarCharts(vecArray, 3);
     console.log(`🔍 After adding test chart, similarity search returned ${similarAfter.length} results`);
     
     if (similarAfter.length > 0) {
       console.table(similarAfter.map(s => ({ 
-        id: s.chart.id, 
+        id: s.id, 
         sim: +s.similarity.toFixed(4),
-        filename: s.chart.filename,
-        instrument: s.chart.instrument
+        filename: s.filename,
+        instrument: s.instrument
       })));
     }
     

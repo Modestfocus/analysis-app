@@ -105,7 +105,31 @@ export async function analyzeCharts({
           console.assert(vec.length === EMB_DIM, "query dim mismatch");
           console.log('[RAG] query sha', sha, 'k=3', { dim: vec.length, model: EMB_MODEL_ID });
           
-          const similar = await getTopSimilarCharts(vec, 3, req, sha);
+          // Convert Float32Array to number[] for new function signature
+          const vecArray = Array.from(vec);
+          const similarRows = await getTopSimilarCharts(vecArray, 3);
+          
+          // Transform raw rows to SimilarChart format with visual maps
+          const { ensureVisualMapsForChart, toAbsoluteUrl } = await import('./visual-maps');
+          const similar = await Promise.all(
+            similarRows.map(async (row: any) => {
+              const visualMaps = await ensureVisualMapsForChart(row.id, row.filename);
+              
+              return {
+                chart: {
+                  id: row.id,
+                  filename: row.filename,
+                  timeframe: row.timeframe,
+                  instrument: row.instrument,
+                  depthMapPath: toAbsoluteUrl(visualMaps.depthMapPath || row.depth_map_path || '', req),
+                  edgeMapPath: toAbsoluteUrl(visualMaps.edgeMapPath || row.edge_map_path || '', req),
+                  gradientMapPath: toAbsoluteUrl(visualMaps.gradientMapPath || row.gradient_map_path || '', req),
+                  uploadedAt: row.uploaded_at
+                },
+                similarity: Math.max(0, Math.min(1, parseFloat(row.similarity) || 0))
+              };
+            })
+          );
           
           if (similar.length > 0) {
             console.table(similar.map(s => ({ 

@@ -43,99 +43,61 @@ function cosineSimilarity(a: Float32Array, b: number[]): number {
   return Math.max(0, Math.min(1, dotProduct));
 }
 
-/**
- * L2 normalize a vector (returns new array)
- */
-function l2Normalize(v: number[]): number[] {
+// 1) keep this helper at top of file
+function l2Normalize(v: number[]) {
   const n = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
   return v.map(x => x / n);
 }
 
-/**
- * Retrieve top-k similar charts using pgvector cosine similarity
- * Minimal, no-filter query that returns k=3 real neighbors every time
- */
-export async function getTopSimilarCharts(
-  queryVec: Float32Array,
-  k = 3,
-  req?: any,
-  sha?: string,
-  excludeId?: number | null
-): Promise<SimilarChart[]> {
-  // Convert to array and normalize the query vector
-  const vec = Array.from(queryVec);
+export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: number) {
   const qv = l2Normalize(vec);
-  const qvStr = `[${qv.join(',')}]`; // IMPORTANT: pass as text, not array param
-  
-  console.log(`[RAG] query sha ${sha || 'unknown'} k=${k} { dim: ${EMB_DIM}, model: 'Xenova/clip-vit-base-patch32' }`);
-  
-  try {
-    // Minimal, no-filter query with string literal vector casting
-    let rows = await db.execute(sql`
-      SET LOCAL ivfflat.probes = 10;
+  const qvStr = `[${qv.join(',')}]`; // IMPORTANT: text literal
+
+  const excludeSql = excludeId ? sql`AND c.id <> ${excludeId}` : sql``;
+
+  // PRIMARY: IVFFlat query with explicit cast from string to vector(512)
+  let res = await db.execute(sql`
+    SET LOCAL ivfflat.probes = 10;
+    WITH q(v) AS (SELECT ${qvStr}::vector(512))
+    SELECT
+      c.id,
+      1 - (c.embedding <=> (SELECT v FROM q))::float8 AS similarity,
+      c.filename, c.timeframe, c.instrument,
+      c.depth_map_path, c.edge_map_path, c.gradient_map_path
+    FROM charts c
+    WHERE c.embedding IS NOT NULL
+      ${excludeSql}
+    ORDER BY c.embedding <=> (SELECT v FROM q)
+    LIMIT ${k};
+  `);
+
+  let rows = res.rows as any[];
+
+  // FALLBACK: exact scan (no index) if we got < k
+  if (rows.length < k) {
+    res = await db.execute(sql`
+      SET LOCAL enable_indexscan = off;
+      SET LOCAL enable_bitmapscan = off;
+      SET LOCAL enable_seqscan = on;
       WITH q(v) AS (SELECT ${qvStr}::vector(512))
       SELECT
         c.id,
-        1 - (c.embedding <=> (SELECT v FROM q))::double precision AS similarity,
+        1 - (c.embedding <=> (SELECT v FROM q))::float8 AS similarity,
         c.filename, c.timeframe, c.instrument,
         c.depth_map_path, c.edge_map_path, c.gradient_map_path
       FROM charts c
       WHERE c.embedding IS NOT NULL
-        ${excludeId ? sql`AND c.id <> ${excludeId}` : sql``}
+        ${excludeSql}
       ORDER BY c.embedding <=> (SELECT v FROM q)
       LIMIT ${k};
     `);
-    
-    // If fewer than k rows returned, try exact scan (no index) as fallback
-    if (rows.rows.length < 3) {
-      const exact = await db.execute(sql`
-        SET LOCAL enable_indexscan = off;
-        SET LOCAL enable_bitmapscan = off;
-        SET LOCAL enable_seqscan = on;
-        WITH q(v) AS (SELECT ${qvStr}::vector(512))
-        SELECT
-          c.id,
-          1 - (c.embedding <=> (SELECT v FROM q))::double precision AS similarity,
-          c.filename, c.timeframe, c.instrument,
-          c.depth_map_path, c.edge_map_path, c.gradient_map_path
-        FROM charts c
-        WHERE c.embedding IS NOT NULL
-          ${excludeId ? sql`AND c.id <> ${excludeId}` : sql``}
-        ORDER BY c.embedding <=> (SELECT v FROM q)
-        LIMIT ${k};
-      `);
-      rows = exact;
-    }
-    
-    // Logging for verification
-    console.table(rows.rows.map((r: any) => ({ id: r.id, sim: Number(r.similarity).toFixed(4) })));
-    console.log(`[RAG] rows: ${rows.rows.length}`);
-    
-    // Return the rows even if their map paths are missing; generate/backfill maps after selection
-    const similarChartsWithMaps = await Promise.all(
-      rows.rows.map(async (row: any) => {
-        const visualMaps = await ensureVisualMapsForChart(row.id, row.filename);
-        
-        return {
-          chart: {
-            id: row.id,
-            filename: row.filename,
-            timeframe: row.timeframe,
-            instrument: row.instrument,
-            depthMapPath: toAbsoluteUrl(visualMaps.depthMapPath || row.depth_map_path || '', req),
-            edgeMapPath: toAbsoluteUrl(visualMaps.edgeMapPath || row.edge_map_path || '', req),
-            gradientMapPath: toAbsoluteUrl(visualMaps.gradientMapPath || row.gradient_map_path || '', req),
-            uploadedAt: row.uploaded_at
-          },
-          similarity: Math.max(0, Math.min(1, parseFloat(row.similarity) || 0))
-        };
-      })
-    );
-    
-    return similarChartsWithMaps;
-    
-  } catch (error) {
-    console.error("❌ pgvector search failed:", error);
-    return [];
+    rows = res.rows as any[];
   }
+
+  console.log(`[RAG] query k=${k} { dim: 512 }`);
+  console.table(rows.map(r => ({ id: r.id, sim: Number(r.similarity).toFixed(4) })));
+  console.log(`[RAG] rows: ${rows.length}`);
+
+  // Do NOT drop rows because maps are missing; map backfill happens elsewhere.
+  return rows;
 }
