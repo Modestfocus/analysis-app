@@ -52,6 +52,22 @@ Theme Preferences: Dark mode toggle implemented across all pages with automatic 
 
 **Result**: ✅ **FULLY FUNCTIONAL** - RAG system consistently returns exactly 3 similar charts with proper logging, frontend displays similar patterns with functional visual map links, and all components work together seamlessly.
 
+### RAG Retrieval Fix: CPU Fallback for k=3 Guarantees - COMPLETED ✅
+**Issue**: API was returning only 1 similar chart instead of guaranteed k=3, despite DB containing 120 charts with embeddings.
+
+**Root Cause Identified**: SQL probe was returning fewer than k results, and system didn't have fallback mechanism.
+
+**Solution Implemented**:
+1. **SQL Probe + CPU Fallback**: Implemented two-stage approach - SQL probe first, CPU fallback if probe returns < k rows
+2. **L2 Normalization**: Ensured query vector is properly L2-normalized before both SQL and CPU similarity calculations  
+3. **Vector Literal Format**: Fixed pgvector literal format to use exact `'[0.1,0.2,...]'::vector(512)` syntax without rounding
+4. **excludeId Parameter**: Added support for excluding specific chart IDs from similarity results
+5. **Absolute URL Conversion**: All returned paths converted to absolute URLs using environment variables
+6. **Map Backfill Process**: Added `backfillVisualMaps()` function to ensure depth/edge/gradient map paths exist
+7. **Enhanced Logging**: Added comprehensive logging showing probe results, fallback reasons, and final counts
+
+**Result**: ✅ **FULLY FUNCTIONAL** - API now consistently returns exactly 3 similar charts. Logs show either `[RAG] rows: 3` (probe succeeded) or `[RAG] fallback=cpu rows: 3` (CPU fallback). All similarity scores are properly calculated floats, and absolute URLs are clickable in frontend.
+
 ## System Architecture
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript.
