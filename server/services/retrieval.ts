@@ -55,30 +55,12 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
 
   const excludeSql = excludeId ? sql`AND c.id <> ${excludeId}` : sql``;
 
-  // PRIMARY: IVFFlat query with explicit cast from string to vector(512)
-  let res = await db.execute(sql`
-    SET LOCAL ivfflat.probes = 10;
-    WITH q(v) AS (SELECT ${qvStr}::vector(512))
-    SELECT
-      c.id,
-      1 - (c.embedding <=> (SELECT v FROM q))::float8 AS similarity,
-      c.filename, c.timeframe, c.instrument,
-      c.depth_map_path, c.edge_map_path, c.gradient_map_path
-    FROM charts c
-    WHERE c.embedding IS NOT NULL
-      ${excludeSql}
-    ORDER BY c.embedding <=> (SELECT v FROM q)
-    LIMIT ${k};
-  `);
-
-  let rows = res.rows as any[];
-
-  // FALLBACK: exact scan (no index) if we got < k
-  if (rows.length < k) {
-    res = await db.execute(sql`
-      SET LOCAL enable_indexscan = off;
-      SET LOCAL enable_bitmapscan = off;
-      SET LOCAL enable_seqscan = on;
+  try {
+    // Set ivfflat probes separately
+    await db.execute(sql`SET LOCAL ivfflat.probes = 10;`);
+    
+    // PRIMARY: IVFFlat query with explicit cast from string to vector(512)
+    let res = await db.execute(sql`
       WITH q(v) AS (SELECT ${qvStr}::vector(512))
       SELECT
         c.id,
@@ -91,13 +73,40 @@ export async function getTopSimilarCharts(vec: number[], k = 3, excludeId?: numb
       ORDER BY c.embedding <=> (SELECT v FROM q)
       LIMIT ${k};
     `);
-    rows = res.rows as any[];
+
+    let rows = res.rows as any[];
+
+    // FALLBACK: exact scan (no index) if we got < k
+    if (rows.length < k) {
+      // Set scan preferences separately
+      await db.execute(sql`SET LOCAL enable_indexscan = off;`);
+      await db.execute(sql`SET LOCAL enable_bitmapscan = off;`);
+      await db.execute(sql`SET LOCAL enable_seqscan = on;`);
+      
+      res = await db.execute(sql`
+        WITH q(v) AS (SELECT ${qvStr}::vector(512))
+        SELECT
+          c.id,
+          1 - (c.embedding <=> (SELECT v FROM q))::float8 AS similarity,
+          c.filename, c.timeframe, c.instrument,
+          c.depth_map_path, c.edge_map_path, c.gradient_map_path
+        FROM charts c
+        WHERE c.embedding IS NOT NULL
+          ${excludeSql}
+        ORDER BY c.embedding <=> (SELECT v FROM q)
+        LIMIT ${k};
+      `);
+      rows = res.rows as any[];
+    }
+
+    console.log(`[RAG] query k=${k} { dim: 512 }`);
+    console.table(rows.map(r => ({ id: r.id, sim: Number(r.similarity).toFixed(4) })));
+    console.log(`[RAG] rows: ${rows.length}`);
+
+    // Do NOT drop rows because maps are missing; map backfill happens elsewhere.
+    return rows;
+  } catch (error) {
+    console.error("❌ pgvector search failed:", error);
+    return [];
   }
-
-  console.log(`[RAG] query k=${k} { dim: 512 }`);
-  console.table(rows.map(r => ({ id: r.id, sim: Number(r.similarity).toFixed(4) })));
-  console.log(`[RAG] rows: ${rows.length}`);
-
-  // Do NOT drop rows because maps are missing; map backfill happens elsewhere.
-  return rows;
 }
