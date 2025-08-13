@@ -1,47 +1,4 @@
-import { db } from '../db';
-import { charts } from '../../shared/schema';
-import { isNotNull } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
-import { EMB_DIM } from './embeddings';
-import { ensureVisualMapsForChart, toAbsoluteUrl } from './visual-maps';
-
-export type SimilarChart = {
-  chart: {
-    id: number;
-    filename: string;
-    timeframe?: string | null;
-    instrument?: string | null;
-    depthMapPath?: string | null;
-    edgeMapPath?: string | null;
-    gradientMapPath?: string | null;
-    uploadedAt?: string | null;
-  };
-  similarity: number; // cosine similarity 0..1
-};
-
-/**
- * Compute cosine similarity between two normalized unit vectors (Node fallback)
- */
-function cosine(a: Float32Array, b: Float32Array): number {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
-  return Math.max(0, Math.min(1, s)); // a and b are unit norm
-}
-
-/**
- * Compute cosine similarity between query vector and chart embedding array
- */
-function cosineSimilarity(a: Float32Array, b: number[]): number {
-  if (a.length !== b.length) return 0;
-  
-  let dotProduct = 0;
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-  }
-  
-  // Since vectors are normalized, cosine similarity = dot product
-  return Math.max(0, Math.min(1, dotProduct));
-}
+import { db, sql } from '../db.js';
 
 function l2Normalize(v: number[]) {
   const n = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
