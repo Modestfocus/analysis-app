@@ -16,6 +16,7 @@ export interface AnalyzeChartsOptions {
   stream?: boolean;
   usePreprocessing?: boolean;
   useRAG?: boolean;
+  injectText?: string; // Contains debugPromptId and other injection text
 }
 
 export interface ChartAnalysisResult {
@@ -41,7 +42,8 @@ export async function analyzeCharts({
   const {
     stream = false,
     usePreprocessing = true,
-    useRAG = true
+    useRAG = true,
+    injectText
   } = options;
 
   try {
@@ -150,6 +152,7 @@ export async function analyzeCharts({
         chartData,
         similarCharts,
         systemPrompt,
+        injectText,
         req
       );
       
@@ -175,6 +178,7 @@ export async function analyzeCharts({
         chartData[0],
         similarCharts,
         systemPrompt,
+        injectText,
         req
       );
       
@@ -240,6 +244,7 @@ async function analyzeSingleChartWithVision(
   chartData: any,
   similarCharts: any[] = [],
   customSystemPrompt?: string,
+  injectText?: string,
   req?: any
 ): Promise<any> {
   try {
@@ -277,41 +282,54 @@ async function analyzeSingleChartWithVision(
       filename: item.chart.filename,
     }));
 
-    // Build unified prompt
-    const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
+    // Build unified messages using the new unified prompt system
+    const { buildUnifiedMessages, logUnifiedPrompt } = await import('./chat/unifiedPrompt');
+    const { getCurrentPromptText } = await import('./system-prompt');
+    
+    // Get the current prompt text from dashboard
+    const currentPromptText = await getCurrentPromptText(customSystemPrompt);
+    
+    // Build target data for unified prompt
+    const targetVisuals = {
+      filename: path.basename(chartData.originalImage || ''),
+      depthMapPath: target.depthMapPath || undefined,
+      edgeMapPath: target.edgeMapPath || undefined,
+      gradientMapPath: target.gradientMapPath || undefined,
+    };
+    
+    // Convert similars to unified format
+    const similarItems = similars.map(item => ({
+      chart: {
+        filename: item.filename,
+        depthMapPath: item.depthMapPath || undefined,
+        edgeMapPath: item.edgeMapPath || undefined,
+        gradientMapPath: item.gradientMapPath || undefined,
+        timeframe: item.timeframe || undefined,
+        instrument: item.instrument || undefined,
+      },
+      similarity: item.similarity || undefined,
+    }));
+    
+    // Build unified messages with system = dashboard Current Prompt and user = short text + images
+    const messages = buildUnifiedMessages({
+      currentPromptText,
+      injectText: injectText, // Pass debugPromptId if present
+      target: targetVisuals,
+      similars: similarItems,
+    });
     
     // Extract target metadata for logging
     const targetTimeframe = target?.timeframe ?? "UNKNOWN";
     const targetInstrument = target?.instrument ?? "UNKNOWN";
     
-    console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
-
-    // Send the unified prompt directly to OpenAI (using markdown image URLs)
-    const messages = [
-      {
-        role: 'system' as const,
-        content: unifiedPrompt
-      },
-      {
-        role: 'user' as const,
-        content: 'Please analyze this chart using all the provided visuals and context.'
-      }
-    ];
-
-    // Debug logging
-    const allImageRefs = [
-      { kind: "target" as const, id: target.id, url: target.originalPath },
-      ...similars.map(s => ({ kind: "similar-original" as const, id: s.id, url: s.originalPath })),
-      ...similars.filter(s => s.depthMapPath).map(s => ({ kind: "similar-depth" as const, id: s.id, url: s.depthMapPath! })),
-      ...similars.filter(s => s.edgeMapPath).map(s => ({ kind: "similar-edge" as const, id: s.id, url: s.edgeMapPath! })),
-      ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
-    ];
-
-    logUnifiedPromptDebugOnce("single-chart-analysis", messages);
+    console.log(`[CHAT] unified messages built - target: ${targetInstrument}/${targetTimeframe} similars: ${similarItems.length}`);
+    
+    // Debug logging (only when DEBUG_UNIFIED_PROMPT=1)
+    logUnifiedPrompt(messages);
 
     const response = await openai.chat.completions.create({
       model: process.env.VISION_MODEL || 'gpt-4o',
-      messages,
+      messages: messages as any,
       temperature: 0.1,
       response_format: { type: 'json_object' },
       max_tokens: 1000,

@@ -11,6 +11,31 @@ System Prompt Interface: Three-view toggle interface (Inject, Current Prompt, De
 Theme Preferences: Dark mode toggle implemented across all pages with automatic system preference detection and localStorage persistence.
 
 ## Recent Changes (August 2025)
+### Unified Prompt System Implementation - COMPLETED ✅
+**Issue**: Re-implement unified prompt system for safe and minimal OpenAI integration with proper message building and debug logging.
+
+**Scope Implemented**:
+1. **Message Builder**: Created `buildUnifiedMessages` function with:
+   - System message = Dashboard "Current Prompt"
+   - User message = short text + injectText (contains debugPromptId) + images
+   - Sends original + depth + edge + gradient maps for target chart (4 images)
+   - Sends k=3 similar charts with all visual maps (3×4=12 images)
+2. **Debug Logger**: Added `logUnifiedPrompt` function gated by `DEBUG_UNIFIED_PROMPT=1` environment variable
+3. **Integration Points**: Wired into all OpenAI calling locations:
+   - `server/services/analyze.ts` - Single and multi-chart analysis
+   - `server/services/openai.ts` - Multi-chart analysis function
+   - `server/services/chat-analysis.ts` - Chat-based analysis
+4. **injectText Handling**: Properly passes debugPromptId through the entire pipeline
+5. **Static File Serving**: Confirmed `/uploads` directory already served via Express static middleware
+
+**Technical Details**:
+- **Absolute URL Helper**: `toAbs()` function handles PUBLIC_ASSETS_BASE environment variable
+- **Type Safety**: Updated interfaces to handle injectText parameter across all analysis functions
+- **Debug Mode**: Console logging shows system prompt length, image count, and debugPromptId detection
+- **Message Format**: Uses OpenAI vision API format with proper image_url structure
+
+**Result**: ✅ **FULLY FUNCTIONAL** - Unified prompt system now handles all OpenAI API calls with consistent message building, proper debugPromptId injection, and comprehensive debug logging. System uses Dashboard Current Prompt as system message and includes all visual maps for both target and similar charts.
+
 ### Chart Similarity Search Pipeline - COMPLETED ✅
 **Issue**: The `/chat/analyze` endpoint's `similarCharts` was always returning empty arrays despite having 119 charts in database.
 

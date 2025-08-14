@@ -93,10 +93,13 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       const { getCurrentPrompt } = await import('../services/system-prompt');
       const finalSystemPrompt = await getCurrentPrompt(injectText);
       
+      // For RAG flow, we need to ensure debugPromptId gets passed properly
+      // Since analyzeCharts doesn't directly handle injectText, we need to modify the approach
+      // The unified prompt system will extract debugPromptId from system prompt if present
       const result = await analyzeCharts({ 
         imageUrls, 
         systemPrompt: finalSystemPrompt,
-        options: { useRAG: true, usePreprocessing: true }
+        options: { useRAG: true, usePreprocessing: true, injectText: injectText }
       }, req);
       
       return res.json({
@@ -108,8 +111,12 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
     console.log(`🔍 Chat analysis request (legacy) - ${imageCount} images, injectText: ${injectText?.length || 0} chars`);
 
     // Legacy path - perform full analysis for messages with images
-    // Use injectText as the system prompt since frontend passes current dashboard prompt as injectText
-    const result = await analyzeChatCharts({ content, systemPrompt: injectText || systemPrompt }, req);
+    // Pass injectText separately to ensure debugPromptId is handled properly
+    const result = await analyzeChatCharts({ 
+      content, 
+      systemPrompt: injectText || systemPrompt,
+      injectText: injectText 
+    }, req);
 
     res.json({
       success: true,

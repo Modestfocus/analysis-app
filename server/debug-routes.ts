@@ -3,6 +3,8 @@ import { storage } from './storage';
 import path from 'path';
 import fs from 'fs/promises';
 import sharp from 'sharp';
+import { buildUnifiedMessages } from './services/chat/unifiedPrompt';
+import { getCurrentPromptText } from './services/system-prompt';
 
 const router = express.Router();
 
@@ -606,6 +608,71 @@ router.get('/admin', (req, res) => {
     </body>
     </html>
   `);
+});
+
+// Test route for unified prompt system
+router.get('/test-unified-prompt', async (req, res) => {
+  try {
+    const currentPromptText = await getCurrentPromptText();
+    
+    // Create sample data
+    const target = {
+      filename: "sample_chart.png",
+      depthMapPath: "depth_sample_chart.png", 
+      edgeMapPath: "edge_sample_chart.png",
+      gradientMapPath: "gradient_sample_chart.png"
+    };
+    
+    const similars = [
+      {
+        chart: {
+          filename: "similar1.png",
+          depthMapPath: "depth_similar1.png",
+          edgeMapPath: "edge_similar1.png", 
+          gradientMapPath: "gradient_similar1.png"
+        },
+        similarity: 0.85
+      },
+      {
+        chart: {
+          filename: "similar2.png",
+          depthMapPath: "depth_similar2.png",
+          edgeMapPath: "edge_similar2.png",
+          gradientMapPath: "gradient_similar2.png"
+        },
+        similarity: 0.78
+      }
+    ];
+    
+    // Test with debug prompt ID
+    const testInjectText = "DEBUG_PROMPT_ID: test-12345 | Additional context for testing";
+    
+    // Build unified messages
+    const messages = buildUnifiedMessages({
+      currentPromptText,
+      injectText: testInjectText,
+      target,
+      similars
+    });
+    
+    res.json({
+      success: true,
+      systemPromptLength: messages[0]?.content?.length || 0,
+      userMessageImages: messages[1]?.content?.filter(c => c.type === 'image_url')?.length || 0,
+      totalMessages: messages.length,
+      detectsDebugPromptId: testInjectText.includes('DEBUG_PROMPT_ID'),
+      sampleSystemPrompt: messages[0]?.content?.substring(0, 200) + '...',
+      sampleUserText: messages[1]?.content?.find(c => c.type === 'text')?.text || 'No text content',
+      imageUrls: messages[1]?.content?.filter(c => c.type === 'image_url')?.map(c => c.image_url?.url) || []
+    });
+    
+  } catch (error) {
+    console.error('Unified prompt test error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
 });
 
 export default router;

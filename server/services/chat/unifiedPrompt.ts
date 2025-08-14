@@ -1,61 +1,84 @@
-import fs from "node:fs";
-import path from "node:path";
+// server/services/chat/unifiedPrompt.ts
+export type SimilarItem = {
+  chart: {
+    filename?: string;
+    depthMapPath?: string;
+    edgeMapPath?: string;
+    gradientMapPath?: string;
+    timeframe?: string | null;
+    instrument?: string | null;
+  };
+  similarity?: number;
+};
 
-export function logUnifiedPromptDebug(opts: {
-  messages: Array<any>;
-  label?: string;
-  imagesAttached?: Array<{
-    kind: "target" | "similar-original" | "similar-depth" | "similar-edge" | "similar-gradient";
-    id?: number;
-    url?: string;
-  }>;
+function toAbs(url?: string) {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = process.env.PUBLIC_ASSETS_BASE || '';
+  const clean = url.startsWith('/') ? url : `/${url}`;
+  return `${base}${clean}`;
+}
+
+export function buildUnifiedMessages(opts: {
+  currentPromptText: string;   // dashboard Current Prompt
+  injectText?: string;         // carries debugPromptId
+  target: {
+    filename?: string;
+    depthMapPath?: string;
+    edgeMapPath?: string;
+    gradientMapPath?: string;
+  };
+  similars: SimilarItem[];
 }) {
-  if (process.env.DEBUG_UNIFIED_PROMPT !== "1") return;
+  const { currentPromptText, injectText, target, similars } = opts;
 
-  const { messages, imagesAttached = [], label = "" } = opts;
-  const redact = (s: string, n = 800) =>
-    (s || "").replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, "[[BASE64_IMAGE]]").slice(0, n);
+  // target originals live under /uploads/<filename>
+  const targetImages = [
+    target.filename && { type: 'image_url', image_url: { url: toAbs(`/uploads/${target.filename}`), detail: 'high' } },
+    target.depthMapPath && { type: 'image_url', image_url: { url: toAbs(target.depthMapPath), detail: 'high' } },
+    target.edgeMapPath && { type: 'image_url', image_url: { url: toAbs(target.edgeMapPath), detail: 'high' } },
+    target.gradientMapPath && { type: 'image_url', image_url: { url: toAbs(target.gradientMapPath), detail: 'high' } },
+  ].filter(Boolean) as any[];
 
-  const lines: string[] = [];
-  lines.push("════════ UNIFIED PROMPT DEBUG ════════", label ? `Label: ${label}` : "");
-
-  const sys = messages.find(m => m.role === "system");
-  lines.push("\n— SYSTEM PROMPT —");
-  lines.push(sys?.content ? redact(typeof sys.content === "string" ? sys.content : JSON.stringify(sys.content)) : "(none)");
-
-  const user = messages.find(m => m.role === "user");
-  lines.push("\n— USER CONTENT —");
-  if (user?.content && Array.isArray(user.content)) {
-    user.content.forEach((part: any, i: number) => {
-      if (part?.type === "text") {
-        lines.push(`  [${i}] text: ${redact(part.text, 1200)}`);
-      } else if (part?.type === "image_url") {
-        const url = part.image_url?.url ?? "";
-        lines.push(`  [${i}] image_url: ${typeof url === "string" ? url.slice(0, 80) : JSON.stringify(url).slice(0, 80)}...`);
-      } else {
-        lines.push(`  [${i}] ${JSON.stringify(part).slice(0, 200)}...`);
-      }
-    });
-  } else {
-    lines.push("(user content missing or not array)");
+  const similarImages: any[] = [];
+  for (const { chart } of similars) {
+    if (chart.filename) similarImages.push({ type: 'image_url', image_url: { url: toAbs(`/uploads/${chart.filename}`), detail: 'high' } });
+    if (chart.depthMapPath) similarImages.push({ type: 'image_url', image_url: { url: toAbs(chart.depthMapPath), detail: 'high' } });
+    if (chart.edgeMapPath) similarImages.push({ type: 'image_url', image_url: { url: toAbs(chart.edgeMapPath), detail: 'high' } });
+    if (chart.gradientMapPath) similarImages.push({ type: 'image_url', image_url: { url: toAbs(chart.gradientMapPath), detail: 'high' } });
   }
 
-  lines.push("\n— IMAGES ATTACHED —");
-  if (imagesAttached.length) {
-    imagesAttached.forEach((im, i) => {
-      lines.push(`  [${i}] kind=${im.kind} id=${im.id ?? "-"} url=${im.url ? im.url.slice(0, 100) + "..." : "(inline/base64)"}`);
-    });
-  } else {
-    lines.push("(none listed)");
-  }
+  const system = { role: 'system', content: currentPromptText };
 
-  const out = lines.join("\n") + "\n════════════════════════════════════\n";
-  console.log(out);
+  const userText = [
+    'Analyze this chart.',
+    injectText || '' // MUST include so "debugPromptId":"UP-123" reaches the model
+  ].filter(Boolean).join('\n\n');
 
-  try {
-    const fname = `unified_prompt_${Date.now()}.txt`;
-    const fpath = path.join("/tmp", fname);
-    fs.writeFileSync(fpath, out, "utf8");
-    console.log(`[DEBUG] Unified prompt saved: ${fpath}`);
-  } catch {}
+  const user = {
+    role: 'user',
+    content: [
+      { type: 'text', text: userText },
+      ...targetImages,
+      ...similarImages,
+    ],
+  };
+
+  return [system, user];
+}
+
+export function logUnifiedPrompt(messages: any[]) {
+  if (!process.env.DEBUG_UNIFIED_PROMPT) return;
+  const sys = messages.find(m => m.role === 'system');
+  const usr = messages.find(m => m.role === 'user');
+
+  const sysText = typeof sys?.content === 'string' ? sys.content : sys?.content?.[0]?.text || '';
+  const parts = Array.isArray(usr?.content) ? usr!.content : [{ type: 'text', text: usr?.content ?? '' }];
+  const userText = parts.find((p: any) => p.type === 'text')?.text ?? '';
+  const imgCount = parts.filter((p: any) => p.type === 'image_url').length;
+
+  console.log('[PROMPT] System.len:', (sysText || '').length);
+  console.log('[PROMPT] System.head:', (sysText || '').slice(0, 120));
+  console.log('[PROMPT] Images total:', imgCount);
+  console.log('[PROMPT] Has debugPromptId? ->', /"debugPromptId"\s*:\s*"/.test(userText));
 }
