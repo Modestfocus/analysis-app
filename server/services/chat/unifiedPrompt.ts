@@ -1,4 +1,7 @@
 // server/services/chat/unifiedPrompt.ts
+import fs from 'fs';
+import path from 'path';
+
 export type SimilarItem = {
   chart: {
     filename?: string;
@@ -11,30 +14,47 @@ export type SimilarItem = {
   similarity?: number;
 };
 
-function toAbs(url?: string) {
-  if (!url) return undefined;
+function filePathToDataUrl(filePath?: string): string | undefined {
+  if (!filePath) return undefined;
   
-  // Don't modify data URLs or absolute URLs
-  if (/^https?:\/\//i.test(url) || /^data:/i.test(url)) {
-    return url;
+  // If it's already a data URL, return as-is
+  if (/^data:/i.test(filePath)) {
+    return filePath;
   }
   
-  // Generate proper absolute URL for Replit environment
-  let base = process.env.PUBLIC_ASSETS_BASE;
-  if (!base) {
-    // Construct Replit domain URL
-    const replSlug = process.env.REPL_SLUG;
-    const replOwner = process.env.REPL_OWNER;
-    if (replSlug && replOwner) {
-      base = `https://${replSlug}.${replOwner}.repl.co`;
-    } else {
-      // Fallback to localhost for development
-      base = `http://localhost:${process.env.PORT || 5000}`;
+  // If it's an absolute HTTP URL, return as-is (though OpenAI may not be able to access Replit domains)
+  if (/^https?:\/\//i.test(filePath)) {
+    return filePath;
+  }
+  
+  try {
+    // Convert file path to absolute path
+    const absolutePath = filePath.startsWith('/') 
+      ? path.join(process.cwd(), 'server', filePath.slice(1))  // Remove leading slash for server directory
+      : path.join(process.cwd(), 'server', filePath);
+    
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      console.warn(`🚨 Image file not found: ${absolutePath}`);
+      return undefined;
     }
+    
+    // Read file and convert to base64
+    const buffer = fs.readFileSync(absolutePath);
+    const base64 = buffer.toString('base64');
+    
+    // Determine MIME type based on file extension
+    const ext = path.extname(filePath).toLowerCase();
+    let mimeType = 'image/png'; // Default
+    if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+    else if (ext === '.gif') mimeType = 'image/gif';
+    else if (ext === '.webp') mimeType = 'image/webp';
+    
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    console.error(`❌ Error converting file to data URL: ${filePath}`, error);
+    return undefined;
   }
-  
-  const clean = url.startsWith('/') ? url : `/${url}`;
-  return `${base}${clean}`;
 }
 
 export function buildUnifiedMessages(opts: {
@@ -50,20 +70,24 @@ export function buildUnifiedMessages(opts: {
 }) {
   const { currentPromptText, injectText, target, similars } = opts;
 
-  // target originals live under /uploads/<filename>
+  // Convert target images to data URLs (OpenAI cannot access Replit domains externally)
   const targetImages = [
-    target.filename && { type: 'image_url', image_url: { url: toAbs(`/uploads/${target.filename}`), detail: 'high' } },
-    target.depthMapPath && { type: 'image_url', image_url: { url: toAbs(target.depthMapPath), detail: 'high' } },
-    target.edgeMapPath && { type: 'image_url', image_url: { url: toAbs(target.edgeMapPath), detail: 'high' } },
-    target.gradientMapPath && { type: 'image_url', image_url: { url: toAbs(target.gradientMapPath), detail: 'high' } },
-  ].filter(Boolean) as any[];
+    target.filename && { type: 'image_url', image_url: { url: filePathToDataUrl(`/uploads/${target.filename}`), detail: 'high' } },
+    target.depthMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(target.depthMapPath), detail: 'high' } },
+    target.edgeMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(target.edgeMapPath), detail: 'high' } },
+    target.gradientMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(target.gradientMapPath), detail: 'high' } },
+  ].filter(item => item && item.image_url.url) as any[];
 
   const similarImages: any[] = [];
   for (const { chart } of similars) {
-    if (chart.filename) similarImages.push({ type: 'image_url', image_url: { url: toAbs(`/uploads/${chart.filename}`), detail: 'high' } });
-    if (chart.depthMapPath) similarImages.push({ type: 'image_url', image_url: { url: toAbs(chart.depthMapPath), detail: 'high' } });
-    if (chart.edgeMapPath) similarImages.push({ type: 'image_url', image_url: { url: toAbs(chart.edgeMapPath), detail: 'high' } });
-    if (chart.gradientMapPath) similarImages.push({ type: 'image_url', image_url: { url: toAbs(chart.gradientMapPath), detail: 'high' } });
+    const images = [
+      chart.filename && { type: 'image_url', image_url: { url: filePathToDataUrl(`/uploads/${chart.filename}`), detail: 'high' } },
+      chart.depthMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(chart.depthMapPath), detail: 'high' } },
+      chart.edgeMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(chart.edgeMapPath), detail: 'high' } },
+      chart.gradientMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(chart.gradientMapPath), detail: 'high' } },
+    ].filter(item => item && item.image_url.url);
+    
+    similarImages.push(...images);
   }
 
   const system = { role: 'system', content: currentPromptText };
