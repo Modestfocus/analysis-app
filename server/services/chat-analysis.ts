@@ -10,6 +10,8 @@ import OpenAI from 'openai';
 import { embedImageToVectorCached, EMB_DIM, EMB_MODEL_ID } from './embeddings';
 import { getTopSimilarCharts } from './retrieval';
 import { storage } from '../storage';
+import { buildUnifiedPrompt, ChartMaps } from './prompt-builder';
+import { getCurrentPrompt } from './system-prompt';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -336,19 +338,52 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
   console.log(`📡 Making OpenAI API call with ${visionContent.length} content parts`);
   console.log(`🖼️ Image parts: ${visionContent.filter(p => p.type === 'image_url').length}`);
 
-  // Build messages for OpenAI
+  // Use unified prompt system for the first image (primary target)
+  console.log(`[CHAT] Building unified prompt for chat analysis`);
+  
+  // Get base prompt from request or default
+  const basePrompt = await getCurrentPrompt(request.systemPrompt);
+  
+  // Helper to build absolute URLs
+  const { toAbsoluteUrl } = await import('./visual-maps');
+  
+  // Build target chart data from the first processed image
+  const firstImageData = processedData[0];
+  const target: ChartMaps = {
+    originalPath: toAbsoluteUrl(`/uploads/temp_chat_${Math.floor(Date.now() / 1000)}_0.png`, req) || 'temp_chart.png',
+    depthMapPath: firstImageData.depth ? `/temp/depth_chat.png` : null,
+    edgeMapPath: firstImageData.edge ? `/temp/edge_chat.png` : null,
+    gradientMapPath: firstImageData.gradient ? `/temp/gradient_chat.png` : null,
+    instrument: null, // Extract from request if available
+    timeframe: null, // Extract from request if available
+    similarity: null,
+    id: Date.now(),
+    filename: 'uploaded_chart.png',
+  };
+
+  // Build similar charts data with absolute URLs from all similar charts
+  const similars: ChartMaps[] = allSimilarCharts.slice(0, 3).map(item => ({
+    originalPath: toAbsoluteUrl(`/uploads/${item.chart.filename}`, req) || item.chart.filename,
+    depthMapPath: toAbsoluteUrl(item.chart.depthMapPath, req),
+    edgeMapPath: toAbsoluteUrl(item.chart.edgeMapPath, req),
+    gradientMapPath: toAbsoluteUrl(item.chart.gradientMapPath, req),
+    instrument: item.chart.instrument,
+    timeframe: item.chart.timeframe,
+    similarity: item.similarity,
+    id: item.chart.id,
+    filename: item.chart.filename,
+  }));
+
+  // Build unified prompt
+  const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
+  
+  console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: uploaded_chart similars: ${similars.length}`);
+
+  // Build messages for OpenAI using unified prompt
   const messages = [
     {
       role: 'system' as const,
-      content: `${request.systemPrompt}
-
-Respond with a JSON object containing:
-{
-  "prediction": "Up/Down/Sideways",
-  "session": "Asia/London/NY/Sydney", 
-  "confidence": "Low/Medium/High",
-  "reasoning": "Detailed analysis explaining your prediction based on ALL visual data from ALL charts"
-}`
+      content: unifiedPrompt
     },
     {
       role: 'user' as const,

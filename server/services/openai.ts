@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
+import { buildUnifiedPrompt, ChartMaps } from './prompt-builder';
+import { getCurrentPrompt } from './system-prompt';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -43,137 +45,68 @@ export async function analyzeMultipleChartsWithAllMaps(
     chart: any; 
     similarity: number;
   }> = [],
-  customSystemPrompt?: string
+  customSystemPrompt?: string,
+  req?: any
 ): Promise<ChartPrediction> {
   try {
     console.log(`🔍 Starting multi-chart analysis for ${charts.length} charts`);
+    console.log(`[CHAT] Building unified prompt for multi-chart analysis`);
 
-    // Build comprehensive RAG context
-    let ragContext = "";
-    if (similarCharts.length > 0) {
-      ragContext = "\nHistorical similar patterns found:\n\n";
-      similarCharts.slice(0, 3).forEach((item, index) => {
-        const chart = item.chart;
-        ragContext += `${index + 1}. ${chart.originalName} (${chart.instrument}, ${chart.timeframe})\n`;
-        ragContext += `   - Similarity: ${(item.similarity * 100).toFixed(1)}%\n`;
-        ragContext += `   - Session: ${chart.session || 'Unknown'}\n\n`;
-      });
-    }
+    // Get base prompt from dashboard or use custom/default
+    const basePrompt = await getCurrentPrompt(customSystemPrompt);
+    
+    // Helper to build absolute URLs
+    const { toAbsoluteUrl } = await import('./visual-maps');
+    
+    // Build target chart data (use first chart as primary target)
+    const target: ChartMaps = {
+      originalPath: toAbsoluteUrl(`/uploads/${charts[0].metadata.filename}`, req) || charts[0].metadata.filename,
+      depthMapPath: charts[0].depth ? `/temp/depth_${charts[0].metadata.id}.png` : null,
+      edgeMapPath: charts[0].edge ? `/temp/edge_${charts[0].metadata.id}.png` : null,
+      gradientMapPath: charts[0].gradient ? `/temp/gradient_${charts[0].metadata.id}.png` : null,
+      instrument: charts[0].metadata.instrument,
+      timeframe: charts[0].metadata.timeframe,
+      similarity: null,
+      id: charts[0].metadata.id,
+      filename: charts[0].metadata.originalName,
+    };
 
-    // Build comprehensive multi-chart prompt - use custom prompt if provided
-    const baseSystemPrompt = customSystemPrompt || `You are a professional forex and trading chart analyst with expertise in multi-timeframe analysis. 
+    // Build similar charts data with absolute URLs
+    const similars: ChartMaps[] = similarCharts.slice(0, 3).map(item => ({
+      originalPath: toAbsoluteUrl(`/uploads/${item.chart.filename}`, req) || item.chart.filename,
+      depthMapPath: toAbsoluteUrl(item.chart.depthMapPath, req),
+      edgeMapPath: toAbsoluteUrl(item.chart.edgeMapPath, req),
+      gradientMapPath: toAbsoluteUrl(item.chart.gradientMapPath, req),
+      instrument: item.chart.instrument,
+      timeframe: item.chart.timeframe,
+      similarity: item.similarity,
+      id: item.chart.id,
+      filename: item.chart.filename,
+    }));
 
-You will receive multiple trading charts with their complete visual processing pipeline:
-- Original chart images (price action, candlesticks, indicators)
-- Depth maps (3D depth perception for pattern recognition) 
-- Edge maps (structural boundaries and trend lines)
-- Gradient maps (price momentum and slope analysis)
+    // Build unified prompt
+    const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
+    
+    console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${target.instrument}/${target.timeframe} similars: ${similars.length}`);
 
-ANALYZE ALL CHARTS TOGETHER as a unified multi-timeframe view to provide one comprehensive trading prediction.
-
-Key Analysis Points:
-1. **Multi-Timeframe Coherence**: How do the different timeframes align or conflict?
-2. **Cross-Timeframe Patterns**: Identify patterns visible across multiple charts
-3. **Volume/Momentum**: Analyze gradient maps for momentum shifts
-4. **Structure Analysis**: Use edge maps for key support/resistance levels
-5. **Depth Perception**: Use depth maps for pattern strength assessment
-6. **Session Timing**: Consider optimal trading session for the setup`;
-
-    const systemPrompt = `${baseSystemPrompt}
-
-${ragContext}
-
-Respond with a JSON object containing:
-{
-  "prediction": "Up/Down/Sideways",
-  "session": "Asia/London/NY/Sydney", 
-  "confidence": "Low/Medium/High",
-  "reasoning": "Detailed analysis explaining your prediction based on ALL visual data from ALL charts"
-}`;
-
-    // Prepare content array with all visual data
-    const content: any[] = [
+    // Send the unified prompt directly to OpenAI (using markdown image URLs)
+    const messages = [
       {
-        type: "text",
-        text: systemPrompt
+        role: 'system' as const,
+        content: unifiedPrompt
+      },
+      {
+        role: 'user' as const,
+        content: `Please analyze these ${charts.length} charts together as a unified multi-timeframe view.`
       }
     ];
 
-    // Add all chart visual data
-    charts.forEach((chart, index) => {
-      content.push({
-        type: "text", 
-        text: `\n--- CHART ${index + 1}: ${chart.metadata.originalName} (${chart.metadata.timeframe}) ---`
-      });
-
-      // Original chart
-      content.push({
-        type: "image_url",
-        image_url: {
-          url: `data:image/jpeg;base64,${chart.original}`,
-          detail: "high"
-        }
-      });
-
-      // Depth map
-      if (chart.depth) {
-        content.push({
-          type: "text",
-          text: `Depth Map for ${chart.metadata.originalName}:`
-        });
-        content.push({
-          type: "image_url", 
-          image_url: {
-            url: `data:image/png;base64,${chart.depth}`,
-            detail: "high"
-          }
-        });
-      }
-
-      // Edge map  
-      if (chart.edge) {
-        content.push({
-          type: "text",
-          text: `Edge Map for ${chart.metadata.originalName}:`
-        });
-        content.push({
-          type: "image_url",
-          image_url: {
-            url: `data:image/png;base64,${chart.edge}`, 
-            detail: "high"
-          }
-        });
-      }
-
-      // Gradient map
-      if (chart.gradient) {
-        content.push({
-          type: "text",
-          text: `Gradient Map for ${chart.metadata.originalName}:`
-        });
-        content.push({
-          type: "image_url",
-          image_url: {
-            url: `data:image/png;base64,${chart.gradient}`,
-            detail: "high"
-          }
-        });
-      }
-    });
-
-    console.log("📡 Making OpenAI API call with", content.length, "content parts...");
-    console.log("📄 Prompt length:", systemPrompt.length, "characters");
-
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: content
-        }
-      ],
+      messages,
       max_tokens: 1000,
-      temperature: 0.3,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
     });
 
     console.log("✅ Received OpenAI response");

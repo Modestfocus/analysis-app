@@ -6,6 +6,25 @@
 const DEFAULT_PROMPT = "You are an expert trading chart analyst. Analyze the provided chart with precision and provide detailed technical insights including support/resistance levels, trend analysis, and potential trading opportunities.";
 
 /**
+ * Get the current prompt from the request context or fallback to default
+ * The frontend sends the current prompt via systemPrompt parameter
+ */
+export async function getCurrentPrompt(systemPrompt?: string): Promise<string> {
+  try {
+    // Use the systemPrompt from request if provided, otherwise fallback to default
+    if (systemPrompt && systemPrompt.trim()) {
+      return systemPrompt.trim();
+    }
+    
+    // Fallback to default prompt
+    return DEFAULT_PROMPT;
+  } catch (error) {
+    console.warn('Failed to get current prompt, using default:', error);
+    return DEFAULT_PROMPT;
+  }
+}
+
+/**
  * Get the merged system prompt from database/storage or fallback to default
  * This mimics the frontend localStorage behavior but for backend use
  */

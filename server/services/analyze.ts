@@ -5,6 +5,8 @@ import { storage } from '../storage';
 import fs from 'fs';
 import path from 'path';
 import OpenAI from 'openai';
+import { buildUnifiedPrompt, ChartMaps } from './prompt-builder';
+import { getCurrentPrompt } from './system-prompt';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -146,7 +148,8 @@ export async function analyzeCharts({
       const result = await analyzeMultipleChartsWithAllMaps(
         chartData,
         similarCharts,
-        systemPrompt
+        systemPrompt,
+        req
       );
       
       // Format the result for chat display
@@ -170,7 +173,8 @@ export async function analyzeCharts({
       const result = await analyzeSingleChartWithVision(
         chartData[0],
         similarCharts,
-        systemPrompt
+        systemPrompt,
+        req
       );
       
       // Format the result for chat display
@@ -229,153 +233,87 @@ function formatAnalysisForChat(result: any, similarCharts: any[] = []): string {
 }
 
 /**
- * Analyze a single chart using OpenAI vision with all preprocessing maps
+ * Analyze a single chart using OpenAI vision with all preprocessing maps and unified prompt
  */
 async function analyzeSingleChartWithVision(
   chartData: any,
   similarCharts: any[] = [],
-  customSystemPrompt?: string
+  customSystemPrompt?: string,
+  req?: any
 ): Promise<any> {
   try {
-    // Build RAG context
-    let ragContext = "";
-    if (similarCharts.length > 0) {
-      ragContext = "\nHistorical similar patterns found:\n\n";
-      similarCharts.slice(0, 3).forEach((item, index) => {
-        const chart = item.chart;
-        ragContext += `${index + 1}. ${chart.originalName} (${chart.instrument}, ${chart.timeframe})\n`;
-        ragContext += `   - Similarity: ${(item.similarity * 100).toFixed(1)}%\n`;
-        ragContext += `   - Session: ${chart.session || 'Unknown'}\n\n`;
-      });
-    }
+    console.log(`[CHAT] Building unified prompt for single chart analysis`);
+    
+    // Get base prompt from dashboard or use custom/default
+    const basePrompt = await getCurrentPrompt(customSystemPrompt);
+    
+    // Helper to build absolute URLs
+    const { toAbsoluteUrl } = await import('./visual-maps');
+    
+    // Build target chart data
+    const target: ChartMaps = {
+      originalPath: toAbsoluteUrl(chartData.originalImage, req) || chartData.imageUrl,
+      depthMapPath: chartData.depthMapPath ? toAbsoluteUrl(chartData.depthMapPath, req) : null,
+      edgeMapPath: chartData.edgeMapPath ? toAbsoluteUrl(chartData.edgeMapPath, req) : null,
+      gradientMapPath: chartData.gradientMapPath ? toAbsoluteUrl(chartData.gradientMapPath, req) : null,
+      instrument: chartData.metadata?.instrument,
+      timeframe: chartData.metadata?.timeframe,
+      similarity: null,
+      id: chartData.metadata?.id,
+      filename: chartData.metadata?.filename || chartData.metadata?.originalName,
+    };
 
-    // Build system prompt
-    const baseSystemPrompt = customSystemPrompt || `You are a professional forex and trading chart analyst with expertise in technical analysis.
+    // Build similar charts data with absolute URLs
+    const similars: ChartMaps[] = similarCharts.slice(0, 3).map(item => ({
+      originalPath: toAbsoluteUrl(`/uploads/${item.chart.filename}`, req) || item.chart.filename,
+      depthMapPath: toAbsoluteUrl(item.chart.depthMapPath, req),
+      edgeMapPath: toAbsoluteUrl(item.chart.edgeMapPath, req),
+      gradientMapPath: toAbsoluteUrl(item.chart.gradientMapPath, req),
+      instrument: item.chart.instrument,
+      timeframe: item.chart.timeframe,
+      similarity: item.similarity,
+      id: item.chart.id,
+      filename: item.chart.filename,
+    }));
 
-You will receive a trading chart with visual processing pipeline:
-- Original chart image (price action, candlesticks, indicators)
-- Depth maps (3D depth perception for pattern recognition) 
-- Edge maps (structural boundaries and trend lines)
-- Gradient maps (price momentum and slope analysis)
+    // Build unified prompt
+    const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
+    
+    console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${target.instrument}/${target.timeframe} similars: ${similars.length}`);
 
-Analyze the chart and provide comprehensive technical insights.
-
-Key Analysis Points:
-1. **Trend Analysis**: Current trend direction and strength
-2. **Pattern Recognition**: Chart patterns (triangles, flags, head & shoulders, etc.)
-3. **Support/Resistance**: Key levels and zones
-4. **Volume/Momentum**: Price momentum and strength
-5. **Structure Analysis**: Key structural elements
-6. **Trading Setup**: Entry/exit strategies and risk management`;
-
-    const systemPrompt = `${baseSystemPrompt}
-
-${ragContext}
-
-Provide detailed technical analysis including:
-- Current trend direction and strength
-- Key support and resistance levels
-- Chart patterns and their implications
-- Volume analysis if visible
-- Potential price targets and entry/exit points
-- Risk assessment and confidence level`;
-
-    // Prepare content array with all visual data
-    const content: any[] = [
+    // Send the unified prompt directly to OpenAI (using markdown image URLs)
+    const messages = [
       {
-        type: "text",
-        text: "Please analyze this trading chart using all provided visual data."
-      }
-    ];
-
-    // Add original chart image
-    if (chartData.originalImage) {
-      const imageBuffer = fs.readFileSync(chartData.originalImage);
-      const base64Image = imageBuffer.toString('base64');
-      content.push({
-        type: "image_url",
-        image_url: {
-          url: `data:image/jpeg;base64,${base64Image}`
-        }
-      });
-    }
-
-    // Add preprocessing maps if available
-    if (chartData.depthMapPath && fs.existsSync(chartData.depthMapPath)) {
-      content.push({
-        type: "text",
-        text: "Depth map for pattern structure analysis:"
-      });
-      const depthBuffer = fs.readFileSync(chartData.depthMapPath);
-      const base64Depth = depthBuffer.toString('base64');
-      content.push({
-        type: "image_url",
-        image_url: {
-          url: `data:image/jpeg;base64,${base64Depth}`
-        }
-      });
-    }
-
-    if (chartData.edgeMapPath && fs.existsSync(chartData.edgeMapPath)) {
-      content.push({
-        type: "text",
-        text: "Edge map for structural boundaries:"
-      });
-      const edgeBuffer = fs.readFileSync(chartData.edgeMapPath);
-      const base64Edge = edgeBuffer.toString('base64');
-      content.push({
-        type: "image_url",
-        image_url: {
-          url: `data:image/jpeg;base64,${base64Edge}`
-        }
-      });
-    }
-
-    if (chartData.gradientMapPath && fs.existsSync(chartData.gradientMapPath)) {
-      content.push({
-        type: "text",
-        text: "Gradient map for momentum analysis:"
-      });
-      const gradientBuffer = fs.readFileSync(chartData.gradientMapPath);
-      const base64Gradient = gradientBuffer.toString('base64');
-      content.push({
-        type: "image_url",
-        image_url: {
-          url: `data:image/jpeg;base64,${base64Gradient}`
-        }
-      });
-    }
-
-    // Call OpenAI
-    const messages: any[] = [
-      {
-        role: "system",
-        content: systemPrompt
+        role: 'system' as const,
+        content: unifiedPrompt
       },
       {
-        role: "user",
-        content: content
+        role: 'user' as const,
+        content: 'Please analyze this chart using all the provided visuals and context.'
       }
     ];
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: process.env.VISION_MODEL || 'gpt-4o',
       messages,
-      max_tokens: 2000,
-      temperature: 0.2,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+      max_tokens: 1000,
     });
 
     const analysisText = response.choices[0].message.content || '';
+    console.log(`✅ Received OpenAI response (${analysisText.length} chars)`);
     
-    // Try to extract structured data or return text
+    const parsedResult = JSON.parse(analysisText);
+    
     return {
-      analysis: analysisText,
-      confidence: 0.85, // Default confidence
-      technical: {
-        trend: "Analysis provided in text format",
-        supportResistance: "Check analysis text",
-        patterns: []
-      }
+      analysis: parsedResult.analysis || analysisText,
+      confidence: parsedResult.confidence || 0.85,
+      prediction: parsedResult.prediction,
+      session: parsedResult.session,
+      reasoning: parsedResult.reasoning,
+      technical: parsedResult.technical,
+      targetVisuals: parsedResult.targetVisuals
     };
 
   } catch (error) {

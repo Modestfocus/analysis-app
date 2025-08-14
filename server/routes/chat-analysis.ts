@@ -89,9 +89,9 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
         .filter(part => part.type === 'image_url')
         .map(part => part.image_url.url);
       
-      // Get the merged system prompt with RAG and inject text
-      const { getSystemPromptMergedFromDB } = await import('../services/system-prompt');
-      const finalSystemPrompt = await getSystemPromptMergedFromDB();
+      // Use the injectText from request (Current Prompt from dashboard) or fallback
+      const { getCurrentPrompt } = await import('../services/system-prompt');
+      const finalSystemPrompt = await getCurrentPrompt(injectText);
       
       const result = await analyzeCharts({ 
         imageUrls, 
@@ -105,10 +105,11 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       });
     }
 
-    console.log(`🔍 Chat analysis request (legacy) - ${imageCount} images, system prompt: ${systemPrompt?.length || 0} chars`);
+    console.log(`🔍 Chat analysis request (legacy) - ${imageCount} images, injectText: ${injectText?.length || 0} chars`);
 
     // Legacy path - perform full analysis for messages with images
-    const result = await analyzeChatCharts({ content, systemPrompt }, req);
+    // Use injectText as the system prompt since frontend passes current dashboard prompt as injectText
+    const result = await analyzeChatCharts({ content, systemPrompt: injectText || systemPrompt }, req);
 
     res.json({
       success: true,
