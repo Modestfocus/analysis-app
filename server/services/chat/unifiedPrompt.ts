@@ -15,7 +15,9 @@ export type SimilarItem = {
 };
 
 function filePathToDataUrl(filePath?: string): string | undefined {
-  if (!filePath) return undefined;
+  if (!filePath || typeof filePath !== 'string' || filePath.length === 0) {
+    return undefined;
+  }
   
   // If it's already a data URL, return as-is
   if (/^data:/i.test(filePath)) {
@@ -83,40 +85,76 @@ export function buildUnifiedMessages(opts: {
 }) {
   const { currentPromptText, injectText, target, similars } = opts;
 
+  // Safe system prompt with fallback
+  const systemPrompt = (currentPromptText || '').trim() || "You are a financial chart analysis expert.";
+
+  // Helper to safely add image URLs only when they're valid strings
+  const pushImg = (url?: string) => {
+    if (typeof url === 'string' && url.length > 0) {
+      const convertedUrl = filePathToDataUrl(url);
+      if (convertedUrl) {
+        return { type: 'image_url', image_url: { url: convertedUrl, detail: 'high' } };
+      }
+    }
+    return null;
+  };
+
   // Convert target images to data URLs (OpenAI cannot access Replit domains externally)
-  const targetImages = [
-    target.filename && { type: 'image_url', image_url: { url: filePathToDataUrl(`/uploads/${target.filename}`), detail: 'high' } },
-    target.depthMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(target.depthMapPath), detail: 'high' } },
-    target.edgeMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(target.edgeMapPath), detail: 'high' } },
-    target.gradientMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(target.gradientMapPath), detail: 'high' } },
-  ].filter(item => item && item.image_url.url) as any[];
-
-  const similarImages: any[] = [];
-  for (const { chart } of similars) {
-    const images = [
-      chart.filename && { type: 'image_url', image_url: { url: filePathToDataUrl(`/uploads/${chart.filename}`), detail: 'high' } },
-      chart.depthMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(chart.depthMapPath), detail: 'high' } },
-      chart.edgeMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(chart.edgeMapPath), detail: 'high' } },
-      chart.gradientMapPath && { type: 'image_url', image_url: { url: filePathToDataUrl(chart.gradientMapPath), detail: 'high' } },
-    ].filter(item => item && item.image_url.url);
-    
-    similarImages.push(...images);
+  const targetImages: any[] = [];
+  
+  // Handle target filename - could be data URL, file path, or missing
+  if (target.filename) {
+    if (target.filename.startsWith('data:')) {
+      // Direct data URL from frontend
+      targetImages.push({ type: 'image_url', image_url: { url: target.filename, detail: 'high' } });
+    } else {
+      // File path - convert to data URL
+      const converted = pushImg(`/uploads/${target.filename}`);
+      if (converted) targetImages.push(converted);
+    }
   }
+  
+  // Handle visual maps
+  [target.depthMapPath, target.edgeMapPath, target.gradientMapPath].forEach(path => {
+    const converted = pushImg(path);
+    if (converted) targetImages.push(converted);
+  });
 
-  const system = { role: 'system', content: currentPromptText };
+  // Handle similar charts safely
+  const similarImages: any[] = [];
+  (similars || []).forEach(s => {
+    const chart = s?.chart;
+    if (!chart) return;
+    
+    // Add filename/original image if available
+    const originalImg = pushImg(chart.filename ? `/uploads/${chart.filename}` : undefined);
+    if (originalImg) similarImages.push(originalImg);
+    
+    // Add visual maps if available
+    [chart.depthMapPath, chart.edgeMapPath, chart.gradientMapPath].forEach(path => {
+      const converted = pushImg(path);
+      if (converted) similarImages.push(converted);
+    });
+  });
 
-  const userText = [
-    'Analyze this chart.',
-    injectText || '' // MUST include so "debugPromptId":"UP-123" reaches the model
-  ].filter(Boolean).join('\n\n');
+  const system = { role: 'system', content: systemPrompt };
+
+  // Build user message parts safely
+  const userParts: any[] = [];
+  userParts.push({ type: "text", text: "Analyze this chart." });
+
+  // Add target images + maps only if they exist
+  targetImages.forEach(img => userParts.push(img));
+  similarImages.forEach(img => userParts.push(img));
+
+  // injectText (from UI) goes into user text (not system) 
+  if (injectText && typeof injectText === 'string' && injectText.trim().length > 0) {
+    userParts.push({ type: "text", text: injectText });
+  }
 
   const user = {
     role: 'user',
-    content: [
-      { type: 'text', text: userText },
-      ...targetImages,
-      ...similarImages,
-    ],
+    content: userParts,
   };
 
   return [system, user];

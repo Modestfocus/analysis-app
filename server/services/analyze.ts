@@ -256,9 +256,9 @@ async function analyzeSingleChartWithVision(
     // Helper to build absolute URLs
     const { toAbsoluteUrl } = await import('./visual-maps');
     
-    // Build target chart data
+    // Build target chart data - use original imageUrl if it's a data URL, otherwise convert file path
     const target: ChartMaps = {
-      originalPath: toAbsoluteUrl(chartData.originalImage, req) || chartData.imageUrl,
+      originalPath: chartData.imageUrl && chartData.imageUrl.startsWith('data:') ? chartData.imageUrl : toAbsoluteUrl(chartData.originalImage, req),
       depthMapPath: chartData.depthMapPath ? toAbsoluteUrl(chartData.depthMapPath, req) : null,
       edgeMapPath: chartData.edgeMapPath ? toAbsoluteUrl(chartData.edgeMapPath, req) : null,
       gradientMapPath: chartData.gradientMapPath ? toAbsoluteUrl(chartData.gradientMapPath, req) : null,
@@ -289,9 +289,9 @@ async function analyzeSingleChartWithVision(
     // Get the current prompt text from dashboard
     const currentPromptText = await getCurrentPromptText(customSystemPrompt);
     
-    // Build target data for unified prompt
+    // Build target data for unified prompt - pass data URL directly if available
     const targetVisuals = {
-      filename: path.basename(chartData.originalImage || ''),
+      filename: chartData.imageUrl && chartData.imageUrl.startsWith('data:') ? chartData.imageUrl : path.basename(chartData.originalImage || ''),
       depthMapPath: target.depthMapPath || undefined,
       edgeMapPath: target.edgeMapPath || undefined,
       gradientMapPath: target.gradientMapPath || undefined,
