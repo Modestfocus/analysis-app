@@ -288,6 +288,7 @@ async function analyzeSingleChartWithVision(
       injectText,
       target,
       similars,
+      req,
     });
     
     console.log(`[CHAT] Built unified messages for single chart analysis`);

@@ -94,6 +94,7 @@ export async function analyzeMultipleChartsWithAllMaps(
       injectText,
       target,
       similars,
+      req,
     });
     
     console.log(`[CHAT] Built unified messages for multi-chart analysis`);

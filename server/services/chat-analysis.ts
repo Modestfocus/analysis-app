@@ -395,6 +395,7 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
     injectText,
     target,
     similars,
+    req,
   });
   
   console.log(`[CHAT] Built unified messages with ${messages.length} parts`);
