@@ -25,14 +25,6 @@ export async function getCurrentPrompt(systemPrompt?: string): Promise<string> {
 }
 
 /**
- * Get the current prompt text for unified prompt system
- * This reads the dashboard "Current Prompt" - for now uses the same logic as getCurrentPrompt
- */
-export async function getCurrentPromptText(systemPrompt?: string): Promise<string> {
-  return await getCurrentPrompt(systemPrompt);
-}
-
-/**
  * Get the merged system prompt from database/storage or fallback to default
  * This mimics the frontend localStorage behavior but for backend use
  */

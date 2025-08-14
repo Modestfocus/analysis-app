@@ -47,7 +47,6 @@ export async function analyzeMultipleChartsWithAllMaps(
     similarity: number;
   }> = [],
   customSystemPrompt?: string,
-  injectText?: string,
   req?: any
 ): Promise<ChartPrediction> {
   try {
@@ -86,54 +85,41 @@ export async function analyzeMultipleChartsWithAllMaps(
       filename: item.chart.filename,
     }));
 
-    // Build unified messages using the new unified prompt system
-    const { buildUnifiedMessages, logUnifiedPrompt } = await import('./chat/unifiedPrompt');
-    const { getCurrentPromptText } = await import('./system-prompt');
-    
-    // Get the current prompt text from dashboard
-    const currentPromptText = await getCurrentPromptText(customSystemPrompt);
-    
-    // Build target data for unified prompt
-    const targetVisuals = {
-      filename: target.filename || '',
-      depthMapPath: target.depthMapPath || undefined,
-      edgeMapPath: target.edgeMapPath || undefined,
-      gradientMapPath: target.gradientMapPath || undefined,
-    };
-    
-    // Convert similars to unified format
-    const similarItems = similars.map(item => ({
-      chart: {
-        filename: item.filename,
-        depthMapPath: item.depthMapPath || undefined,
-        edgeMapPath: item.edgeMapPath || undefined,
-        gradientMapPath: item.gradientMapPath || undefined,
-        timeframe: item.timeframe || undefined,
-        instrument: item.instrument || undefined,
-      },
-      similarity: item.similarity || undefined,
-    }));
-    
-    // Build unified messages with system = dashboard Current Prompt and user = short text + images
-    const messages = buildUnifiedMessages({
-      currentPromptText,
-      injectText: injectText, // Pass debugPromptId if present
-      target: targetVisuals,
-      similars: similarItems,
-    });
+    // Build unified prompt
+    const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
     
     // Extract target metadata for logging
     const targetTimeframe = target?.timeframe ?? "UNKNOWN";
     const targetInstrument = target?.instrument ?? "UNKNOWN";
     
-    console.log(`[CHAT] unified messages built - target: ${targetInstrument}/${targetTimeframe} similars: ${similarItems.length}`);
-    
-    // Debug logging (only when DEBUG_UNIFIED_PROMPT=1)
-    logUnifiedPrompt(messages);
+    console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
+
+    // Send the unified prompt directly to OpenAI (using markdown image URLs)
+    const messages = [
+      {
+        role: 'system' as const,
+        content: unifiedPrompt
+      },
+      {
+        role: 'user' as const,
+        content: `Please analyze these ${charts.length} charts together as a unified multi-timeframe view.`
+      }
+    ];
+
+    // Debug logging
+    const allImageRefs = [
+      { kind: "target" as const, id: target.id, url: target.originalPath },
+      ...similars.map(s => ({ kind: "similar-original" as const, id: s.id, url: s.originalPath })),
+      ...similars.filter(s => s.depthMapPath).map(s => ({ kind: "similar-depth" as const, id: s.id, url: s.depthMapPath! })),
+      ...similars.filter(s => s.edgeMapPath).map(s => ({ kind: "similar-edge" as const, id: s.id, url: s.edgeMapPath! })),
+      ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
+    ];
+
+    logUnifiedPromptDebugOnce("multi-chart-analysis", messages);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: messages as any,
+      messages,
       max_tokens: 1000,
       temperature: 0.1,
       response_format: { type: 'json_object' },

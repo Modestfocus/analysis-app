@@ -23,7 +23,6 @@ const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
 interface ChatAnalysisRequest {
   content: any[]; // Array of text and image_url parts
   systemPrompt: string;
-  injectText?: string; // Contains debugPromptId and other injection text
 }
 
 interface ChatAnalysisResponse {
@@ -340,59 +339,78 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
   console.log(`📡 Making OpenAI API call with ${visionContent.length} content parts`);
   console.log(`🖼️ Image parts: ${visionContent.filter(p => p.type === 'image_url').length}`);
 
-  // Use unified prompt system for chat analysis
-  console.log(`[CHAT] Building unified messages for chat analysis`);
+  // Use unified prompt system for the first image (primary target)
+  console.log(`[CHAT] Building unified prompt for chat analysis`);
   
-  // Build unified messages using the new unified prompt system
-  const { buildUnifiedMessages, logUnifiedPrompt } = await import('./chat/unifiedPrompt');
-  const { getCurrentPromptText } = await import('./system-prompt');
+  // Get base prompt from request or default
+  const basePrompt = await getCurrentPrompt(request.systemPrompt);
   
-  // Get the current prompt text from dashboard
-  const currentPromptText = await getCurrentPromptText(request.systemPrompt);
+  // Helper to build absolute URLs
+  const { toAbsoluteUrl } = await import('./visual-maps');
   
-  // Build target data for unified prompt from first processed image
+  // Build target chart data from the first processed image
   const firstImageData = processedData[0];
-  const targetVisuals = {
+  const target: ChartMaps = {
+    originalPath: toAbsoluteUrl(`/uploads/temp_chat_${Math.floor(Date.now() / 1000)}_0.png`, req) || 'temp_chart.png',
+    depthMapPath: firstImageData.depth ? `/temp/depth_chat.png` : null,
+    edgeMapPath: firstImageData.edge ? `/temp/edge_chat.png` : null,
+    gradientMapPath: firstImageData.gradient ? `/temp/gradient_chat.png` : null,
+    instrument: "UPLOADED", // Mark as uploaded chart
+    timeframe: "LIVE", // Mark as live analysis
+    similarity: null,
+    id: Date.now(),
     filename: 'uploaded_chart.png',
-    depthMapPath: firstImageData.depth ? `/temp/depth_chat.png` : undefined,
-    edgeMapPath: firstImageData.edge ? `/temp/edge_chat.png` : undefined,
-    gradientMapPath: firstImageData.gradient ? `/temp/gradient_chat.png` : undefined,
   };
-  
-  // Convert similar charts to unified format
-  const similarItems = allSimilarCharts.slice(0, 3).map(item => ({
-    chart: {
-      filename: item.chart.filename,
-      depthMapPath: item.chart.depthMapPath || undefined,
-      edgeMapPath: item.chart.edgeMapPath || undefined,
-      gradientMapPath: item.chart.gradientMapPath || undefined,
-      timeframe: item.chart.timeframe || undefined,
-      instrument: item.chart.instrument || undefined,
-    },
+
+  // Build similar charts data with absolute URLs from all similar charts
+  const similars: ChartMaps[] = allSimilarCharts.slice(0, 3).map(item => ({
+    originalPath: toAbsoluteUrl(`/uploads/${item.chart.filename}`, req) || item.chart.filename,
+    depthMapPath: toAbsoluteUrl(item.chart.depthMapPath, req),
+    edgeMapPath: toAbsoluteUrl(item.chart.edgeMapPath, req),
+    gradientMapPath: toAbsoluteUrl(item.chart.gradientMapPath, req),
+    instrument: item.chart.instrument,
+    timeframe: item.chart.timeframe,
     similarity: item.similarity,
+    id: item.chart.id,
+    filename: item.chart.filename,
   }));
+
+  // Build unified prompt
+  const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
   
-  // Build unified messages with system = dashboard Current Prompt and user = short text + images
-  // Use injectText from the request parameter if provided, otherwise check textContent for debugPromptId
-  const hasDebugPromptId = /"debugPromptId"\s*:\s*"/.test(textContent);
-  const finalInjectText = request.injectText || (hasDebugPromptId ? textContent : undefined);
+  // Extract target metadata for logging
+  const targetTimeframe = target?.timeframe ?? "UNKNOWN";
+  const targetInstrument = target?.instrument ?? "UNKNOWN";
   
-  const messages = buildUnifiedMessages({
-    currentPromptText,
-    injectText: finalInjectText, // Pass injectText containing debugPromptId if present
-    target: targetVisuals,
-    similars: similarItems,
-  });
-  
-  console.log(`[CHAT] unified messages built - target: UPLOADED/LIVE similars: ${similarItems.length}`);
-  
-  // Debug logging (only when DEBUG_UNIFIED_PROMPT=1)
-  logUnifiedPrompt(messages);
+  console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
+
+  // Build messages for OpenAI using unified prompt
+  const messages = [
+    {
+      role: 'system' as const,
+      content: unifiedPrompt
+    },
+    {
+      role: 'user' as const,
+      content: visionContent
+    }
+  ];
+
+  // Debug logging
+  const allImageRefs = [
+    { kind: "target" as const, id: target.id, url: target.originalPath },
+    ...similars.map(s => ({ kind: "similar-original" as const, id: s.id, url: s.originalPath })),
+    ...similars.filter(s => s.depthMapPath).map(s => ({ kind: "similar-depth" as const, id: s.id, url: s.depthMapPath! })),
+    ...similars.filter(s => s.edgeMapPath).map(s => ({ kind: "similar-edge" as const, id: s.id, url: s.edgeMapPath! })),
+    ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
+  ];
+
+  logUnifiedPromptDebugOnce("chat-analysis", messages);
 
   try {
     const response = await openai.chat.completions.create({
       model: MODEL,
-      messages: messages as any,
+      messages,
       temperature: 0.1,
       response_format: { type: 'json_object' },
       max_tokens: 800,
