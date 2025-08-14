@@ -7,7 +7,7 @@ import path from 'path';
 import OpenAI from 'openai';
 import { buildUnifiedPrompt, ChartMaps } from './prompt-builder';
 import { getCurrentPrompt } from './system-prompt';
-import { logUnifiedPromptDebug } from './chat/unifiedPrompt';
+import { logUnifiedPromptDebugOnce } from './chat/unifiedPromptDebug';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -307,11 +307,7 @@ async function analyzeSingleChartWithVision(
       ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
     ];
 
-    logUnifiedPromptDebug({
-      messages,
-      label: "single-chart-analysis",
-      imagesAttached: allImageRefs
-    });
+    logUnifiedPromptDebugOnce("single-chart-analysis", messages);
 
     const response = await openai.chat.completions.create({
       model: process.env.VISION_MODEL || 'gpt-4o',

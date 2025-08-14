@@ -12,7 +12,7 @@ import { getTopSimilarCharts } from './retrieval';
 import { storage } from '../storage';
 import { buildUnifiedPrompt, ChartMaps } from './prompt-builder';
 import { getCurrentPrompt } from './system-prompt';
-import { logUnifiedPromptDebug } from './chat/unifiedPrompt';
+import { logUnifiedPromptDebugOnce } from './chat/unifiedPromptDebug';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -355,8 +355,8 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
     depthMapPath: firstImageData.depth ? `/temp/depth_chat.png` : null,
     edgeMapPath: firstImageData.edge ? `/temp/edge_chat.png` : null,
     gradientMapPath: firstImageData.gradient ? `/temp/gradient_chat.png` : null,
-    instrument: null, // Extract from request if available
-    timeframe: null, // Extract from request if available
+    instrument: "UPLOADED", // Mark as uploaded chart
+    timeframe: "LIVE", // Mark as live analysis
     similarity: null,
     id: Date.now(),
     filename: 'uploaded_chart.png',
@@ -405,11 +405,7 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
     ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
   ];
 
-  logUnifiedPromptDebug({
-    messages,
-    label: "chat-analysis",
-    imagesAttached: allImageRefs
-  });
+  logUnifiedPromptDebugOnce("chat-analysis", messages);
 
   try {
     const response = await openai.chat.completions.create({

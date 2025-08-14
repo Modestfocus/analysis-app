@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { buildUnifiedPrompt, ChartMaps } from './prompt-builder';
 import { getCurrentPrompt } from './system-prompt';
-import { logUnifiedPromptDebug } from './chat/unifiedPrompt';
+import { logUnifiedPromptDebugOnce } from './chat/unifiedPromptDebug';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -115,11 +115,7 @@ export async function analyzeMultipleChartsWithAllMaps(
       ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
     ];
 
-    logUnifiedPromptDebug({
-      messages,
-      label: "multi-chart-analysis",
-      imagesAttached: allImageRefs
-    });
+    logUnifiedPromptDebugOnce("multi-chart-analysis", messages);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
