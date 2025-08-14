@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Image as ImageIcon, ExternalLink } from "lucide-react";
+import { toAbsoluteUrl } from "@/lib/utils";
 
 interface SimilarChart {
   chartId: number;
@@ -10,7 +11,9 @@ interface SimilarChart {
   session: string;
   similarity: number;
   filePath: string;
-  depthMapUrl?: string;
+  depthMapPath?: string;
+  edgeMapPath?: string;
+  gradientMapPath?: string;
   comment?: string;
 }
 
@@ -107,16 +110,33 @@ export default function ChartComparison({ mainChartId, mainChartPath, similarCha
                     <ExternalLink className="h-3 w-3 mr-1" />
                     Full View
                   </Button>
-                  {chart.depthMapUrl && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-xs h-6 px-2 flex-1"
-                      onClick={() => window.open(chart.depthMapUrl, '_blank')}
-                    >
-                      Depth Map
-                    </Button>
-                  )}
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs h-6 px-2 flex-1"
+                    disabled={!chart.depthMapPath}
+                    onClick={() => chart.depthMapPath && window.open(toAbsoluteUrl(chart.depthMapPath), '_blank')}
+                  >
+                    Depth
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs h-6 px-2 flex-1"
+                    disabled={!chart.edgeMapPath}
+                    onClick={() => chart.edgeMapPath && window.open(toAbsoluteUrl(chart.edgeMapPath), '_blank')}
+                  >
+                    Edge
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs h-6 px-2 flex-1"
+                    disabled={!chart.gradientMapPath}
+                    onClick={() => chart.gradientMapPath && window.open(toAbsoluteUrl(chart.gradientMapPath), '_blank')}
+                  >
+                    Gradient
+                  </Button>
                 </div>
               </div>
             ))}

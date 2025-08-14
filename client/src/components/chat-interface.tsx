@@ -19,6 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { toAbsoluteUrl } from "@/lib/utils";
 
 // Utility function to generate UUID
 function generateId(): string {
@@ -700,7 +701,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                                     <div className="flex gap-2">
                                       {c.depthMapPath && (
                                         <button 
-                                          onClick={() => window.open(c.depthMapPath, '_blank')}
+                                          onClick={() => window.open(toAbsoluteUrl(c.depthMapPath), '_blank')}
                                           className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                                         >
                                           Depth
@@ -708,7 +709,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                                       )}
                                       {c.edgeMapPath && (
                                         <button 
-                                          onClick={() => window.open(c.edgeMapPath, '_blank')}
+                                          onClick={() => window.open(toAbsoluteUrl(c.edgeMapPath), '_blank')}
                                           className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
                                         >
                                           Edge
@@ -716,7 +717,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                                       )}
                                       {c.gradientMapPath && (
                                         <button 
-                                          onClick={() => window.open(c.gradientMapPath, '_blank')}
+                                          onClick={() => window.open(toAbsoluteUrl(c.gradientMapPath), '_blank')}
                                           className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
                                         >
                                           Gradient
