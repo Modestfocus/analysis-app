@@ -340,8 +340,8 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
   console.log(`📡 Making OpenAI API call with ${visionContent.length} content parts`);
   console.log(`🖼️ Image parts: ${visionContent.filter(p => p.type === 'image_url').length}`);
 
-  // Use new unified prompt system with all images (16 total)
-  console.log(`[CHAT] Building unified prompt with ALL images for chat analysis`);
+  // BYPASS unified prompt for now - use direct data URLs to fix immediate issue
+  console.log(`[CHAT] Using direct data URL approach to fix image format issue`);
   
   // Get base prompt from request (dashboard "Current Prompt") or default
   const currentPromptText = await getCurrentPrompt(request.systemPrompt);
@@ -350,58 +350,79 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
   const injectText = Array.isArray(request.content) 
     ? request.content.find((c: any) => c.type === 'text')?.text 
     : request.content;
-  
-  // Helper to build absolute URLs  
-  const { toAbsoluteUrl } = await import('./visual-maps');
-  
-  // Build target chart data from the first processed image
+
+  // Build messages using direct base64 data URLs (which OpenAI accepts)
   const firstImageData = processedData[0];
   
-  // Create proper filename from uploaded image (save actual file)
-  let targetFilename = 'uploaded_chart.png';
+  // Prepare content with text and images
+  const content: any[] = [
+    { 
+      type: 'text', 
+      text: [
+        'Analyze this chart.',
+        injectText || '',
+        `Include "debugPromptId":"CHAT-${Date.now()}" in your response.`
+      ].filter(Boolean).join('\n\n')
+    }
+  ];
+
+  // Add target chart images (original + visual maps)
   if (firstImageData.original) {
-    // Save the uploaded image to uploads directory for serving
-    const uploadPath = path.join(process.cwd(), 'server', 'uploads', `chat_${Date.now()}.png`);
-    const base64Data = firstImageData.original.replace(/^data:image\/\w+;base64,/, '');
-    fs.writeFileSync(uploadPath, Buffer.from(base64Data, 'base64'));
-    targetFilename = path.basename(uploadPath);
+    content.push({ 
+      type: 'image_url', 
+      image_url: { url: firstImageData.original, detail: 'high' } 
+    });
   }
   
-  const target = {
-    filename: targetFilename,
-    depthMapPath: firstImageData.depth ? toAbsoluteUrl(firstImageData.depth, req) : undefined,
-    edgeMapPath: firstImageData.edge ? toAbsoluteUrl(firstImageData.edge, req) : undefined,
-    gradientMapPath: firstImageData.gradient ? toAbsoluteUrl(firstImageData.gradient, req) : undefined,
-  };
-
-  // Build similar charts data for the unified prompt
-  const similars = allSimilarCharts.slice(0, 3).map(item => ({
-    chart: {
-      filename: item.chart.filename,
-      depthMapPath: item.chart.depthMapPath ? toAbsoluteUrl(item.chart.depthMapPath, req) : undefined,
-      edgeMapPath: item.chart.edgeMapPath ? toAbsoluteUrl(item.chart.edgeMapPath, req) : undefined,
-      gradientMapPath: item.chart.gradientMapPath ? toAbsoluteUrl(item.chart.gradientMapPath, req) : undefined,
-      timeframe: item.chart.timeframe,
-      instrument: item.chart.instrument,
-    },
-    similarity: item.similarity,
-  }));
-
-  // Import and use the new unified message builder
-  const { buildUnifiedMessages, logUnifiedPrompt } = await import('./unified-prompt');
+  if (firstImageData.depth) {
+    content.push({ 
+      type: 'image_url', 
+      image_url: { url: firstImageData.depth, detail: 'high' } 
+    });
+  }
   
-  const messages = buildUnifiedMessages({
-    currentPromptText,
-    injectText,
-    target,
-    similars,
-    req,
+  if (firstImageData.edge) {
+    content.push({ 
+      type: 'image_url', 
+      image_url: { url: firstImageData.edge, detail: 'high' } 
+    });
+  }
+  
+  if (firstImageData.gradient) {
+    content.push({ 
+      type: 'image_url', 
+      image_url: { url: firstImageData.gradient, detail: 'high' } 
+    });
+  }
+
+  // Add similar charts (use base64 data from database if available)
+  allSimilarCharts.slice(0, 3).forEach(item => {
+    const chart = item.chart;
+    
+    // Try to load and convert similar chart files to base64 data URLs
+    if (chart.filename) {
+      try {
+        const chartPath = path.join(process.cwd(), 'server', 'uploads', chart.filename);
+        if (fs.existsSync(chartPath)) {
+          const imageBuffer = fs.readFileSync(chartPath);
+          const base64Data = imageBuffer.toString('base64');
+          content.push({ 
+            type: 'image_url', 
+            image_url: { url: `data:image/png;base64,${base64Data}`, detail: 'high' } 
+          });
+        }
+      } catch (err) {
+        console.log(`Could not load similar chart ${chart.filename}:`, err);
+      }
+    }
   });
+
+  const messages = [
+    { role: 'system', content: currentPromptText },
+    { role: 'user', content }
+  ];
   
-  console.log(`[CHAT] Built unified messages with ${messages.length} parts`);
-  
-  // Debug logging with new system
-  logUnifiedPrompt(messages);
+  console.log(`[CHAT] Built direct messages with ${content.length} content parts, ${content.filter(c => c.type === 'image_url').length} images`);
 
   try {
     const response = await openai.chat.completions.create({
