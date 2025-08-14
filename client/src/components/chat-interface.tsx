@@ -664,7 +664,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                               {msg.metadata.similarCharts.slice(0, 3).map((s: any, i: number) => {
                                 const c = s.chart;
                                 const similarity = (s.similarity * 100).toFixed(1);
-                                const originalChartPath = `/charts/${c.filename}`;
+                                const originalChartPath = `/uploads/${c.filename}`;
                                 
                                 return (
                                   <div key={c.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
