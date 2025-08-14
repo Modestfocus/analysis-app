@@ -88,7 +88,11 @@ export async function analyzeMultipleChartsWithAllMaps(
     // Build unified prompt
     const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
     
-    console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${target.instrument}/${target.timeframe} similars: ${similars.length}`);
+    // Extract target metadata for logging
+    const targetTimeframe = target?.timeframe ?? "UNKNOWN";
+    const targetInstrument = target?.instrument ?? "UNKNOWN";
+    
+    console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
 
     // Send the unified prompt directly to OpenAI (using markdown image URLs)
     const messages = [

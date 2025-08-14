@@ -378,7 +378,11 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
   // Build unified prompt
   const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
   
-  console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: uploaded_chart similars: ${similars.length}`);
+  // Extract target metadata for logging
+  const targetTimeframe = target?.timeframe ?? "UNKNOWN";
+  const targetInstrument = target?.instrument ?? "UNKNOWN";
+  
+  console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
 
   // Build messages for OpenAI using unified prompt
   const messages = [
