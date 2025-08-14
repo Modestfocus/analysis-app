@@ -1,0 +1,241 @@
+diff --git a/.gitignore b/.gitignore
+index 1111111..2222222 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,3 +1,4 @@
++# Logs
+ logs/
+ *.log
+
+diff --git a/server/utils/logger.ts b/server/utils/logger.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/server/utils/logger.ts
+@@ -0,0 +1,39 @@
++/* Tiny logger with requestId support */
++export type LogCtx = { requestId?: string; tag?: string };
++const stamp = () => new Date().toISOString();
++export const log = (msg: string, ctx: LogCtx = {}) => {
++  const { requestId, tag } = ctx;
++  const head = `[${stamp()}]${tag ? " [" + tag + "]" : ""}${requestId ? " (" + requestId + ")" : ""}`;
++  console.log(head, msg);
++};
++export const logErr = (err: unknown, ctx: LogCtx = {}) => {
++  const { requestId, tag } = ctx;
++  const head = `[${stamp()}]${tag ? " [" + tag + "]" : ""}${requestId ? " (" + requestId + ")" : ""}`;
++  console.error(head, err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : err);
++};
+
+diff --git a/server/config/env.ts b/server/config/env.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/server/config/env.ts
+@@ -0,0 +1,68 @@
++// Minimal, dependency-free env validator
++type Env = {
++  NODE_ENV?: string;
++  OPENAI_API_KEY: string;
++  AVIATIONSTACK_API_KEY?: string;
++  DATABASE_URL?: string;
++  MONGODB_URI?: string;
++  JWT_SECRET?: string;
++  DEBUG_UNIFIED_PROMPT?: string;   // "1" to enable console prompt logs
++  DEBUG_WRITE_PROMPT?: string;     // "1" to write logs/prompt-<id>.json
++};
++
++const required = ["OPENAI_API_KEY"] as const;
++
++function assertEnv(): Env {
++  const e = process.env as Env;
++  for (const k of required) {
++    if (!e[k]) throw new Error(`Missing required env var: ${k}`);
++  }
++  return e;
++}
++
++export const env = assertEnv();
++
++export const isDebugPrompt =
++  (env.DEBUG_UNIFIED_PROMPT ?? "") === "1" || (env.DEBUG_WRITE_PROMPT ?? "") === "1";
++
+diff --git a/server/routes/health.ts b/server/routes/health.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/server/routes/health.ts
+@@ -0,0 +1,18 @@
++import { Router } from "express";
++
++const r = Router();
++r.get("/healthz", (_req, res) => {
++  res.status(200).json({ ok: true, ts: new Date().toISOString() });
++});
++
++export default r;
++
+diff --git a/server/services/unifiedPrompt.ts b/server/services/unifiedPrompt.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/server/services/unifiedPrompt.ts
+@@ -0,0 +1,116 @@
++import { env, isDebugPrompt } from "../config/env";
++import fs from "fs";
++import path from "path";
++import { log } from "../utils/logger";
++
++export type ChartLayers = {
++  original: string;  // base64 or URL
++  depth: string;
++  edge: string;
++  gradient: string;
++};
++
++export type SimilarItem = {
++  original: string;
++  depth: string;
++  edge: string;
++  gradient: string;
++  meta?: Record<string, unknown>;
++};
++
++export type UnifiedInput = {
++  currentPrompt: string;   // dashboard "Current Prompt" -> becomes system
++  injectText?: string;     // goes into user message; can contain debugPromptId
++  target: ChartLayers;
++  similar?: SimilarItem[]; // up to 3
++  bundleContext?: Record<string, unknown>;
++  requestId: string;
++};
++
++export type BuiltPrompt = {
++  system: string;
++  user: string;
++  attachmentsMeta: {
++    targetCount: number;
++    similarCount: number;
++    totalImages: number;
++  };
++  debugPromptId?: string;
++};
++
++export function buildUnifiedPrompt(input: UnifiedInput): BuiltPrompt {
++  const { currentPrompt, injectText, target, similar = [], bundleContext, requestId } = input;
++  // Pull debugPromptId if present in injectText JSON-ish
++  let debugPromptId: string | undefined;
++  try {
++    const m = injectText?.match(/"debugPromptId"\s*:\s*"([^"]+)"/);
++    if (m) debugPromptId = m[1];
++  } catch {}
++
++  const system = currentPrompt.trim();
++
++  // Short instruction + injectText
++  const userParts = [
++    "Analyze the new chart using ALL provided visual layers (original, depth, edge, gradient).",
++    "Use historical similars only as visual references; call out pattern matches explicitly.",
++    "Return concise JSON: { sessionPrediction, directionBias, confidence, reasoning }.",
++    injectText ? `\n---\nInject: ${injectText}` : "",
++    bundleContext ? `\n---\nBundleContext: ${JSON.stringify(bundleContext)}` : "",
++  ];
++  const user = userParts.join("\n");
++
++  const totalImages = 4 /*target*/ + (similar.length * 4);
++  const attachmentsMeta = {
++    targetCount: 4,
++    similarCount: similar.length * 4,
++    totalImages,
++  };
++
++  if (isDebugPrompt) {
++    const payload = { system, user, attachmentsMeta, debugPromptId };
++    log(`[unified] built prompt`, { tag: "unified", requestId });
++    if (env.DEBUG_WRITE_PROMPT === "1") {
++      const dir = path.join(process.cwd(), "logs");
++      try { fs.mkdirSync(dir, { recursive: true }); } catch {}
++      fs.writeFileSync(path.join(dir, `prompt-${requestId}.json`), JSON.stringify(payload, null, 2));
++    } else {
++      console.log(payload);
++    }
++  }
++
++  return { system, user, attachmentsMeta, debugPromptId };
++}
++
+diff --git a/server/routes.ts b/server/routes.ts
+index 3333333..4444444 100644
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -1,8 +1,24 @@
+-import express from "express";
+-const router = express.Router();
++import express from "express";
++import { v4 as uuidv4 } from "uuid";
++import health from "./routes/health";
++import { buildUnifiedPrompt } from "./services/unifiedPrompt";
++import { log, logErr } from "./utils/logger";
++import { env } from "./config/env";
++
++const router = express.Router();
+
+ // Mount subroutes here
+-router.get("/", (_req, res) => res.json({ ok: true }));
++router.use(health);
++
++// Hardened analyze route
++router.post("/api/analyze", async (req, res) => {
++  const requestId = uuidv4();
++  try {
++    const { currentPrompt, injectText, target, similar = [], bundleContext } = req.body || {};
++    // Validate minimal shape
++    if (!currentPrompt || !target?.original || !target?.depth || !target?.edge || !target?.gradient) {
++      return res.status(422).json({ error: "Invalid payload: currentPrompt and target 4 layers are required", requestId });
++    }
++    if (!Array.isArray(similar) || similar.length > 3) {
++      return res.status(422).json({ error: "Invalid payload: similar must be an array with up to 3 items", requestId });
++    }
++    // (Optional) verify each similar has all 4 layers
++    for (const s of similar) {
++      if (!s?.original || !s?.depth || !s?.edge || !s?.gradient) {
++        return res.status(422).json({ error: "Each similar must include original, depth, edge, gradient", requestId });
++      }
++    }
++
++    const built = buildUnifiedPrompt({ currentPrompt, injectText, target, similar, bundleContext, requestId });
++    log("analyze: prompt built", { tag: "analyze", requestId });
++
++    // TODO: call your OpenAI/GPT analysis here using `built.system` and `built.user`
++    // For now we just return a stub so the UI flow is unblocked
++    return res.status(200).json({
++      ok: true,
++      requestId,
++      promptMeta: built.attachmentsMeta,
++      debugPromptId: built.debugPromptId,
++      note: "Stubbed analysis response – model call to be wired next.",
++    });
++  } catch (err) {
++    logErr(err, { tag: "analyze", requestId });
++    return res.status(500).json({ error: "Internal error during analysis", requestId });
++  }
++});
+
+ export default router;
+diff --git a/server/services/unified-analysis.ts b/server/services/unified-analysis.ts
+index 5555555..6666666 100644
+--- a/server/services/unified-analysis.ts
++++ b/server/services/unified-analysis.ts
+@@ -1,6 +1,11 @@
+-// Existing file – now delegates prompt assembly to unifiedPrompt
++// Existing file – if you constructed prompts here, now import the builder.
++import { buildUnifiedPrompt } from "./unifiedPrompt";
++// Example usage (if this function existed before):
++export async function assembleAndAnalyze(payload: any) {
++  const built = buildUnifiedPrompt({ ...payload, requestId: payload.requestId || "manual" });
++  // TODO: call the model with built.system & built.user and return response
++  return built;
++}
+
+-// (No breaking changes – left for compatibility with your current imports)
++// Keep any legacy exports your app expects here.
