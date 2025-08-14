@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { buildUnifiedPrompt, ChartMaps } from './prompt-builder';
 import { getCurrentPrompt } from './system-prompt';
+import { logUnifiedPromptDebug } from './chat/unifiedPrompt';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -100,6 +101,21 @@ export async function analyzeMultipleChartsWithAllMaps(
         content: `Please analyze these ${charts.length} charts together as a unified multi-timeframe view.`
       }
     ];
+
+    // Debug logging
+    const allImageRefs = [
+      { kind: "target" as const, id: target.id, url: target.originalPath },
+      ...similars.map(s => ({ kind: "similar-original" as const, id: s.id, url: s.originalPath })),
+      ...similars.filter(s => s.depthMapPath).map(s => ({ kind: "similar-depth" as const, id: s.id, url: s.depthMapPath! })),
+      ...similars.filter(s => s.edgeMapPath).map(s => ({ kind: "similar-edge" as const, id: s.id, url: s.edgeMapPath! })),
+      ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
+    ];
+
+    logUnifiedPromptDebug({
+      messages,
+      label: "multi-chart-analysis",
+      imagesAttached: allImageRefs
+    });
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
