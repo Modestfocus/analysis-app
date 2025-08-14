@@ -10,7 +10,7 @@ import { analyzeChatCharts } from '../services/chat-analysis';
  */
 export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => {
   try {
-    const { content, systemPrompt, conversationId, isFollowUp, enableFullAnalysis, injectText, timeframe, instrument } = req.body;
+    const { content, systemPrompt, conversationId, isFollowUp, enableFullAnalysis, injectText } = req.body;
 
     // Validate request
     if (!content || !Array.isArray(content)) {
@@ -96,12 +96,7 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       const result = await analyzeCharts({ 
         imageUrls, 
         systemPrompt: finalSystemPrompt,
-        options: { useRAG: true, usePreprocessing: true },
-        // Pass through target metadata for better context
-        targetMetadata: {
-          timeframe: timeframe || undefined,
-          instrument: instrument || undefined
-        }
+        options: { useRAG: true, usePreprocessing: true }
       }, req);
       
       return res.json({
@@ -114,15 +109,7 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
 
     // Legacy path - perform full analysis for messages with images
     // Use injectText as the system prompt since frontend passes current dashboard prompt as injectText
-    const result = await analyzeChatCharts({ 
-      content, 
-      systemPrompt: injectText || systemPrompt,
-      // Pass through target metadata for legacy path as well
-      targetMetadata: {
-        timeframe: timeframe || undefined,
-        instrument: instrument || undefined
-      }
-    }, req);
+    const result = await analyzeChatCharts({ content, systemPrompt: injectText || systemPrompt }, req);
 
     res.json({
       success: true,

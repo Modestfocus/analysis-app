@@ -192,65 +192,6 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
           image_url: { url: img.dataUrl, detail: "high" }
         }))
       ];
-
-      // Try to infer timeframe and instrument from current context
-      // This could be from selected charts, bundle metadata, or user preferences
-      let targetTimeframe: string | undefined;
-      let targetInstrument: string | undefined;
-
-      // Strategy 1: Extract from chart context if stored (e.g., from dashboard selection)
-      const contextData = localStorage.getItem('chart_context');
-      if (contextData) {
-        try {
-          const parsed = JSON.parse(contextData);
-          targetTimeframe = parsed.timeframe;
-          targetInstrument = parsed.instrument;
-        } catch (e) {
-          // Ignore parsing errors
-        }
-      }
-
-      // Strategy 2: Try to extract from most recent analysis results if no context
-      if (!targetTimeframe || !targetInstrument) {
-        const recentAnalysis = localStorage.getItem('recent_analysis_metadata');
-        if (recentAnalysis) {
-          try {
-            const parsed = JSON.parse(recentAnalysis);
-            targetTimeframe = targetTimeframe || parsed.timeframe;
-            targetInstrument = targetInstrument || parsed.instrument;
-          } catch (e) {
-            // Ignore parsing errors
-          }
-        }
-      }
-
-      // Strategy 3: Try to infer from image filenames if available
-      if (!targetTimeframe || !targetInstrument) {
-        uploadedImages.forEach(img => {
-          const filename = img.name.toLowerCase();
-          
-          // Common instruments in filenames
-          const instruments = ['xauusd', 'eurusd', 'gbpusd', 'usdjpy', 'btcusd', 'ethusd', 'nas100', 'spx500'];
-          const foundInstrument = instruments.find(inst => filename.includes(inst));
-          if (foundInstrument && !targetInstrument) {
-            targetInstrument = foundInstrument.toUpperCase();
-          }
-          
-          // Common timeframes in filenames
-          const timeframes = ['5m', '15m', '1h', '4h', 'daily', 'd1', 'h1', 'h4', 'm15', 'm5'];
-          const foundTimeframe = timeframes.find(tf => filename.includes(tf));
-          if (foundTimeframe && !targetTimeframe) {
-            // Normalize timeframe format
-            const normalizedTF = foundTimeframe.toLowerCase()
-              .replace('d1', 'daily')
-              .replace('h1', '1h')
-              .replace('h4', '4h') 
-              .replace('m15', '15m')
-              .replace('m5', '5m');
-            targetTimeframe = normalizedTF.toUpperCase();
-          }
-        });
-      }
       
       // Calculate total payload size for safety check
       const totalPayloadSize = uploadedImages.reduce((sum, img) => sum + img.sizeBytes, 0);
@@ -271,8 +212,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
           textLength: userMessage?.length || 0,
           imageCount: uploadedImages.length,
           totalBytes: totalPayloadSize,
-          dataUrlPreviews: uploadedImages.map(img => img.dataUrl.substring(0, 40) + '...'),
-          metadata: { timeframe: targetTimeframe, instrument: targetInstrument }
+          dataUrlPreviews: uploadedImages.map(img => img.dataUrl.substring(0, 40) + '...')
         };
         console.log('[POST] /api/chat/analyze', payloadSummary);
       }
@@ -293,9 +233,6 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
             isFollowUp,
             enableFullAnalysis: true,
             injectText: injectText || undefined,
-            // Include target metadata for better analysis context
-            timeframe: targetTimeframe,
-            instrument: targetInstrument,
           }),
           signal: abortController.signal,
         });

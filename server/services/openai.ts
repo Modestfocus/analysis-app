@@ -47,60 +47,75 @@ export async function analyzeMultipleChartsWithAllMaps(
     similarity: number;
   }> = [],
   customSystemPrompt?: string,
-  req?: any,
-  targetMetadata?: { timeframe?: string; instrument?: string }
+  req?: any
 ): Promise<ChartPrediction> {
   try {
     console.log(`🔍 Starting multi-chart analysis for ${charts.length} charts`);
     console.log(`[CHAT] Building unified prompt for multi-chart analysis`);
 
-    // Get current prompt from dashboard (where "Current Prompt" lives)
-    const currentPromptText = await getCurrentPrompt(customSystemPrompt);
+    // Get base prompt from dashboard or use custom/default
+    const basePrompt = await getCurrentPrompt(customSystemPrompt);
     
     // Helper to build absolute URLs
     const { toAbsoluteUrl } = await import('./visual-maps');
     
-    // Build target chart data from the first chart (save actual file for uploads serving)
-    const targetFilename = charts[0].metadata.filename;
-    
-    const target = {
-      filename: targetFilename,
-      depthMapPath: charts[0].depth ? toAbsoluteUrl(`/temp/depth_${charts[0].metadata.id}.png`, req) : undefined,
-      edgeMapPath: charts[0].edge ? toAbsoluteUrl(`/temp/edge_${charts[0].metadata.id}.png`, req) : undefined,
-      gradientMapPath: charts[0].gradient ? toAbsoluteUrl(`/temp/gradient_${charts[0].metadata.id}.png`, req) : undefined,
+    // Build target chart data (use first chart as primary target)
+    const target: ChartMaps = {
+      originalPath: toAbsoluteUrl(`/uploads/${charts[0].metadata.filename}`, req) || charts[0].metadata.filename,
+      depthMapPath: charts[0].depth ? `/temp/depth_${charts[0].metadata.id}.png` : null,
+      edgeMapPath: charts[0].edge ? `/temp/edge_${charts[0].metadata.id}.png` : null,
+      gradientMapPath: charts[0].gradient ? `/temp/gradient_${charts[0].metadata.id}.png` : null,
+      instrument: charts[0].metadata.instrument,
+      timeframe: charts[0].metadata.timeframe,
+      similarity: null,
+      id: charts[0].metadata.id,
+      filename: charts[0].metadata.originalName,
     };
 
-    // Build similar charts data for the unified prompt
-    const similars = similarCharts.slice(0, 3).map(item => ({
-      chart: {
-        filename: item.chart.filename,
-        depthMapPath: item.chart.depthMapPath ? toAbsoluteUrl(item.chart.depthMapPath, req) : undefined,
-        edgeMapPath: item.chart.edgeMapPath ? toAbsoluteUrl(item.chart.edgeMapPath, req) : undefined,
-        gradientMapPath: item.chart.gradientMapPath ? toAbsoluteUrl(item.chart.gradientMapPath, req) : undefined,
-        timeframe: item.chart.timeframe,
-        instrument: item.chart.instrument,
-      },
+    // Build similar charts data with absolute URLs
+    const similars: ChartMaps[] = similarCharts.slice(0, 3).map(item => ({
+      originalPath: toAbsoluteUrl(`/uploads/${item.chart.filename}`, req) || item.chart.filename,
+      depthMapPath: toAbsoluteUrl(item.chart.depthMapPath, req),
+      edgeMapPath: toAbsoluteUrl(item.chart.edgeMapPath, req),
+      gradientMapPath: toAbsoluteUrl(item.chart.gradientMapPath, req),
+      instrument: item.chart.instrument,
+      timeframe: item.chart.timeframe,
       similarity: item.similarity,
+      id: item.chart.id,
+      filename: item.chart.filename,
     }));
 
-    // Build injectText that includes any custom analysis instructions
-    const injectText = `Please analyze these ${charts.length} charts together as a unified multi-timeframe view. Include "debugPromptId":"MULTI-${Date.now()}" in your response.`;
+    // Build unified prompt
+    const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
+    
+    // Extract target metadata for logging
+    const targetTimeframe = target?.timeframe ?? "UNKNOWN";
+    const targetInstrument = target?.instrument ?? "UNKNOWN";
+    
+    console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
 
-    // Import and use the new unified message builder
-    const { buildUnifiedMessages, logUnifiedPrompt } = await import('./unified-prompt');
-    
-    const messages = buildUnifiedMessages({
-      currentPromptText,
-      injectText,
-      target,
-      similars,
-      req,
-    });
-    
-    console.log(`[CHAT] Built unified messages for multi-chart analysis`);
-    
-    // Debug logging with new system
-    logUnifiedPrompt(messages);
+    // Send the unified prompt directly to OpenAI (using markdown image URLs)
+    const messages = [
+      {
+        role: 'system' as const,
+        content: unifiedPrompt
+      },
+      {
+        role: 'user' as const,
+        content: `Please analyze these ${charts.length} charts together as a unified multi-timeframe view.`
+      }
+    ];
+
+    // Debug logging
+    const allImageRefs = [
+      { kind: "target" as const, id: target.id, url: target.originalPath },
+      ...similars.map(s => ({ kind: "similar-original" as const, id: s.id, url: s.originalPath })),
+      ...similars.filter(s => s.depthMapPath).map(s => ({ kind: "similar-depth" as const, id: s.id, url: s.depthMapPath! })),
+      ...similars.filter(s => s.edgeMapPath).map(s => ({ kind: "similar-edge" as const, id: s.id, url: s.edgeMapPath! })),
+      ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
+    ];
+
+    logUnifiedPromptDebugOnce("multi-chart-analysis", messages);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",

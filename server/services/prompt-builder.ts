@@ -21,8 +21,8 @@ Use ALL provided visuals (original + depth + edge + gradient) when reasoning.`;
     const pct = c.similarity != null ? `${(c.similarity * 100).toFixed(1)}%` : `—`;
     return [
       i != null ? `### Similar ${i + 1} — ${pct}` : `### Current Chart`,
-      c.instrument && c.instrument !== 'UNKNOWN' ? `**Instrument:** ${c.instrument}` : null,
-      c.timeframe && c.timeframe !== 'UNKNOWN' ? `**Timeframe:** ${c.timeframe}` : null,
+      c.instrument ? `**Instrument:** ${c.instrument}` : null,
+      c.timeframe ? `**Timeframe:** ${c.timeframe}` : null,
       c.filename ? `**File:** ${c.filename}` : null,
       c.originalPath ? `![original](${c.originalPath})` : null,
       c.depthMapPath ? `![depth](${c.depthMapPath})` : null,

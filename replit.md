@@ -11,21 +11,6 @@ System Prompt Interface: Three-view toggle interface (Inject, Current Prompt, De
 Theme Preferences: Dark mode toggle implemented across all pages with automatic system preference detection and localStorage persistence.
 
 ## Recent Changes (August 2025)
-### Unified Prompt System with Full Image Integration - COMPLETED ✅
-**Issue**: Needed to implement a unified prompt system that always appends dashboard "Current Prompt" as system message, includes injectText with debugPromptId, and sends all 16 images (4×target + 4×3 similars).
-
-**Solution Implemented**:
-1. **New Unified Prompt Module**: Created `server/services/unified-prompt.ts` with `buildUnifiedMessages()` function and debug logger
-2. **Image Integration**: System now sends original + depth + edge + gradient images for target and each similar chart (16 total images)
-3. **Debug Logging**: Added `logUnifiedPrompt()` function with `DEBUG_UNIFIED_PROMPT=1` environment variable control
-4. **Uploads Serving**: Added `/uploads` static serving route in `server/index.ts` for chart image access
-5. **Message Structure**: Implemented proper OpenAI message format with system prompt from dashboard and user content with injectText
-6. **Chat Analysis Update**: Updated `chat-analysis.ts` to use new unified system instead of old buildUnifiedPrompt
-7. **Multi-Chart Analysis**: Updated `openai.ts` analyzeMultipleChartsWithAllMaps to use new system
-8. **Single Chart Analysis**: Updated `analyze.ts` analyzeSingleChartWithVision to use new system
-9. **File Management**: Uploads saved to `server/uploads/` directory and served via `/uploads/` route
-
-**Result**: ✅ **FULLY FUNCTIONAL** - System now properly sends all 16 images to OpenAI with dashboard Current Prompt as system message and injectText containing debugPromptId. Debug logging shows System.len, System.head, Images total, and debugPromptId detection. Original chart images accessible via `/uploads/<filename>` URLs.
 ### Chart Similarity Search Pipeline - COMPLETED ✅
 **Issue**: The `/chat/analyze` endpoint's `similarCharts` was always returning empty arrays despite having 119 charts in database.
 
