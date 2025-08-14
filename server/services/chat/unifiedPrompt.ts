@@ -13,8 +13,26 @@ export type SimilarItem = {
 
 function toAbs(url?: string) {
   if (!url) return undefined;
-  if (/^https?:\/\//i.test(url)) return url;
-  const base = process.env.PUBLIC_ASSETS_BASE || '';
+  
+  // Don't modify data URLs or absolute URLs
+  if (/^https?:\/\//i.test(url) || /^data:/i.test(url)) {
+    return url;
+  }
+  
+  // Generate proper absolute URL for Replit environment
+  let base = process.env.PUBLIC_ASSETS_BASE;
+  if (!base) {
+    // Construct Replit domain URL
+    const replSlug = process.env.REPL_SLUG;
+    const replOwner = process.env.REPL_OWNER;
+    if (replSlug && replOwner) {
+      base = `https://${replSlug}.${replOwner}.repl.co`;
+    } else {
+      // Fallback to localhost for development
+      base = `http://localhost:${process.env.PORT || 5000}`;
+    }
+  }
+  
   const clean = url.startsWith('/') ? url : `/${url}`;
   return `${base}${clean}`;
 }
