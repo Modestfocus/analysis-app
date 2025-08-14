@@ -47,7 +47,8 @@ export async function analyzeMultipleChartsWithAllMaps(
     similarity: number;
   }> = [],
   customSystemPrompt?: string,
-  req?: any
+  req?: any,
+  targetMetadata?: { timeframe?: string; instrument?: string }
 ): Promise<ChartPrediction> {
   try {
     console.log(`🔍 Starting multi-chart analysis for ${charts.length} charts`);
@@ -60,13 +61,14 @@ export async function analyzeMultipleChartsWithAllMaps(
     const { toAbsoluteUrl } = await import('./visual-maps');
     
     // Build target chart data (use first chart as primary target)
+    // Prefer provided metadata over chart metadata
     const target: ChartMaps = {
       originalPath: toAbsoluteUrl(`/uploads/${charts[0].metadata.filename}`, req) || charts[0].metadata.filename,
       depthMapPath: charts[0].depth ? `/temp/depth_${charts[0].metadata.id}.png` : null,
       edgeMapPath: charts[0].edge ? `/temp/edge_${charts[0].metadata.id}.png` : null,
       gradientMapPath: charts[0].gradient ? `/temp/gradient_${charts[0].metadata.id}.png` : null,
-      instrument: charts[0].metadata.instrument,
-      timeframe: charts[0].metadata.timeframe,
+      instrument: targetMetadata?.instrument || charts[0].metadata.instrument,
+      timeframe: targetMetadata?.timeframe || charts[0].metadata.timeframe,
       similarity: null,
       id: charts[0].metadata.id,
       filename: charts[0].metadata.originalName,
@@ -88,9 +90,9 @@ export async function analyzeMultipleChartsWithAllMaps(
     // Build unified prompt
     const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
     
-    // Extract target metadata for logging
-    const targetTimeframe = target?.timeframe ?? "UNKNOWN";
-    const targetInstrument = target?.instrument ?? "UNKNOWN";
+    // Extract target metadata for logging (show real values instead of UNKNOWN)
+    const targetTimeframe = target?.timeframe || "UNKNOWN";
+    const targetInstrument = target?.instrument || "UNKNOWN";
     
     console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
 

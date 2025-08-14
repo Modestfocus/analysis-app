@@ -32,11 +32,13 @@ export interface ChartAnalysisResult {
 export async function analyzeCharts({
   imageUrls,
   systemPrompt,
-  options = {}
+  options = {},
+  targetMetadata = {}
 }: {
   imageUrls: string[];
   systemPrompt?: string;
   options?: AnalyzeChartsOptions;
+  targetMetadata?: { timeframe?: string; instrument?: string };
 }, req?: any): Promise<ChartAnalysisResult> {
   const {
     stream = false,
@@ -145,12 +147,13 @@ export async function analyzeCharts({
 
     // Use the existing analysis pipeline for multiple charts
     if (chartData.length > 1) {
-      // Multi-chart analysis
+      // Multi-chart analysis  
       const result = await analyzeMultipleChartsWithAllMaps(
         chartData,
         similarCharts,
         systemPrompt,
-        req
+        req,
+        targetMetadata
       );
       
       // Format the result for chat display

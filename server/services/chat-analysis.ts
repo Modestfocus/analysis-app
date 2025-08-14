@@ -23,6 +23,7 @@ const MODEL = process.env.VISION_MODEL ?? 'gpt-4o';
 interface ChatAnalysisRequest {
   content: any[]; // Array of text and image_url parts
   systemPrompt: string;
+  targetMetadata?: { timeframe?: string; instrument?: string };
 }
 
 interface ChatAnalysisResponse {
@@ -349,14 +350,15 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
   const { toAbsoluteUrl } = await import('./visual-maps');
   
   // Build target chart data from the first processed image
+  // Prefer provided metadata over default values
   const firstImageData = processedData[0];
   const target: ChartMaps = {
     originalPath: toAbsoluteUrl(`/uploads/temp_chat_${Math.floor(Date.now() / 1000)}_0.png`, req) || 'temp_chart.png',
     depthMapPath: firstImageData.depth ? `/temp/depth_chat.png` : null,
     edgeMapPath: firstImageData.edge ? `/temp/edge_chat.png` : null,
     gradientMapPath: firstImageData.gradient ? `/temp/gradient_chat.png` : null,
-    instrument: "UPLOADED", // Mark as uploaded chart
-    timeframe: "LIVE", // Mark as live analysis
+    instrument: request.targetMetadata?.instrument || "UPLOADED", // Use provided or default
+    timeframe: request.targetMetadata?.timeframe || "LIVE", // Use provided or default
     similarity: null,
     id: Date.now(),
     filename: 'uploaded_chart.png',
@@ -378,9 +380,9 @@ export async function analyzeChatCharts(request: ChatAnalysisRequest, req?: any)
   // Build unified prompt
   const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
   
-  // Extract target metadata for logging
-  const targetTimeframe = target?.timeframe ?? "UNKNOWN";
-  const targetInstrument = target?.instrument ?? "UNKNOWN";
+  // Extract target metadata for logging (show real values instead of UNKNOWN)
+  const targetTimeframe = target?.timeframe || "UNKNOWN";
+  const targetInstrument = target?.instrument || "UNKNOWN";
   
   console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
 
