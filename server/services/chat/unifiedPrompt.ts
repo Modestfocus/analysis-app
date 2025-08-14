@@ -28,10 +28,20 @@ function filePathToDataUrl(filePath?: string): string | undefined {
   }
   
   try {
-    // Convert file path to absolute path
-    const absolutePath = filePath.startsWith('/') 
-      ? path.join(process.cwd(), 'server', filePath.slice(1))  // Remove leading slash for server directory
-      : path.join(process.cwd(), 'server', filePath);
+    // Convert file path to absolute path - uploads are in server folder
+    let absolutePath: string;
+    if (filePath.startsWith('/uploads/')) {
+      // File in uploads folder
+      absolutePath = path.join(process.cwd(), 'server', filePath.slice(1));
+    } else if (filePath.startsWith('/')) {
+      // Other files (depth maps, etc.) might be in public folder
+      absolutePath = path.join(process.cwd(), filePath.slice(1));
+    } else {
+      // Relative path
+      absolutePath = path.join(process.cwd(), 'server', filePath);
+    }
+    
+    console.log(`[IMG] Converting to data URL: ${filePath} -> ${absolutePath}`);
     
     // Check if file exists
     if (!fs.existsSync(absolutePath)) {
@@ -50,7 +60,10 @@ function filePathToDataUrl(filePath?: string): string | undefined {
     else if (ext === '.gif') mimeType = 'image/gif';
     else if (ext === '.webp') mimeType = 'image/webp';
     
-    return `data:${mimeType};base64,${base64}`;
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    console.log(`[IMG] ✅ Generated data URL - MIME: ${mimeType}, Size: ${buffer.length} bytes, Base64 length: ${base64.length}`);
+    
+    return dataUrl;
   } catch (error) {
     console.error(`❌ Error converting file to data URL: ${filePath}`, error);
     return undefined;

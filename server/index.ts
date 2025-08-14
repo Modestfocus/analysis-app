@@ -46,12 +46,22 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Express error middleware for unhandled errors
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error("[EXPRESS] unhandled error:", {
+      name: err?.name,
+      message: err?.message,
+      stack: err?.stack?.slice(0, 2000)
+    });
+    
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    res.status(status).json({ 
+      success: false,
+      error: message,
+      where: "express_middleware"
+    });
   });
 
   // importantly only setup vite in development and after

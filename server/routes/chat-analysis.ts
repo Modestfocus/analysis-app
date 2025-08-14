@@ -9,8 +9,23 @@ import { analyzeChatCharts } from '../services/chat-analysis';
  * POST /api/chat/analyze - Analyze charts in chat with same pipeline as Quick Chart Analysis
  */
 export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => {
+  const t0 = Date.now();
   try {
+    // Environment validation
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY missing");
+    }
+
     const { content, systemPrompt, conversationId, isFollowUp, enableFullAnalysis, injectText } = req.body;
+    
+    console.log("[CHAT] /api/chat/analyze received", {
+      conversationId,
+      hasContent: !!content,
+      contentTypes: Array.isArray(content) ? content.map(c => c.type) : typeof content,
+      injectLen: injectText ? injectText.length : 0,
+      isFollowUp: !!isFollowUp,
+      enableFullAnalysis: !!enableFullAnalysis
+    });
 
     // Validate request
     if (!content || !Array.isArray(content)) {
@@ -123,11 +138,22 @@ export const analyzeChatChartsEndpoint = async (req: Request, res: Response) => 
       ...result
     });
 
-  } catch (error) {
-    console.error('❌ Chat analysis endpoint error:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Analysis failed',
-      details: error instanceof Error ? error.stack : undefined
+  } catch (err: any) {
+    console.error("[CHAT] analyze failed:", {
+      name: err?.name,
+      message: err?.message,
+      stack: err?.stack?.slice(0, 2000), // trim
+      status: err?.status,
+      code: err?.code,
+      type: err?.type
     });
+    
+    return res.status(500).json({
+      success: false,
+      error: err?.message || "Analyze failed",
+      where: "analyze",
+    });
+  } finally {
+    console.log(`[CHAT] analyze done in ${Date.now() - t0}ms`);
   }
 };
