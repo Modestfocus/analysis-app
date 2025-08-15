@@ -591,85 +591,67 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
               <div className="flex justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
               </div>
-            ) : (
-              (messages as ChatMessage[])?.map((msg: ChatMessage) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg p-4 ${
-                      msg.role === 'user'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center mb-2">
-                      {msg.role === 'user' ? (
-                        <User className="w-4 h-4 mr-2" />
-                      ) : (
-                        <Bot className="w-4 h-4 mr-2" />
-                      )}
-                      <span className="text-xs font-medium">
-                        {msg.role === 'user' ? 'You' : 'GPT-4o'}
-                      </span>
-                      <span className="text-xs opacity-60 ml-2">
-                        {new Date(msg.createdAt).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    
-                    {/* Display uploaded images */}
-                    {msg.imageUrls && msg.imageUrls.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2 mb-3">
-                        {msg.imageUrls.map((url, index) => (
-                          <Dialog key={index}>
-                            <DialogTrigger>
-                              <img
-                                src={url}
-                                alt={`Uploaded chart ${index + 1}`}
-                                className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                              />
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                              <DialogTitle>Chart Image {index + 1}</DialogTitle>
-                              <DialogDescription>
-                                Full view of uploaded chart image
-                              </DialogDescription>
-                              <div className="pb-4">
-                                <img
-                                  src={url}
-                                  alt={`Full chart ${index + 1}`}
-                                  className="w-full h-auto rounded-lg"
-                                />
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        ))}
-                      </div>
-                    )}
-                    
-{msg.role === 'assistant' ? (() => {
-  // Try to grab the AI output—tweak these fallbacks if your backend puts it elsewhere
-  const raw =
-    (msg as any).aiResponse ||                        // if you saved result here
-    (msg.metadata && (msg.metadata.result || msg.metadata.analysis)) ||
-    msg.content;
+            ) : 
+              {(messages as ChatMessage[])?.map((msg: ChatMessage) => (
+  <div
+    key={msg.id}
+    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+  >
+    <div
+      className={`max-w-[80%] rounded-lg p-4 ${
+        msg.role === 'user'
+          ? 'bg-purple-600 text-white'
+          : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
+      }`}
+    >
+      <div className="flex items-center mb-2">
+        {msg.role === 'user' ? (
+          <User className="w-4 h-4 mr-2" />
+        ) : (
+          <Bot className="w-4 h-4 mr-2" />
+        )}
+        <span className="text-xs font-medium">
+          {msg.role === 'user' ? 'You' : 'GPT-4o'}
+        </span>
+        <span className="text-xs opacity-60 ml-2">
+          {new Date(msg.createdAt).toLocaleTimeString()}
+        </span>
+      </div>
 
-  const parsed = safeParseAI(raw);
-  const normalized = parsed ? normalizeAnalysis(parsed) : null;
+      {/* thumbnails for any images that were sent */}
+      {msg.imageUrls && msg.imageUrls.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {msg.imageUrls.map((url, index) => (
+            <Dialog key={index}>
+              <DialogTrigger>
+                <img
+                  src={url}
+                  alt={`Uploaded chart ${index + 1}`}
+                  className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80"
+                />
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogTitle>Chart Image {index + 1}</DialogTitle>
+                <DialogDescription>Full view of uploaded chart image</DialogDescription>
+                <div className="pb-4">
+                  <img src={url} alt={`Full chart ${index + 1}`} className="w-full h-auto rounded-lg" />
+                </div>
+              </DialogContent>
+            </Dialog>
+          ))}
+        </div>
+      )}
 
-  return normalized ? (
-    <AnalysisCard data={normalized} />
-  ) : (
-    <pre className="whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs">
-      {typeof raw === "string" ? raw : JSON.stringify(raw, null, 2)}
-    </pre>
-  );
-})() : (
-  // Fallback for user messages: keep showing what the user typed
-  <div className="whitespace-pre-wrap">{msg.content}</div>
-)}
-                    
+      {/* NEW: show card for assistant, plain text for user */}
+      {msg.role === 'assistant' ? (
+        <AnalysisCard data={normalizeAnalysis(safeParseAI(msg.content))} />
+      ) : (
+        <div className="whitespace-pre-wrap">{msg.content}</div>
+      )}
+    </div>
+  </div>
+))}
+              
             <div ref={messagesEndRef} />
           </>
         )}
