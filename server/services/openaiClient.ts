@@ -5,7 +5,7 @@ import { env } from "../config/env";
 /** Normalize possibly-relative image URLs using the incoming request host. */
 export function toAbsoluteFromReq(req: any, url: string): string | null {
   if (!url || typeof url !== "string") return null;
-  if (/^https?:\/\//i.test(url)) return url; // already absolute
+  if (/^https?:\/\/\/?/i.test(url)) return url; // already absolute
   if (url.startsWith("/")) {
     const proto = (req.headers["x-forwarded-proto"] as string) || "https";
     const host = req.headers.host as string;
@@ -15,7 +15,7 @@ export function toAbsoluteFromReq(req: any, url: string): string | null {
 }
 
 export type AnalyzeJson = {
-  sessionPrediction: string; // e.g. "bullish breakout" (free text)
+  sessionPrediction: string; // e.g. "bullish breakout"
   directionBias: string; // "long" | "short" | "neutral"
   confidence: number; // 0..1
   reasoning: string;
@@ -29,17 +29,17 @@ export async function callOpenAIAnalyze(opts: {
   user: string;
   images: string[]; // absolute https URLs; empty is ok
 }): Promise<AnalyzeJson & { rawText: string }> {
-  // Build user content: text + image attachments
-  const userContent: any[] = [{ type: "text", text: opts.user }];
+  // Build user content: text + image attachments (Responses API parts)
+  const userContent: any[] = [{ type: "input_text", text: opts.user }];
   for (const u of opts.images)
     userContent.push({ type: "input_image", image_url: u });
 
   const resp = await client.responses.create({
-    model: "gpt-4o", // good quality/cost balance; supports images + JSON
-    temperature: 0,
-    response_format: { type: "json_object" },
+    model: "gpt-4o", // use 4o per your preference
+    temperature: 0, // maximum consistency
+    text: { format: "json" }, // new Responses API JSON setting
     input: [
-      { role: "system", content: [{ type: "text", text: opts.system }] },
+      { role: "system", content: [{ type: "input_text", text: opts.system }] },
       { role: "user", content: userContent },
     ],
   });
