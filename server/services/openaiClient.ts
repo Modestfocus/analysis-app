@@ -31,19 +31,30 @@ export async function callOpenAIAnalyze(opts: {
 }): Promise<AnalyzeJson & { rawText: string }> {
   // Build user content: text + image attachments
   const userContent: any[] = [{ type: "input_text", text: opts.user }];
-  for (const u of opts.images) userContent.push({ type: "input_image", image_url: u });
+  for (const u of opts.images)
+    userContent.push({ type: "input_image", image_url: u });
 
-  const resp = await client.responses.create({
-    model: "gpt-4o",
-    temperature: 0,
-    input: [
-      {
-        role: "system",
-        content: [{ type: "input_text", text: opts.system }], // <-- input_text here too
-      },
-      { role: "user", content: userContent },
-    ],
-  });
+  let resp;
+  try {
+    resp = await client.responses.create({
+      model: "gpt-4o",
+      temperature: 0,
+      input: [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: opts.system }],
+        },
+        { role: "user", content: userContent },
+      ],
+    });
+  } catch (e: any) {
+    // 🔎 Log structured error details to your Replit Console
+    console.error("[openai]", e.status || "", e.code || "", e.message || "");
+    if (e.response?.data) {
+      console.error("[openai] DETAILS:", JSON.stringify(e.response.data));
+    }
+    throw e; // keep bubbling so routes.ts returns a 5xx with requestId
+  }
 
   const rawText = resp.output_text ?? "";
   // Be defensive: try to parse JSON, otherwise wrap it.
@@ -51,7 +62,12 @@ export async function callOpenAIAnalyze(opts: {
   try {
     parsed = JSON.parse(rawText);
   } catch {
-    parsed = { sessionPrediction: "", directionBias: "neutral", confidence: 0, reasoning: rawText };
+    parsed = {
+      sessionPrediction: "",
+      directionBias: "neutral",
+      confidence: 0,
+      reasoning: rawText,
+    };
   }
 
   // Fill any missing fields with safe defaults
