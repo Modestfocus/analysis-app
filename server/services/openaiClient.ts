@@ -29,17 +29,19 @@ export async function callOpenAIAnalyze(opts: {
   user: string;
   images: string[]; // absolute https URLs; empty is ok
 }): Promise<AnalyzeJson & { rawText: string }> {
-  // Build user content: text + image attachments (Responses API parts)
+  // Build user content: text + image attachments
   const userContent: any[] = [{ type: "input_text", text: opts.user }];
-  for (const u of opts.images)
-    userContent.push({ type: "input_image", image_url: u });
+  for (const u of opts.images) userContent.push({ type: "input_image", image_url: u });
 
   const resp = await client.responses.create({
-    model: "gpt-4o", // use 4o per your preference
-    temperature: 0, // maximum consistency
-    text: { format: "json" }, // new Responses API JSON setting
+    model: "gpt-4o",
+    temperature: 0,
+    text: { format: "json_object" },  // <-- correct way in Responses API
     input: [
-      { role: "system", content: [{ type: "input_text", text: opts.system }] },
+      {
+        role: "system",
+        content: [{ type: "input_text", text: opts.system }], // <-- input_text here too
+      },
       { role: "user", content: userContent },
     ],
   });
@@ -50,12 +52,7 @@ export async function callOpenAIAnalyze(opts: {
   try {
     parsed = JSON.parse(rawText);
   } catch {
-    parsed = {
-      sessionPrediction: "",
-      directionBias: "neutral",
-      confidence: 0,
-      reasoning: rawText,
-    };
+    parsed = { sessionPrediction: "", directionBias: "neutral", confidence: 0, reasoning: rawText };
   }
 
   // Fill any missing fields with safe defaults
