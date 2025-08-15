@@ -15,9 +15,9 @@ export function toAbsoluteFromReq(req: any, url: string): string | null {
 }
 
 export type AnalyzeJson = {
-  sessionPrediction: string;           // e.g. "bullish breakout" (free text)
-  directionBias: string;               // "long" | "short" | "neutral"
-  confidence: number;                  // 0..1
+  sessionPrediction: string; // e.g. "bullish breakout" (free text)
+  directionBias: string; // "long" | "short" | "neutral"
+  confidence: number; // 0..1
   reasoning: string;
 };
 
@@ -31,15 +31,16 @@ export async function callOpenAIAnalyze(opts: {
 }): Promise<AnalyzeJson & { rawText: string }> {
   // Build user content: text + image attachments
   const userContent: any[] = [{ type: "text", text: opts.user }];
-  for (const u of opts.images) userContent.push({ type: "input_image", image_url: u });
+  for (const u of opts.images)
+    userContent.push({ type: "input_image", image_url: u });
 
   const resp = await client.responses.create({
-    model: "gpt-4o-mini",        // good quality/cost balance; supports images + JSON
-    temperature: 0.2,
+    model: "gpt-4o", // good quality/cost balance; supports images + JSON
+    temperature: 0,
     response_format: { type: "json_object" },
     input: [
       { role: "system", content: [{ type: "text", text: opts.system }] },
-      { role: "user", content: userContent }
+      { role: "user", content: userContent },
     ],
   });
 
@@ -49,7 +50,12 @@ export async function callOpenAIAnalyze(opts: {
   try {
     parsed = JSON.parse(rawText);
   } catch {
-    parsed = { sessionPrediction: "", directionBias: "neutral", confidence: 0, reasoning: rawText };
+    parsed = {
+      sessionPrediction: "",
+      directionBias: "neutral",
+      confidence: 0,
+      reasoning: rawText,
+    };
   }
 
   // Fill any missing fields with safe defaults
