@@ -15,6 +15,11 @@ import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyze
 import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, insertNoteSchema, type Chart, type Document } from "@shared/schema";
 import debugRoutes from './debug-routes';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { env, isPromptDebugOn } from "./config/env";
+import { logger } from "./utils/logger";
+import { buildUnifiedPrompt } from "./services/unifiedPrompt";
+import { v4 as uuidv4 } from "uuid";
+import { log, logErr } from "./utils/logger";
 
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
@@ -213,6 +218,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register debug routes
   app.use('/debug', debugRoutes);
+  app.post("/api/analyze", async (req, res) => {
+  const requestId = uuidv4();
+
+  try {
+    const { currentPrompt, injectText, target, similar = [], bundleContext } = req.body || {};
+
+    // validate shape
+    if (!currentPrompt || !target?.original || !target?.depth || !target?.edge || !target?.gradient) {
+      return res.status(422).json({
+        error: "Invalid payload: currentPrompt and target {original,depth,edge,gradient} are required",
+        requestId
+      });
+    }
+    if (!Array.isArray(similar) || similar.length > 3) {
+      return res.status(422).json({
+        error: "Invalid payload: similar must be an array with up to 3 items",
+        requestId
+      });
+    }
+    for (const s of similar) {
+      if (!s?.original || !s?.depth || !s?.edge || !s?.gradient) {
+        return res.status(422).json({
+          error: "Each similar requires original, depth, edge, gradient",
+          requestId
+        });
+      }
+    }
+
+    const built = buildUnifiedPrompt({
+      currentPrompt,
+      injectText,
+      target,
+      similar,
+      bundleContext,
+      requestId
+    });
+
+    log("analyze: prompt built", { tag: "analyze", requestId });
+
+    // TODO: call your model here using built.system & built.user + image inputs
+    // For now, return a stub so the UI flow proceeds.
+    return res.status(200).json({
+      ok: true,
+      requestId,
+      promptMeta: built.attachmentsMeta,
+      debugPromptId: built.debugPromptId,
+      note: "Stubbed model call; ready to wire OpenAI next."
+    });
+  } catch (err) {
+    logErr(err, { tag: "analyze", requestId });
+    return res.status(500).json({ error: "Internal error during analysis", requestId });
+  }
+});
   
   // Smoke test route for RAG validation
   const { smokeTestRAG } = await import('./routes/smoke-test');
