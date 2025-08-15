@@ -20,6 +20,7 @@ import { logger } from "./utils/logger";
 import { buildUnifiedPrompt } from "./services/unifiedPrompt";
 import { v4 as uuidv4 } from "uuid";
 import { log, logErr } from "./utils/logger";
+import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
 
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
@@ -258,14 +259,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     log("analyze: prompt built", { tag: "analyze", requestId });
 
     // TODO: call your model here using built.system & built.user + image inputs
-    // For now, return a stub so the UI flow proceeds.
-    return res.status(200).json({
-      ok: true,
-      requestId,
-      promptMeta: built.attachmentsMeta,
-      debugPromptId: built.debugPromptId,
-      note: "Stubbed model call; ready to wire OpenAI next."
+       const built = buildUnifiedPrompt({
+      currentPrompt,
+      injectText,
+      target,
+      similar,
+      bundleContext,
+      requestId
     });
+
+    log("analyze: prompt built", { tag: "analyze", requestId });
+
+    // Collect all images (target + similars), make absolute for OpenAI
+    const all = [
+      target.original, target.depth, target.edge, target.gradient,
+      ...similar.flatMap((s: any) => [s.original, s.depth, s.edge, s.gradient])
+    ];
+    const imageUrls = all
+      .map((u: string) => toAbsoluteFromReq(req, u))
+      .filter(Boolean) as string[];
+
+    try {
+      const result = await callOpenAIAnalyze({
+        system: built.system,
+        user: built.user,
+        images: imageUrls,
+      });
+
+      return res.status(200).json({
+        ok: true,
+        requestId,
+        promptMeta: built.attachmentsMeta,
+        debugPromptId: built.debugPromptId,
+        result, // { sessionPrediction, directionBias, confidence, reasoning, rawText }
+      });
+    } catch (err) {
+      logErr(err, { tag: "openai", requestId });
+      return res.status(502).json({ error: "OpenAI call failed", requestId });
+    }
+    
   } catch (err) {
     logErr(err, { tag: "analyze", requestId });
     return res.status(500).json({ error: "Internal error during analysis", requestId });
