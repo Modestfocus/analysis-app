@@ -30,18 +30,18 @@ export async function callOpenAIAnalyze(opts: {
   images: string[]; // absolute https URLs; empty is ok
 }): Promise<AnalyzeJson & { rawText: string }> {
   // Build user content: text + image attachments
-  const userContent: any[] = [{ type: "text", text: opts.user }];
-  for (const u of opts.images) userContent.push({ type: "input_image", image_url: u });
-
+  const userContent: any[] = [{ type: "input_text", text: opts.user }];
+for (const u of opts.images) userContent.push({ type: "input_image", image_url: u });
+  
   const resp = await client.responses.create({
-    model: "gpt-4o-mini",        // good quality/cost balance; supports images + JSON
-    temperature: 0.2,
-    response_format: { type: "json_object" },
-    input: [
-      { role: "system", content: [{ type: "text", text: opts.system }] },
-      { role: "user", content: userContent }
-    ],
-  });
+  model: "gpt-4o",
+  temperature: 0,                   // you asked for max consistency
+  text: { format: "json_object" },  // <-- moved here (was response_format)
+  input: [
+    { role: "system", content: [{ type: "input_text", text: opts.system }] },
+    { role: "user",   content: userContent }
+  ],
+});
 
   const rawText = resp.output_text ?? "";
   // Be defensive: try to parse JSON, otherwise wrap it.
