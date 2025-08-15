@@ -247,16 +247,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
 
-    const built = buildUnifiedPrompt({
-      currentPrompt,
-      injectText,
-      target,
-      similar,
-      bundleContext,
-      requestId
-    });
-
-    log("analyze: prompt built", { tag: "analyze", requestId });
 
     // TODO: call your model here using built.system & built.user + image inputs
        const built = buildUnifiedPrompt({
