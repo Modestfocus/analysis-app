@@ -21,6 +21,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { toAbsoluteUrl } from "@/lib/utils";
 
+import AnalysisCard from "./AnalysisCard";
+import { normalizeAnalysis } from "../utils/normalizeAnalysis";
+// Safely turn whatever the assistant returned into an object
+function safeParseAI(raw: any) {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(String(raw));
+  } catch {
+    return null;
+  }
+}
+
 // Utility function to generate UUID
 function generateId(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -635,107 +648,28 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                       </div>
                     )}
                     
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
+{msg.role === 'assistant' ? (() => {
+  // Try to grab the AI output—tweak these fallbacks if your backend puts it elsewhere
+  const raw =
+    (msg as any).aiResponse ||                        // if you saved result here
+    (msg.metadata && (msg.metadata.result || msg.metadata.analysis)) ||
+    msg.content;
+
+  const parsed = safeParseAI(raw);
+  const normalized = parsed ? normalizeAnalysis(parsed) : null;
+
+  return normalized ? (
+    <AnalysisCard data={normalized} />
+  ) : (
+    <pre className="whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs">
+      {typeof raw === "string" ? raw : JSON.stringify(raw, null, 2)}
+    </pre>
+  );
+})() : (
+  // Fallback for user messages: keep showing what the user typed
+  <div className="whitespace-pre-wrap">{msg.content}</div>
+)}
                     
-                    {/* Display analysis metadata */}
-                    {msg.metadata && (
-                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {msg.metadata.confidence && (
-                            <Badge variant="secondary">
-                              Confidence: {(typeof msg.metadata.confidence === 'number' ? (msg.metadata.confidence * 100) : msg.metadata.confidence).toString().replace('%', '')}%
-                            </Badge>
-                          )}
-                          {msg.metadata.similarCharts && (
-                            <Badge variant="outline">
-                              {msg.metadata.similarCharts.length} Similar Charts
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        {/* Similar Historical Patterns */}
-                        {msg.metadata.similarCharts && msg.metadata.similarCharts.length > 0 && (
-                          <div className="mt-3 space-y-3">
-                            <div className="text-sm font-medium flex items-center gap-2">
-                              <Activity className="h-4 w-4 text-purple-600" />
-                              Similar Historical Patterns ({msg.metadata.similarCharts.length})
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              {msg.metadata.similarCharts.slice(0, 3).map((s: any, i: number) => {
-                                const c = s.chart;
-                                const similarity = (s.similarity * 100).toFixed(1);
-                                const originalChartPath = `/uploads/${c.filename}`;
-                                
-                                return (
-                                  <div key={c.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                    {/* Chart thumbnail - clickable to open original */}
-                                    <div className="cursor-pointer" onClick={() => window.open(originalChartPath, '_blank')}>
-                                      <div className="relative mb-2">
-                                        <img 
-                                          src={originalChartPath} 
-                                          alt={`${c.instrument} ${c.timeframe} chart`}
-                                          className="w-full h-20 object-cover rounded border"
-                                          onError={(e) => {
-                                            e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="60"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236b7280">Chart</text></svg>';
-                                          }}
-                                        />
-                                        <div className="absolute top-1 right-1">
-                                          <Badge variant="secondary" className="text-xs bg-white/90 text-gray-800">
-                                            {similarity}%
-                                          </Badge>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Chart info */}
-                                    <div className="space-y-1 mb-2">
-                                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                        {c.instrument ?? "UNKNOWN"}
-                                      </div>
-                                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                                        {c.timeframe ?? "Unknown timeframe"}
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Action links */}
-                                    <div className="flex gap-2">
-                                      {c.depthMapPath && (
-                                        <button 
-                                          onClick={() => window.open(toAbsoluteUrl(c.depthMapPath), '_blank')}
-                                          className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                                        >
-                                          Depth
-                                        </button>
-                                      )}
-                                      {c.edgeMapPath && (
-                                        <button 
-                                          onClick={() => window.open(toAbsoluteUrl(c.edgeMapPath), '_blank')}
-                                          className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
-                                        >
-                                          Edge
-                                        </button>
-                                      )}
-                                      {c.gradientMapPath && (
-                                        <button 
-                                          onClick={() => window.open(toAbsoluteUrl(c.gradientMapPath), '_blank')}
-                                          className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
-                                        >
-                                          Gradient
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
             <div ref={messagesEndRef} />
           </>
         )}
