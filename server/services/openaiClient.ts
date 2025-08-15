@@ -36,6 +36,26 @@ export async function callOpenAIAnalyze(opts: {
 
   let resp;
   try {
+    // 📋 Debug log unified prompt before sending to OpenAI
+    console.log(
+      "[DEBUG] Full unified prompt payload:",
+      JSON.stringify(
+        {
+          model: "gpt-4o",
+          temperature: 0,
+          input: [
+            {
+              role: "system",
+              content: [{ type: "input_text", text: opts.system }],
+            },
+            { role: "user", content: userContent },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+
     resp = await client.responses.create({
       model: "gpt-4o",
       temperature: 0,
