@@ -36,7 +36,6 @@ export async function callOpenAIAnalyze(opts: {
   const resp = await client.responses.create({
     model: "gpt-4o",
     temperature: 0,
-    text: { format: "json_object" },  // <-- correct way in Responses API
     input: [
       {
         role: "system",
