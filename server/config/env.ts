@@ -7,7 +7,7 @@ type Env = {
   MONGODB_URI?: string;
   JWT_SECRET?: string;
   DEBUG_UNIFIED_PROMPT?: string; // "1" to console.log the built prompt
-  DEBUG_WRITE_PROMPT?: string;   // "1" to also write logs/prompt-<id>.json
+  DEBUG_WRITE_PROMPT?: string; // "1" to also write logs/prompt-<id>.json
 };
 
 const REQUIRED: (keyof Env)[] = ["OPENAI_API_KEY"];
@@ -23,6 +23,5 @@ function load(): Env {
 export const env = load();
 
 export const isPromptDebugOn =
-  (env.DEBUG_UNIFIED_PROMPT ?? "") === "1" || (env.DEBUG_WRITE_PROMPT ?? "") === "1";
-
-feat(config): add env.ts with minimal validator
+  (env.DEBUG_UNIFIED_PROMPT ?? "") === "1" ||
+  (env.DEBUG_WRITE_PROMPT ?? "") === "1";
