@@ -584,64 +584,66 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
           </div>
         )}
 
-      {/* Messages */}
-{activeConversationId && (
-  <>
-    {messagesLoading ? (
-      <div className="flex justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
-      </div>
-    ) : (
-      Array.isArray(messages) &&
-      (messages as ChatMessage[]).map((msg: ChatMessage) => (
-        <div
-          key={msg.id}
-          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-        >
-          <div
-            className={`max-w-[80%] rounded-lg p-4 ${
-              msg.role === 'user'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
-            }`}
-          >
-            <div className="flex items-center mb-2">
-              {msg.role === 'user' ? (
-                <User className="w-4 h-4 mr-2" />
-              ) : (
-                <Bot className="w-4 h-4 mr-2" />
-              )}
-              <span className="text-xs font-medium">
-                {msg.role === 'user' ? 'You' : 'GPT-4o'}
-              </span>
-              <span className="text-xs opacity-60 ml-2">
-                {new Date(msg.createdAt).toLocaleTimeString()}
-              </span>
-            </div>
-
-            {/* Render assistant as a pretty card; users as plain text */}
-            {msg.role === 'assistant'
-              ? (() => {
-                  const parsed =
-                    safeParseAI((msg as any).aiResponse?.result ?? msg.content);
-                  if (!parsed) {
-                    return (
-                      <pre className="text-xs whitespace-pre-wrap">
-                        {msg.content}
-                      </pre>
-                    );
-                  }
-                  const data = normalizeAnalysis(parsed);
-                  return <AnalysisCard {...data} />;
-                })()
-              : <div className="whitespace-pre-wrap">{msg.content}</div>}
-          </div>
+      {/* Messages Area */}
+<div className="flex-1 overflow-y-auto p-4 space-y-4">
+  {activeConversationId && (
+    <>
+      {messagesLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
         </div>
-      ))
-    )}
-    <div ref={messagesEndRef} />
-  </>
-)}
+      ) : (
+        Array.isArray(messages) &&
+        (messages as ChatMessage[]).map((msg: ChatMessage) => (
+          <div
+            key={msg.id}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-lg p-4 ${
+                msg.role === 'user'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
+              }`}
+            >
+              <div className="flex items-center mb-2">
+                {msg.role === 'user' ? (
+                  <User className="w-4 h-4 mr-2" />
+                ) : (
+                  <Bot className="w-4 h-4 mr-2" />
+                )}
+                <span className="text-xs font-medium">
+                  {msg.role === 'user' ? 'You' : 'GPT-4o'}
+                </span>
+                <span className="text-xs opacity-60 ml-2">
+                  {new Date(msg.createdAt).toLocaleTimeString()}
+                </span>
+              </div>
+
+              {/* Assistant -> pretty card; User -> plain text */}
+              {msg.role === 'assistant'
+                ? (() => {
+                    const parsed =
+                      safeParseAI((msg as any).aiResponse?.result ?? msg.content);
+                    if (!parsed) {
+                      return (
+                        <pre className="text-xs whitespace-pre-wrap">
+                          {msg.content}
+                        </pre>
+                      );
+                    }
+                    const data = normalizeAnalysis(parsed);
+                    return <AnalysisCard {...data} />;
+                  })()
+                : <div className="whitespace-pre-wrap">{msg.content}</div>}
+            </div>
+          </div>
+        ))
+      )}
+      <div ref={messagesEndRef} />
+    </>
+  )}
+</div>
 
 {/* Input Area */}
 <div className="border-t border-gray-200 dark:border-[#3a3a3a] p-4">
@@ -681,8 +683,8 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
         onPaste={handlePaste}
         placeholder={
           uploadedImages.length > 0
-            ? 'Ask a question about your chart...'
-            : 'Type a message or paste an image...'
+            ? "Ask a question about your chart..."
+            : "Type a message or paste an image..."
         }
         className="resize-none min-h-[60px] pr-12"
         disabled={sendMessageMutation.isPending}
@@ -699,10 +701,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
     <Button
       onClick={handleSendMessage}
-      disabled={
-        (!message.trim() && uploadedImages.length === 0) ||
-        sendMessageMutation.isPending
-      }
+      disabled={(!message.trim() && uploadedImages.length === 0) || sendMessageMutation.isPending}
       className="self-end"
     >
       {sendMessageMutation.isPending ? (
@@ -727,5 +726,6 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
   </p>
 </div>
 
-</div> {/* end outer wrapper opened near the top */}
-); // end return
+</div> {/* closes the outer wrapper opened near the top */}
+);       {/* end return */}
+}        {/* end component */}
