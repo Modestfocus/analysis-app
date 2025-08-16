@@ -508,9 +508,10 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
     }
 
     sendMessageMutation.mutate({
-      conversationId: activeConversationId,
-      userMessage: message.trim(),
-    });
+  conversationId: activeConversationId,
+  text: message.trim(),                                  // <-- text the server expects
+  images: uploadedImages.map((img) => img.dataUrl),      // <-- base64 data URLs
+});
   };
 
   // Handle keyboard shortcuts
