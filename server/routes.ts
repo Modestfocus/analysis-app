@@ -22,7 +22,7 @@ import { v4 as uuidv4 } from "uuid";
 import { log, logErr } from "./utils/logger";
 import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
 import { normalizeForWire } from "./services/normalizeForWire";
-import { generateAnalysis } from "./services/unified-analysis";
+import { generateAnalysis } from './services/unified-analysis';
 
 async function callModelWithInputs(body: any): Promise<any> {
   // Pull fields the client sends (support a few aliases)
