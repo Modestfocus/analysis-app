@@ -592,7 +592,8 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                 <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
               </div>
             ) : 
-              {(messages as ChatMessage[])?.map((msg: ChatMessage) => (
+              {Array.isArray(messages) &&
+  (messages as ChatMessage[]).map((msg: ChatMessage) => (
   <div
     key={msg.id}
     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
