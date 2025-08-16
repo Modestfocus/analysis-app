@@ -585,78 +585,58 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
         )}
 
         {/* Messages */}
-        {activeConversationId && (
-          <>
-            {messagesLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
-              </div>
-            ) : 
-              {Array.isArray(messages) &&
-  (messages as ChatMessage[]).map((msg: ChatMessage) => (
-  <div
-    key={msg.id}
-    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-  >
-    <div
-      className={`max-w-[80%] rounded-lg p-4 ${
-        msg.role === 'user'
-          ? 'bg-purple-600 text-white'
-          : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
-      }`}
-    >
-      <div className="flex items-center mb-2">
-        {msg.role === 'user' ? (
-          <User className="w-4 h-4 mr-2" />
-        ) : (
-          <Bot className="w-4 h-4 mr-2" />
-        )}
-        <span className="text-xs font-medium">
-          {msg.role === 'user' ? 'You' : 'GPT-4o'}
-        </span>
-        <span className="text-xs opacity-60 ml-2">
-          {new Date(msg.createdAt).toLocaleTimeString()}
-        </span>
+{activeConversationId && (
+  <>
+    {messagesLoading ? (
+      <div className="flex justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
       </div>
+    ) : (
+      Array.isArray(messages) &&
+      (messages as ChatMessage[]).map((msg: ChatMessage) => (
+        <div
+          key={msg.id}
+          className={`flex ${
+            msg.role === 'user' ? 'justify-end' : 'justify-start'
+          }`}
+        >
+          <div
+            className={`max-w-[80%] rounded-lg p-4 ${
+              msg.role === 'user'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
+            }`}
+          >
+            <div className="flex items-center mb-2">
+              {msg.role === 'user' ? (
+                <User className="w-4 h-4 mr-2" />
+              ) : (
+                <Bot className="w-4 h-4 mr-2" />
+              )}
+              <span className="text-xs font-medium">
+                {msg.role === 'user' ? 'You' : 'GPT-4o'}
+              </span>
+              <span className="text-xs opacity-60 ml-2">
+                {new Date(msg.createdAt).toLocaleTimeString()}
+              </span>
+            </div>
 
-      {/* thumbnails for any images that were sent */}
-      {msg.imageUrls && msg.imageUrls.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          {msg.imageUrls.map((url, index) => (
-            <Dialog key={index}>
-              <DialogTrigger>
-                <img
-                  src={url}
-                  alt={`Uploaded chart ${index + 1}`}
-                  className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                />
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogTitle>Chart Image {index + 1}</DialogTitle>
-                <DialogDescription>Full view of uploaded chart image</DialogDescription>
-                <div className="pb-4">
-                  <img src={url} alt={`Full chart ${index + 1}`} className="w-full h-auto rounded-lg" />
-                </div>
-              </DialogContent>
-            </Dialog>
-          ))}
+            {/* Content */}
+            {msg.role === 'assistant' ? (
+              <AnalysisCard
+                analysis={normalizeAnalysis(safeParseAI(msg.content))}
+                targetVisuals={safeParseAI(msg.metadata?.targetVisuals)}
+                similarCharts={safeParseAI(msg.metadata?.similarCharts)}
+              />
+            ) : (
+              <div className="whitespace-pre-wrap">{msg.content}</div>
+            )}
+          </div>
         </div>
-      )}
-
-      {/* NEW: show card for assistant, plain text for user */}
-      {msg.role === 'assistant' ? (
-        <AnalysisCard data={normalizeAnalysis(safeParseAI(msg.content))} />
-      ) : (
-        <div className="whitespace-pre-wrap">{msg.content}</div>
-      )}
-    </div>
-  </div>
-))}
-              
-            <div ref={messagesEndRef} />
-          </>
-        )}
-      </div>
+      ))
+    )}
+  </>
+)}
 
       {/* Input Area */}
       <div className="border-t border-gray-200 dark:border-[#3a3a3a] p-4">
