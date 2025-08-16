@@ -530,7 +530,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
   };
 
   return (
-    <div
+   <div
   className={`flex flex-col h-full transition-all duration-300 ${
     isExpanded ? 'w-full' : 'flex-1'
   }`}
