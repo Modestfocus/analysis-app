@@ -25,19 +25,24 @@ export function normalizeAnalysis(raw: any): NormalizedAnalysis {
       : 'Neutral');
 
   let confidence: number | null =
-    r.confidence ?? r.confidencePct ?? r.confidence_percent ?? null;
+  r.confidence ?? r.confidencePct ?? r.confidence_percent ?? null;
 
-  if (typeof confidence === 'string') {
-    const n = parseFloat(confidence);
-    confidence = Number.isFinite(n) ? n : null;
-  }
-  if (typeof confidence === 'number' && confidence <= 1) {
-    // normalize 0..1 to 0..100 if needed
-    confidence = Math.round(confidence * 100);
-  }
-  if (typeof confidence !== 'number' || Number.isNaN(confidence)) {
-    confidence = null;
-  }
+// Accept strings like "85%" or "0.85"
+if (typeof confidence === 'string') {
+  const cleaned = confidence.replace('%', '').trim();
+  const n = parseFloat(cleaned);
+  confidence = Number.isFinite(n) ? n : null;
+}
+
+// If a model returned 0..1, scale to 0..100
+if (typeof confidence === 'number' && confidence > 0 && confidence <= 1) {
+  confidence = Math.round(confidence * 100);
+}
+
+// If it's not a number or is NaN, null it out
+if (typeof confidence !== 'number' || Number.isNaN(confidence)) {
+  confidence = null;
+}
 
   const reasoning = r.reasoning ?? r.explanation ?? r.notes ?? '';
 
