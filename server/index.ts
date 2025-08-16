@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { normalizeForWire } from "./services/normalizeForWire";
 
 // Set up transformers cache for MiDaS model persistence
 process.env.TRANSFORMERS_CACHE =
