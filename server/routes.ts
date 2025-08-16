@@ -22,18 +22,27 @@ import { v4 as uuidv4 } from "uuid";
 import { log, logErr } from "./utils/logger";
 import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
 import { normalizeForWire } from "./services/normalizeForWire";
+import { generateAnalysis } from "./services/unified-analysis";
 
-// TEMP: stub until your real model call is hooked up
 async function callModelWithInputs(body: any): Promise<any> {
-  // Return either a string or an object; our normalizer handles both
-  return {
-    sessionPrediction: "Neutral",
-    directionBias: "Neutral",
-    confidence: 72,
-    reasoning: "Stubbed server response: replace callModelWithInputs with your real model call.",
-    similarImages: [],
-    targetVisuals: {},
-  };
+  // Pull fields the client sends (support a few aliases)
+  const promptText: string =
+    body.text ?? body.prompt ?? body.message ?? "";
+
+  // We’ll accept several image keys that your UI might send
+  const images: any[] =
+    body.images ?? body.dataUrlPreviews ?? body.dataUrls ?? [];
+
+  // Call your original model function (the one you had before)
+  // It can return a string or an object; the route will normalize it.
+  const rawResult = await generateAnalysis({
+    prompt: promptText,
+    images,
+  });
+
+  // Important: return the RAW result here.
+  // The analyze route already runs `normalizeForWire(...)`.
+  return rawResult;
 }
 
 // Ensure upload directories exist
