@@ -623,6 +623,8 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                 {msg.role === 'assistant' ? (
                   (() => {
                     const parsed = safeParseAI((msg as any).aiResponse?.result ?? msg.content);
+                    // TEMP: log the raw payload so we can see what's coming back
+console.debug('[AI RAW]', (msg as any).aiResponse?.result ?? msg.content);
                     if (!parsed) {
                       return <pre className="text-xs whitespace-pre-wrap">{msg.content}</pre>;
                     }
