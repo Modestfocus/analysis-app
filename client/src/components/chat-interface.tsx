@@ -627,7 +627,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                       return <pre className="text-xs whitespace-pre-wrap">{msg.content}</pre>;
                     }
                     const data = normalizeAnalysis(parsed);
-                    return <AnalysisCard {...data} />;
+                    return <AnalysisCard data={data} />;
                   })()
                 ) : (
                   <div className="whitespace-pre-wrap">{msg.content}</div>
