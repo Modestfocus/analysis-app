@@ -32,6 +32,11 @@ export default function AnalysisCard({ data }: { data: NormalizedAnalysis }) {
   if (!data) return null; // or a small skeleton
   const { sessionPrediction, directionBias, confidence, reasoning, similarImages, targetVisuals, _fallback, } = data;
 
+    const safeConfidence =
+    typeof confidence === 'number'
+      ? Math.max(0, Math.min(100, Math.round(confidence)))
+      : null;
+  
   const TrendIcon =
     directionBias === "long" ? ArrowUp :
     directionBias === "short" ? ArrowDown :
