@@ -1,5 +1,6 @@
 import React from "react";
 import { ArrowUp, ArrowDown, Minus, Info } from "lucide-react";
+import type { NormalizedAnalysis } from '../lib/normalize-analysis';
 
 // The normalized shape we want to render
 export type NormalizedAnalysis = {
