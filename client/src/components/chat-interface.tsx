@@ -584,14 +584,15 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
           </div>
         )}
 
-       {/* Messages */}
+      {/* Messages */}
 {activeConversationId && (
   <>
     {messagesLoading ? (
       <div className="flex justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
       </div>
-    ) : Array.isArray(messages) ? (
+    ) : (
+      Array.isArray(messages) &&
       (messages as ChatMessage[]).map((msg: ChatMessage) => (
         <div
           key={msg.id}
@@ -618,68 +619,26 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
               </span>
             </div>
 
-            {/* Uploaded images (if any) */}
-            {msg.imageUrls && msg.imageUrls.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {msg.imageUrls.map((url, index) => (
-                  <Dialog key={index}>
-                    <DialogTrigger>
-                      <img
-                        src={url}
-                        alt={`Uploaded chart ${index + 1}`}
-                        className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                      />
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                      <DialogTitle>Chart Image {index + 1}</DialogTitle>
-                      <DialogDescription>
-                        Full view of uploaded chart image
-                      </DialogDescription>
-                      <div className="pb-4">
-                        <img
-                          src={url}
-                          alt={`Full chart ${index + 1}`}
-                          className="w-full h-auto rounded-lg"
-                        />
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                ))}
-              </div>
-            )}
-
-            {/* Card-aware renderer */}
-            {(() => {
-              const raw =
-                (msg as any)?.metadata?.aiResponse ||
-                (msg as any)?.aiResponse ||
-                msg.content;
-
-              const parsed = safeParseAI(raw);
-              const norm = parsed ? normalizeAnalysis(parsed) : null;
-
-              if (norm) {
-                return (
-                  <AnalysisCard
-                    analysis={norm}
-                    target={{
-                      depth: (msg as any)?.metadata?.targetVisuals?.depthMapPath,
-                      edge: (msg as any)?.metadata?.targetVisuals?.edgeMapPath,
-                      gradient: (msg as any)?.metadata?.targetVisuals?.gradientMapPath,
-                    }}
-                    similars={(msg as any)?.metadata?.similarCharts || []}
-                  />
-                );
-              }
-
-              return (
-                <div className="whitespace-pre-wrap">{String(raw ?? '')}</div>
-              );
-            })()}
+            {/* Render assistant as a pretty card; users as plain text */}
+            {msg.role === 'assistant'
+              ? (() => {
+                  const parsed =
+                    safeParseAI((msg as any).aiResponse?.result ?? msg.content);
+                  if (!parsed) {
+                    return (
+                      <pre className="text-xs whitespace-pre-wrap">
+                        {msg.content}
+                      </pre>
+                    );
+                  }
+                  const data = normalizeAnalysis(parsed);
+                  return <AnalysisCard {...data} />;
+                })()
+              : <div className="whitespace-pre-wrap">{msg.content}</div>}
           </div>
         </div>
       ))
-    ) : null}
+    )}
     <div ref={messagesEndRef} />
   </>
 )}
