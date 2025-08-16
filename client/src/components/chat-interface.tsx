@@ -640,8 +640,32 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                 }
 
                 // Fallback to plain text
-                return <div className="whitespace-pre-wrap">{String(raw ?? '')}</div>;
-              })()}
+               {(() => {
+  // Prefer structured AI payload if present, else fall back to plain text
+  const raw =
+    (msg as any)?.metadata?.aiResponse ||
+    (msg as any)?.aiResponse ||
+    msg.content;
+
+  const parsed = safeParseAI(raw);
+  const norm = parsed ? normalizeAnalysis(parsed) : null;
+
+  if (norm) {
+    return (
+      <AnalysisCard
+        analysis={norm}
+        target={{
+          depth: (msg as any)?.metadata?.targetVisuals?.depthMapPath,
+          edge: (msg as any)?.metadata?.targetVisuals?.edgeMapPath,
+          gradient: (msg as any)?.metadata?.targetVisuals?.gradientMapPath,
+        }}
+        similars={(msg as any)?.metadata?.similarCharts || []}
+      />
+    );
+  }
+
+  return <div className="whitespace-pre-wrap">{String(raw ?? '')}</div>;
+})()}
             </div>
           </div>
         )
