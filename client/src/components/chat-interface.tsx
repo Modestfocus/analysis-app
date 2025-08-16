@@ -193,19 +193,45 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
   });
 
   // Send message mutation
-  const sendMessageMutation = useMutation({
-    mutationFn: async ({ conversationId, userMessage }: { 
-      conversationId: string; 
-      userMessage: string;
-    }) => {
-      // Build vision content array from text and uploaded images
-      const visionContent: any[] = [
-        { type: "text", text: userMessage?.trim() || "Analyze this chart" },
-        ...uploadedImages.map(img => ({
-          type: "image_url",
-          image_url: { url: img.dataUrl, detail: "high" }
-        }))
-      ];
+ // Send message mutation (posts to our server and appends assistant message)
+const sendMessageMutation = useMutation({
+  mutationFn: async ({
+    text,
+    images,
+  }: {
+    text: string;
+    images: string[];
+  }) => {
+    const res = await fetch("/api/chat/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, images }),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`analyze failed: ${res.status} ${errText}`);
+    }
+    return res.json(); // -> { result: {...} }
+  },
+
+  onSuccess: (json: any) => {
+    // Append assistant message with the structured result
+    addMessage?.({
+      id:
+        crypto?.randomUUID?.() ??
+        `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      role: "assistant",
+      content: "", // content unused when aiResponse is present
+      aiResponse: { result: json.result }, // IMPORTANT
+      createdAt: Date.now(),
+    });
+  },
+
+  onError: (err) => {
+    console.error("sendMessage analyze error", err);
+    // TODO: toast if you have one
+  },
+});
       
       // Calculate total payload size for safety check
       const totalPayloadSize = uploadedImages.reduce((sum, img) => sum + img.sizeBytes, 0);
@@ -507,11 +533,26 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       return;
     }
 
-    sendMessageMutation.mutate({
-  conversationId: activeConversationId,
-  text: message.trim(),                                  // <-- text the server expects
-  images: uploadedImages.map((img) => img.dataUrl),      // <-- base64 data URLs
+    // Show the user's bubble before clearing the input
+const userText = message.trim();
+addMessage?.({
+  id:
+    crypto?.randomUUID?.() ??
+    `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+  role: "user",
+  content: userText,
+  createdAt: Date.now(),
 });
+
+// clear the input so the UI is responsive
+setMessage("");
+
+    sendMessageMutation.mutate({
+  text: userText,                                   // <- text for the server
+  images: uploadedImages.map((img) => img.dataUrl), // <- base64 data URLs
+});
+    // clear uploaded images after send
+try { setUploadedImages?.([]); } catch {}
   };
 
   // Handle keyboard shortcuts
