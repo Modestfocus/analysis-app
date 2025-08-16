@@ -21,6 +21,7 @@ import { buildUnifiedPrompt } from "./services/unifiedPrompt";
 import { v4 as uuidv4 } from "uuid";
 import { log, logErr } from "./utils/logger";
 import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
+import { normalizeForWire } from "./services/normalizeForWire";
 
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
