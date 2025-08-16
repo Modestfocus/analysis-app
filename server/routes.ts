@@ -22,27 +22,26 @@ import { v4 as uuidv4 } from "uuid";
 import { log, logErr } from "./utils/logger";
 import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
 import { normalizeForWire } from "./services/normalizeForWire";
-import { generateAnalysis } from './services/unified-analysis';
+import { generateAnalysis } from "./services/unified-analysis";
 
+// --- helper: turn client payload into your model call ---
 async function callModelWithInputs(body: any): Promise<any> {
-  // Pull fields the client sends (support a few aliases)
-  const promptText: string =
-    body.text ?? body.prompt ?? body.message ?? "";
+  // Accept a few aliases the client might send
+  const promptText: string = body?.text ?? body?.prompt ?? body?.message ?? "";
 
-  // We’ll accept several image keys that your UI might send
-  const images: any[] =
-    body.images ?? body.dataUrlPreviews ?? body.dataUrls ?? [];
+  // Collect images from common keys (base64 data URLs or URLs)
+  const images: string[] =
+    Array.isArray(body?.images) ? body.images :
+    Array.isArray(body?.dataUrlPreviews) ? body.dataUrlPreviews :
+    Array.isArray(body?.dataUrls) ? body.dataUrls :
+    [];
 
-  // Call your original model function (the one you had before)
-  // It can return a string or an object; the route will normalize it.
-  const rawResult = await generateAnalysis({
-    prompt: promptText,
-    images,
-  });
+  // Call your real model function (old working logic)
+  // generateAnalysis may return a string or an object — both are fine.
+  const raw = await generateAnalysis({ prompt: promptText, images });
 
-  // Important: return the RAW result here.
-  // The analyze route already runs `normalizeForWire(...)`.
-  return rawResult;
+  // IMPORTANT: return RAW; the route normalizes it with normalizeForWire.
+  return raw;
 }
 
 // Ensure upload directories exist
