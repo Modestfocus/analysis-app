@@ -23,6 +23,19 @@ import { log, logErr } from "./utils/logger";
 import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
 import { normalizeForWire } from "./services/normalizeForWire";
 
+// TEMP: stub until your real model call is hooked up
+async function callModelWithInputs(body: any): Promise<any> {
+  // Return either a string or an object; our normalizer handles both
+  return {
+    sessionPrediction: "Neutral",
+    directionBias: "Neutral",
+    confidence: 72,
+    reasoning: "Stubbed server response: replace callModelWithInputs with your real model call.",
+    similarImages: [],
+    targetVisuals: {},
+  };
+}
+
 // Ensure upload directories exist
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
 const depthmapsDir = path.join(process.cwd(), "server", "depthmaps");
@@ -188,8 +201,9 @@ app.post("/api/chat/analyze", async (req, res) => {
     );
 
     res.json({ result: data });
-  } catch (err) {
-    console.error("analyze error", err);
+  } catch (err: any) {
+    // Add this logging so we can see the real error in the server logs
+    console.error("analyze error:", err?.stack || err);
     res.status(500).json({
       result: {
         sessionPrediction: null,
