@@ -530,7 +530,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
   };
 
   return (
-   <div
+  <div
   className={`flex flex-col h-full transition-all duration-300 ${
     isExpanded ? 'w-full' : 'flex-1'
   }`}
@@ -547,7 +547,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
   {/* Messages Area */}
   <div className="flex-1 overflow-y-auto p-4 space-y-4">
-    {/* Empty-state uploader: only when no messages exist for the active conversation */}
+    {/* Empty-state uploader */}
     {(!activeConversationId ||
       !messages ||
       (Array.isArray(messages) && messages.length === 0)) && (
@@ -584,7 +584,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       </div>
     )}
 
-    {/* Actual conversation messages (only when a conversation is active) */}
+    {/* Conversation messages */}
     {activeConversationId && (
       <>
         {messagesLoading ? (
@@ -619,7 +619,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                   </span>
                 </div>
 
-                {/* Assistant -> pretty card; User -> plain text */}
+                {/* Assistant -> card ; User -> text */}
                 {msg.role === 'assistant' ? (
                   (() => {
                     const parsed = safeParseAI((msg as any).aiResponse?.result ?? msg.content);
@@ -643,7 +643,6 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
   {/* Input Area */}
   <div className="border-t border-gray-200 dark:border-[#3a3a3a] p-4">
-    {/* Uploaded Images Preview */}
     {uploadedImages.length > 0 && (
       <div className="flex flex-wrap gap-2 mb-3">
         {uploadedImages.map((image, index) => (
@@ -723,10 +722,6 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       Press Shift + Enter for new line, Enter to send
     </p>
   </div>
-</div> {/* closes the outer wrapper opened near the top */}
-
-); // end return
-}; // end component
-
-// Keep this only if you're not default-exporting the function above
-export default ChatInterface;
+</div>
+    );
+}  // <— close function
