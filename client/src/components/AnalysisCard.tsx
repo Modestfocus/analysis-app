@@ -28,6 +28,7 @@ function Pill({ children, tone = "gray" }: { children: React.ReactNode; tone?: "
 }
 
 export default function AnalysisCard({ data }: { data: NormalizedAnalysis }) {
+  if (!data) return null; // or a small skeleton
   const { sessionPrediction, directionBias, confidence, reasoning, similarImages, targetVisuals } = data;
 
   const TrendIcon =
