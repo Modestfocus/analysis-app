@@ -22,7 +22,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { toAbsoluteUrl } from "@/lib/utils";
 
 import AnalysisCard from "./AnalysisCard";
-import { normalizeAnalysis } from "../utils/normalizeAnalysis";
 import { normalizeAnalysis } from '../lib/normalize-analysis';
 
 // Safely turn whatever the assistant returned into an object
