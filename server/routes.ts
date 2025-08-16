@@ -145,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!username || !password) {
         return res.status(400).json({ error: "Username and password required" });
       }
-
+      
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
@@ -172,6 +172,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+app.post("/api/chat/analyze", async (req, res) => {
+  try {
+    // TODO: call your real model function here
+    const aiResponse: any = await callModelWithInputs(req.body);
+
+    const fallbackReasoning =
+      typeof aiResponse === "string"
+        ? aiResponse
+        : aiResponse?.text ?? aiResponse?.message ?? aiResponse?.content ?? "";
+
+    const data = normalizeForWire(
+      aiResponse?.result ?? aiResponse,
+      fallbackReasoning,
+    );
+
+    res.json({ result: data });
+  } catch (err) {
+    console.error("analyze error", err);
+    res.status(500).json({
+      result: {
+        sessionPrediction: null,
+        directionBias: null,
+        confidence: null,
+        reasoning: "Server error while analyzing chart.",
+        similarImages: [],
+        targetVisuals: {},
+      },
+      error: "analyze_failed",
+    });
+  }
+});
+
+  
   app.post("/api/auth/wallet-login", async (req, res) => {
     try {
       const { walletAddress, walletType } = req.body;
