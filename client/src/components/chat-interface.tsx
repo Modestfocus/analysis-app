@@ -638,84 +638,90 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
   </>
 )}
 
-      {/* Input Area */}
-      <div className="border-t border-gray-200 dark:border-[#3a3a3a] p-4">
-        {/* Uploaded Images Preview */}
-        {uploadedImages.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {uploadedImages.map((image, index) => (
-              <div key={image.id} className="relative">
-                <img
-                  src={image.dataUrl}
-                  alt={`Upload preview: ${image.name}`}
-                  title={`${image.name} (${(image.sizeBytes / (1024 * 1024)).toFixed(2)}MB)${image.width && image.height ? ` - ${image.width}x${image.height}` : ''}`}
-                  className="w-16 h-16 object-cover rounded border"
-                />
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="absolute -top-2 -right-2 w-5 h-5 p-0 rounded-full"
-                  onClick={() => removeImage(index)}
-                >
-                  ×
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <Textarea
-              ref={textareaRef}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              placeholder={
-                uploadedImages.length > 0 
-                  ? "Ask a question about your chart..." 
-                  : "Type a message or paste an image..."
-              }
-              className="resize-none min-h-[60px] pr-12"
-              disabled={sendMessageMutation.isPending}
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              className="absolute bottom-2 right-2"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="w-4 h-4" />
-            </Button>
-          </div>
-          
+     {/* Input Area */}
+<div className="border-t border-gray-200 dark:border-[#3a3a3a] p-4">
+  {/* Uploaded Images Preview */}
+  {uploadedImages.length > 0 && (
+    <div className="flex flex-wrap gap-2 mb-3">
+      {uploadedImages.map((image, index) => (
+        <div key={image.id} className="relative">
+          <img
+            src={image.dataUrl}
+            alt={`Upload preview: ${image.name}`}
+            title={`${image.name} (${(image.sizeBytes / (1024 * 1024)).toFixed(2)}MB)${
+              image.width && image.height ? ` - ${image.width}x${image.height}` : ''
+            }`}
+            className="w-16 h-16 object-cover rounded border"
+          />
           <Button
-            onClick={handleSendMessage}
-            disabled={(!message.trim() && uploadedImages.length === 0) || sendMessageMutation.isPending}
-            className="self-end"
+            size="sm"
+            variant="destructive"
+            className="absolute -top-2 -right-2 w-5 h-5 p-0 rounded-full"
+            onClick={() => removeImage(index)}
           >
-            {sendMessageMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
+            ×
           </Button>
         </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-          className="hidden"
-        />
-
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          Press Shift + Enter for new line, Enter to send
-        </p>
-      </div>
+      ))}
     </div>
-  );
+  )}
+
+  <div className="flex gap-2">
+    <div className="flex-1 relative">
+      <Textarea
+        ref={textareaRef}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        placeholder={
+          uploadedImages.length > 0
+            ? 'Ask a question about your chart...'
+            : 'Type a message or paste an image...'
+        }
+        className="resize-none min-h-[60px] pr-12"
+        disabled={sendMessageMutation.isPending}
+      />
+      <Button
+        size="sm"
+        variant="ghost"
+        className="absolute bottom-2 right-2"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <Paperclip className="w-4 h-4" />
+      </Button>
+    </div>
+
+    <Button
+      onClick={handleSendMessage}
+      disabled={
+        (!message.trim() && uploadedImages.length === 0) ||
+        sendMessageMutation.isPending
+      }
+      className="self-end"
+    >
+      {sendMessageMutation.isPending ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <Send className="w-4 h-4" />
+      )}
+    </Button>
+  </div>
+
+  <input
+    ref={fileInputRef}
+    type="file"
+    multiple
+    accept="image/*"
+    onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+    className="hidden"
+  />
+
+  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+    Press Shift + Enter for new line, Enter to send
+  </p>
+</div>
+
+</div> {/* end outer container */}
+);
 }
