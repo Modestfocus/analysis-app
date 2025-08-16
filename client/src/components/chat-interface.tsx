@@ -770,4 +770,4 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
 </div> {/* end outer wrapper opened near the top */}
 ); // end return
-} // end component
+};
