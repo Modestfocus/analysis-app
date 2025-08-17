@@ -227,17 +227,35 @@ const sendMessageMutation = useMutation({
     text: string;
     images: string[];
   }) => {
+    // 1. Add prompt and similars flag
+    const prompt = "Current Prompt"; // later you’ll replace with your dynamic system message
+    const withSimilars = true;
+
+    // 2. Send them in the body
     const res = await fetch("/api/chat/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, images }),
+      body: JSON.stringify({ text, images, prompt, withSimilars }),
     });
+
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
       throw new Error(`analyze failed: ${res.status} ${errText}`);
     }
-    return res.json(); // -> { result: {...} }
+
+    return res.json(); // → { result: {...} }
   },
+  onSuccess: (json: any) => {
+    // append assistant bubble with structured result
+    addMessage({
+      id:
+        crypto?.randomUUID?.() ??
+        `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      role: "assistant",
+      content: JSON.stringify(json, null, 2),
+    });
+  },
+});
 
   onSuccess: (json: any) => {
     // append assistant bubble with structured result
