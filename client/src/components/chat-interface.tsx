@@ -220,35 +220,63 @@ function addMessage(m: {
   // Send message mutation
  // Send message mutation (posts to our server and appends assistant message)
 const sendMessageMutation = useMutation({
- mutationFn: async ({ text, images }: { text: string; images: string[] }) => {
-  // 1) pull the live Current Prompt from localStorage
-  const systemPrompt = getCurrentPrompt();  // <— THIS is the dynamic system message
-  // 2) ask backend for similars
-  const wantSimilar = true;
+  mutationFn: async ({
+    text,
+    images,
+  }: {
+    text: string;
+    images: string[];
+  }) => {
+    // Pull the live "Current Prompt" from localStorage
+    const systemPrompt =
+      (localStorage.getItem("systemPrompt_default") || "") +
+      ((localStorage.getItem("systemPrompt_inject") || "")
+        ? "\n\n" + localStorage.getItem("systemPrompt_inject")
+        : "");
 
-  // 3) POST everything the server now expects
-  const res = await fetch("/api/chat/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, images, systemPrompt, wantSimilar }),
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`analyze failed: ${res.status} ${errText}`);
-  }
-  return res.json(); // { result: {...} }
-},
+    const wantSimilar = true;
+
+    const res = await fetch("/api/chat/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, images, systemPrompt, wantSimilar }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`analyze failed: ${res.status} ${errText}`);
+    }
+
+    return res.json(); // -> { result: {...} }
+  }, // 👈 comma required after mutationFn
+
   onSuccess: (json: any) => {
-    // append assistant bubble with structured result
+    // Append assistant bubble with the structured result
     addMessage({
       id:
         crypto?.randomUUID?.() ??
         `${Date.now()}_${Math.random().toString(36).slice(2)}`,
       role: "assistant",
-      content: JSON.stringify(json, null, 2),
+      content: "",
+      aiResponse: { result: json.result }, // IMPORTANT
+      createdAt: Date.now(),
+    });
+
+    // optional: clear previews after successful send
+    try {
+      setUploadedImages?.([]);
+    } catch {}
+  }, // 👈 comma required after onSuccess
+
+  onError: (error: any) => {
+    toast({
+      title: "Error sending message",
+      description:
+        error?.message || "Failed to send message. Please try again.",
+      variant: "destructive",
     });
   },
-});
+}); // 👈 closes useMutation
 
   onSuccess: (json: any) => {
     // append assistant bubble with structured result
