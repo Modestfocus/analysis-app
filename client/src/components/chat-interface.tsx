@@ -242,7 +242,7 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
       }
 
       return res.json(); // -> { result: {...} }
-    }, // <-- COMMA REQUIRED
+    }
 
     onSuccess: (json: any) => {
       // Append assistant bubble with the structured result
