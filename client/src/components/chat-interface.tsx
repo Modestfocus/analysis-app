@@ -257,29 +257,7 @@ const sendMessageMutation = useMutation({
         console.log('[POST] /api/chat/analyze', payloadSummary);
       }
       
-      // Create abort controller for timeout
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(() => abortController.abort(), 45000); // 45s timeout
-      
-        
-        const result = await response.json();
-        
-        // Save both user message and AI response to conversation
-        await apiRequest('POST', `/api/chat/conversations/${conversationId}/messages`, { 
-          content: userMessage || '',
-          imageUrls: uploadedImages.map(img => img.dataUrl),
-          aiResponse: result
-        });
-        
-        return result;
-      } catch (error) {
-        clearTimeout(timeoutId);
-        if (abortController.signal.aborted) {
-          throw new Error('Request timeout - analysis took too long');
-        }
-        throw error;
-      }
-    },
+     
     onSuccess: () => {
       queryClient.invalidateQueries({ 
         queryKey: ['/api/chat/conversations', activeConversationId, 'messages'] 
