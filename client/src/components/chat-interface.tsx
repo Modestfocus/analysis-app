@@ -1,9 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   Bot, 
   User, 
@@ -11,15 +8,11 @@ import {
   Upload, 
   Image as ImageIcon, 
   Loader2,
-  Maximize2,
-  Copy,
   Paperclip,
-  Activity
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { toAbsoluteUrl } from "@/lib/utils";
 
 import AnalysisCard from "./AnalysisCard";
 import { normalizeAnalysis } from '../lib/normalize-analysis';
@@ -158,36 +151,38 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
     const savedInject = localStorage.getItem('systemPrompt_inject') || '';
     return `${savedDefault}${savedInject ? `\n\n${savedInject}` : ''}`;
   };
+
   const [message, setMessage] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-  // Local client-side buffer so we can append bubbles immediately
-const [clientMessages, setClientMessages] = useState<ChatMessage[]>([]);
 
-// Minimal helper to add a user/assistant message to the buffer
-function addMessage(m: {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  aiResponse?: any;      // only for assistant
-  createdAt: number;     // Date.now()
-}) {
-  setClientMessages((prev) => [
-    ...prev,
-    {
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      // pass-through so AnalysisCard can read it
-      // @ts-ignore
-      aiResponse: m.aiResponse,
-      // ChatMessage expects a string; store ISO
-      createdAt: new Date(m.createdAt).toISOString(),
-    } as ChatMessage,
-  ]);
-}
-  
+  // Local client-side buffer so we can append bubbles immediately
+  const [clientMessages, setClientMessages] = useState<ChatMessage[]>([]);
+
+  // Minimal helper to add a user/assistant message to the buffer
+  function addMessage(m: {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    aiResponse?: any;      // only for assistant
+    createdAt: number;     // Date.now()
+  }) {
+    setClientMessages((prev) => [
+      ...prev,
+      {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        // pass-through so AnalysisCard can read it
+        // @ts-ignore
+        aiResponse: m.aiResponse,
+        // ChatMessage expects a string; store ISO
+        createdAt: new Date(m.createdAt).toISOString(),
+      } as ChatMessage,
+    ]);
+  }
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -217,86 +212,75 @@ function addMessage(m: {
     },
   });
 
-  // Send message mutation
- // Send message mutation (posts to our server and appends assistant message)
-const sendMessageMutation = useMutation({
-  mutationFn: async ({
-    text,
-    images,
-  }: {
-    text: string;
-    images: string[];
-  }) => {
-    // Pull the live "Current Prompt" from localStorage
-    const systemPrompt =
-      (localStorage.getItem("systemPrompt_default") || "") +
-      ((localStorage.getItem("systemPrompt_inject") || "")
-        ? "\n\n" + localStorage.getItem("systemPrompt_inject")
-        : "");
+  // Send message mutation (posts to our server and appends assistant message)
+  const sendMessageMutation = useMutation({
+    mutationFn: async ({
+      text,
+      images,
+    }: {
+      text: string;
+      images: string[];
+    }) => {
+      // Pull the live "Current Prompt" from System Prompt tab
+      const systemPrompt =
+        (localStorage.getItem("systemPrompt_default") || "") +
+        ((localStorage.getItem("systemPrompt_inject") || "")
+          ? "\n\n" + localStorage.getItem("systemPrompt_inject")
+          : "");
 
-    const wantSimilar = true;
+      const wantSimilar = true;
 
-    const res = await fetch("/api/chat/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, images, systemPrompt, wantSimilar }),
-    });
+      const res = await fetch("/api/chat/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, images, systemPrompt, wantSimilar }),
+      });
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error(`analyze failed: ${res.status} ${errText}`);
-    }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`analyze failed: ${res.status} ${errText}`);
+      }
 
-    return res.json(); // -> { result: {...} }
-  }, // 👈 comma required after mutationFn
+      return res.json(); // -> { result: {...} }
+    }, // <-- COMMA REQUIRED
 
-  onSuccess: (json: any) => {
-    // Append assistant bubble with the structured result
-    addMessage({
-      id:
-        crypto?.randomUUID?.() ??
-        `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      role: "assistant",
-      content: "",
-      aiResponse: { result: json.result }, // IMPORTANT
-      createdAt: Date.now(),
-    });
+    onSuccess: (json: any) => {
+      // Append assistant bubble with the structured result
+      addMessage({
+        id:
+          crypto?.randomUUID?.() ??
+          `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        role: "assistant",
+        content: "",
+        aiResponse: { result: json.result }, // IMPORTANT
+        createdAt: Date.now(),
+      });
 
-    // optional: clear previews after successful send
-    try {
-      setUploadedImages?.([]);
-    } catch {}
-  }, // 👈 comma required after onSuccess
+      // optional: clear previews after successful send
+      try {
+        setUploadedImages?.([]);
+      } catch {}
+    }, // <-- COMMA REQUIRED
 
-  onError: (error: any) => {
-    toast({
-      title: "Error sending message",
-      description:
-        error?.message || "Failed to send message. Please try again.",
-      variant: "destructive",
-    });
-  },
-}); // 👈 closes useMutation
-
-
-    // optional: clear previews after successful send
-    try { setUploadedImages?.([]); } catch {}
-  },
-
-  onError: (error: any) => {
-    toast({
-      title: "Error sending message",
-      description: error.message || "Failed to send message. Please try again.",
-      variant: "destructive",
-    });
-  },
-});
-      
+    onError: (error: any) => {
+      toast({
+        title: "Error sending message",
+        description:
+          error?.message || "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    },
+  }); // <-- closes useMutation
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, clientMessages]);
+
+  // Clear local buffer when switching conversations
+  useEffect(() => {
+    setClientMessages([]);
+  }, [activeConversationId]);
 
   // Global paste listener for images
   useEffect(() => {
@@ -510,25 +494,27 @@ const sendMessageMutation = useMutation({
     }
 
     // Show the user's bubble before clearing the input
-const userText = message.trim();
-addMessage({
-  id:
-    crypto?.randomUUID?.() ??
-    `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-  role: "user",
-  content: userText,
-  createdAt: Date.now(),
-});
+    const userText = message.trim();
+    addMessage({
+      id:
+        crypto?.randomUUID?.() ??
+        `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      role: "user",
+      content: userText,
+      createdAt: Date.now(),
+    });
 
-// clear the input so the UI is responsive
-setMessage("");
+    // clear the input so the UI is responsive
+    setMessage("");
 
+    // kick off analysis
     sendMessageMutation.mutate({
-  text: userText,                                   // <- text for the server
-  images: uploadedImages.map((img) => img.dataUrl), // <- base64 data URLs
-});
+      text: userText,                                   // text for the server
+      images: uploadedImages.map((img) => img.dataUrl), // base64 data URLs
+    });
+
     // clear uploaded images after send
-try { setUploadedImages?.([]); } catch {}
+    try { setUploadedImages?.([]); } catch {}
   };
 
   // Handle keyboard shortcuts
@@ -549,53 +535,190 @@ try { setUploadedImages?.([]); } catch {}
   };
 
   // Merge server-fetched messages with local buffer
-const fetchedMessages: ChatMessage[] = Array.isArray(messages)
-  ? (messages as ChatMessage[])
-  : [];
+  const fetchedMessages: ChatMessage[] = Array.isArray(messages)
+    ? (messages as ChatMessage[])
+    : [];
+  const displayedMessages: ChatMessage[] = [...fetchedMessages, ...clientMessages];
 
-const displayedMessages: ChatMessage[] = [...fetchedMessages, ...clientMessages];
   return (
-  <div
-  className={`flex flex-col h-full transition-all duration-300 ${
-    isExpanded ? 'w-full' : 'flex-1'
-  }`}
->
-  {/* Chat Header */}
-  <div className="border-b border-gray-200 dark:border-[#3a3a3a] p-4">
-    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-      GPT-4o Chart Analysis
-    </h2>
-    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-      Upload charts, ask questions, and get AI-powered insights using your current dashboard prompt
-    </p>
-  </div>
-
-  {/* Messages Area */}
-  <div className="flex-1 overflow-y-auto p-4 space-y-4">
-    {/* Empty-state uploader */}
-    {(!activeConversationId || displayedMessages.length === 0) && (
-      <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          dragActive
-            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-            : 'border-gray-300 dark:border-gray-600'
-        }`}
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        onDragEnter={() => setDragActive(true)}
-        onDragLeave={() => setDragActive(false)}
-      >
-        <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-          Start Your Analysis
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Drop a chart image here, paste from clipboard, or upload manually
+    <div
+      className={`flex flex-col h-full transition-all duration-300 ${
+        isExpanded ? 'w-full' : 'flex-1'
+      }`}
+    >
+      {/* Chat Header */}
+      <div className="border-b border-gray-200 dark:border-[#3a3a3a] p-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          GPT-4o Chart Analysis
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Upload charts, ask questions, and get AI-powered insights using your current dashboard prompt
         </p>
-        <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="mx-auto">
-          <Upload className="w-4 h-4 mr-2" />
-          Upload Chart
-        </Button>
+      </div>
+
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Empty-state uploader */}
+        {(!activeConversationId || displayedMessages.length === 0) && (
+          <div
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              dragActive
+                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                : 'border-gray-300 dark:border-gray-600'
+            }`}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            onDragEnter={() => setDragActive(true)}
+            onDragLeave={() => setDragActive(false)}
+          >
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              Start Your Analysis
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Drop a chart image here, paste from clipboard, or upload manually
+            </p>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="mx-auto">
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Chart
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+              className="hidden"
+            />
+          </div>
+        )}
+
+        {/* Conversation messages */}
+        {activeConversationId && (
+          <>
+            {messagesLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+              </div>
+            ) : (
+              displayedMessages.map((msg: ChatMessage) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-lg p-4 ${
+                      msg.role === 'user'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center mb-2">
+                      {msg.role === 'user' ? (
+                        <User className="w-4 h-4 mr-2" />
+                      ) : (
+                        <Bot className="w-4 h-4 mr-2" />
+                      )}
+                      <span className="text-xs font-medium">
+                        {msg.role === 'user' ? 'You' : 'GPT-4o'}
+                      </span>
+                      <span className="text-xs opacity-60 ml-2">
+                        {new Date(msg.createdAt).toLocaleTimeString()}
+                      </span>
+                    </div>
+
+                    {/* Assistant -> card ; User -> text */}
+                    {msg.role === 'assistant' ? (
+                      (() => {
+                        const parsed = safeParseAI((msg as any).aiResponse?.result ?? msg.content);
+                        // TEMP: log the raw payload so we can see what's coming back
+                        console.debug('[AI RAW]', (msg as any).aiResponse?.result ?? msg.content);
+                        if (!parsed) {
+                          return <pre className="text-xs whitespace-pre-wrap">{msg.content}</pre>;
+                        }
+                        const data = normalizeAnalysis(parsed);
+                        return <AnalysisCard data={data} />;
+                      })()
+                    ) : (
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </>
+        )}
+      </div>
+
+      {/* Input Area */}
+      <div className="border-t border-gray-200 dark:border-[#3a3a3a] p-4">
+        {uploadedImages.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {uploadedImages.map((image, index) => (
+              <div key={image.id} className="relative">
+                <img
+                  src={image.dataUrl}
+                  alt={`Upload preview: ${image.name}`}
+                  title={`${image.name} (${(image.sizeBytes / (1024 * 1024)).toFixed(2)}MB)${
+                    image.width && image.height ? ` - ${image.width}x${image.height}` : ''
+                  }`}
+                  className="w-16 h-16 object-cover rounded border"
+                />
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 w-5 h-5 p-0 rounded-full"
+                  onClick={() => removeImage(index)}
+                >
+                  ×
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <Textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={
+                uploadedImages.length > 0
+                  ? 'Ask a question about your chart...'
+                  : 'Type a message or paste an image...'
+              }
+              className="resize-none min-h-[60px] pr-12"
+              disabled={sendMessageMutation.isPending}
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="absolute bottom-2 right-2"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <Button
+            onClick={handleSendMessage}
+            disabled={
+              (!message.trim() && uploadedImages.length === 0) || sendMessageMutation.isPending
+            }
+            className="self-end"
+          >
+            {sendMessageMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -604,148 +727,11 @@ const displayedMessages: ChatMessage[] = [...fetchedMessages, ...clientMessages]
           onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
           className="hidden"
         />
+
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          Press Shift + Enter for new line, Enter to send
+        </p>
       </div>
-    )}
-
-    {/* Conversation messages */}
-    {activeConversationId && (
-      <>
-        {messagesLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
-          </div>
-        ) : (
-          displayedMessages.map((msg: ChatMessage) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg p-4 ${
-                  msg.role === 'user'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
-                }`}
-              >
-                <div className="flex items-center mb-2">
-                  {msg.role === 'user' ? (
-                    <User className="w-4 h-4 mr-2" />
-                  ) : (
-                    <Bot className="w-4 h-4 mr-2" />
-                  )}
-                  <span className="text-xs font-medium">
-                    {msg.role === 'user' ? 'You' : 'GPT-4o'}
-                  </span>
-                  <span className="text-xs opacity-60 ml-2">
-                    {new Date(msg.createdAt).toLocaleTimeString()}
-                  </span>
-                </div>
-
-                {/* Assistant -> card ; User -> text */}
-                {msg.role === 'assistant' ? (
-                  (() => {
-                    const parsed = safeParseAI((msg as any).aiResponse?.result ?? msg.content);
-                    // TEMP: log the raw payload so we can see what's coming back
-console.debug('[AI RAW]', (msg as any).aiResponse?.result ?? msg.content);
-                    if (!parsed) {
-                      return <pre className="text-xs whitespace-pre-wrap">{msg.content}</pre>;
-                    }
-                    const data = normalizeAnalysis(parsed);
-                    return <AnalysisCard data={data} />;
-                  })()
-                ) : (
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </>
-    )}
-  </div>
-
-  {/* Input Area */}
-  <div className="border-t border-gray-200 dark:border-[#3a3a3a] p-4">
-    {uploadedImages.length > 0 && (
-      <div className="flex flex-wrap gap-2 mb-3">
-        {uploadedImages.map((image, index) => (
-          <div key={image.id} className="relative">
-            <img
-              src={image.dataUrl}
-              alt={`Upload preview: ${image.name}`}
-              title={`${image.name} (${(image.sizeBytes / (1024 * 1024)).toFixed(2)}MB)${
-                image.width && image.height ? ` - ${image.width}x${image.height}` : ''
-              }`}
-              className="w-16 h-16 object-cover rounded border"
-            />
-            <Button
-              size="sm"
-              variant="destructive"
-              className="absolute -top-2 -right-2 w-5 h-5 p-0 rounded-full"
-              onClick={() => removeImage(index)}
-            >
-              ×
-            </Button>
-          </div>
-        ))}
-      </div>
-    )}
-
-    <div className="flex gap-2">
-      <div className="flex-1 relative">
-        <Textarea
-          ref={textareaRef}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          placeholder={
-            uploadedImages.length > 0
-              ? 'Ask a question about your chart...'
-              : 'Type a message or paste an image...'
-          }
-          className="resize-none min-h-[60px] pr-12"
-          disabled={sendMessageMutation.isPending}
-        />
-        <Button
-          size="sm"
-          variant="ghost"
-          className="absolute bottom-2 right-2"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Paperclip className="w-4 h-4" />
-        </Button>
-      </div>
-
-      <Button
-        onClick={handleSendMessage}
-        disabled={
-          (!message.trim() && uploadedImages.length === 0) || sendMessageMutation.isPending
-        }
-        className="self-end"
-      >
-        {sendMessageMutation.isPending ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Send className="w-4 h-4" />
-        )}
-      </Button>
     </div>
-
-    <input
-      ref={fileInputRef}
-      type="file"
-      multiple
-      accept="image/*"
-      onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-      className="hidden"
-    />
-
-    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-      Press Shift + Enter for new line, Enter to send
-    </p>
-  </div>
-</div>
-    );
+  );
 }  // <— close function
