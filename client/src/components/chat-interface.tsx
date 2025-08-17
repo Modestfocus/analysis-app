@@ -162,6 +162,31 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
   const [dragActive, setDragActive] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  // Local client-side buffer so we can append bubbles immediately
+const [clientMessages, setClientMessages] = useState<ChatMessage[]>([]);
+
+// Minimal helper to add a user/assistant message to the buffer
+function addMessage(m: {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  aiResponse?: any;      // only for assistant
+  createdAt: number;     // Date.now()
+}) {
+  setClientMessages((prev) => [
+    ...prev,
+    {
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      // pass-through so AnalysisCard can read it
+      // @ts-ignore
+      aiResponse: m.aiResponse,
+      // ChatMessage expects a string; store ISO
+      createdAt: new Date(m.createdAt).toISOString(),
+    } as ChatMessage,
+  ]);
+}
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -216,7 +241,7 @@ const sendMessageMutation = useMutation({
 
   onSuccess: (json: any) => {
     // append assistant bubble with structured result
-    addMessage?.({
+    addMessage({
       id:
         crypto?.randomUUID?.() ??
         `${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -458,7 +483,7 @@ const sendMessageMutation = useMutation({
 
     // Show the user's bubble before clearing the input
 const userText = message.trim();
-addMessage?.({
+addMessage({
   id:
     crypto?.randomUUID?.() ??
     `${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -495,6 +520,12 @@ try { setUploadedImages?.([]); } catch {}
     }
   };
 
+  // Merge server-fetched messages with local buffer
+const fetchedMessages: ChatMessage[] = Array.isArray(messages)
+  ? (messages as ChatMessage[])
+  : [];
+
+const displayedMessages: ChatMessage[] = [...fetchedMessages, ...clientMessages];
   return (
   <div
   className={`flex flex-col h-full transition-all duration-300 ${
@@ -514,9 +545,7 @@ try { setUploadedImages?.([]); } catch {}
   {/* Messages Area */}
   <div className="flex-1 overflow-y-auto p-4 space-y-4">
     {/* Empty-state uploader */}
-    {(!activeConversationId ||
-      !messages ||
-      (Array.isArray(messages) && messages.length === 0)) && (
+    {(!activeConversationId || displayedMessages.length === 0) && (
       <div
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
           dragActive
@@ -558,8 +587,7 @@ try { setUploadedImages?.([]); } catch {}
             <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
           </div>
         ) : (
-          Array.isArray(messages) &&
-          (messages as ChatMessage[]).map((msg: ChatMessage) => (
+          displayedMessages.map((msg: ChatMessage) => (
             <div
               key={msg.id}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
