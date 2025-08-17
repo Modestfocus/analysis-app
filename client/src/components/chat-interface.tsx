@@ -278,17 +278,6 @@ const sendMessageMutation = useMutation({
   },
 }); // 👈 closes useMutation
 
-  onSuccess: (json: any) => {
-    // append assistant bubble with structured result
-    addMessage({
-      id:
-        crypto?.randomUUID?.() ??
-        `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      role: "assistant",
-      content: "",
-      aiResponse: { result: json.result }, // IMPORTANT
-      createdAt: Date.now(),
-    });
 
     // optional: clear previews after successful send
     try { setUploadedImages?.([]); } catch {}
