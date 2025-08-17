@@ -214,63 +214,62 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
 
   // Send message mutation (posts to our server and appends assistant message)
   const sendMessageMutation = useMutation({
-    mutationFn: async ({
-      text,
-      images,
-    }: {
-      text: string;
-      images: string[];
-    }) => {
-      // Pull the live "Current Prompt" from System Prompt tab
-      const systemPrompt =
-        (localStorage.getItem("systemPrompt_default") || "") +
-        ((localStorage.getItem("systemPrompt_inject") || "")
-          ? "\n\n" + localStorage.getItem("systemPrompt_inject")
-          : "");
+  mutationFn: async ({
+    text,
+    images,
+  }: {
+    text: string;
+    images: string[];
+  }) => {
+    // pull the live “Current Prompt” from the dashboard tab (Default + Inject)
+    const systemPrompt =
+      (localStorage.getItem("systemPrompt_default") || "") +
+      ((localStorage.getItem("systemPrompt_inject") || "")
+        ? "\n\n" + localStorage.getItem("systemPrompt_inject")
+        : "");
 
-      const wantSimilar = true;
+    const wantSimilar = true;
 
-      const res = await fetch("/api/chat/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, images, systemPrompt, wantSimilar }),
-      });
+    const res = await fetch("/api/chat/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, images, systemPrompt, wantSimilar }),
+    });
 
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        throw new Error(`analyze failed: ${res.status} ${errText}`);
-      }
-
-      return res.json(); // -> { result: {...} }
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`analyze failed: ${res.status} ${errText}`);
     }
 
-    onSuccess: (json: any) => {
-      // Append assistant bubble with the structured result
-      addMessage({
-        id:
-          crypto?.randomUUID?.() ??
-          `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        role: "assistant",
-        content: "",
-        aiResponse: { result: json.result }, // IMPORTANT
-        createdAt: Date.now(),
-      });
+    return res.json(); // -> { result: {...} }
+  }, // <-- REQUIRED comma to separate props
 
-      // optional: clear previews after successful send
-      try {
-        setUploadedImages?.([]);
-      } catch {}
-    }, // <-- COMMA REQUIRED
+  onSuccess: (json: any) => {
+    // append assistant bubble with structured result for <AnalysisCard>
+    addMessage({
+      id:
+        crypto?.randomUUID?.() ??
+        `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      role: "assistant",
+      content: "",
+      aiResponse: { result: json.result }, // IMPORTANT
+      createdAt: Date.now(),
+    });
 
-    onError: (error: any) => {
-      toast({
-        title: "Error sending message",
-        description:
-          error?.message || "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-    },
-  }); // <-- closes useMutation
+    // optional: clear previews after successful send
+    try {
+      setUploadedImages([]);
+    } catch {}
+  },
+
+  onError: (error: any) => {
+    toast({
+      title: "Error sending message",
+      description: error?.message || "Failed to send message. Please try again.",
+      variant: "destructive",
+    });
+  },
+});
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
