@@ -26,21 +26,26 @@ import { generateAnalysis } from "./services/unified-analysis";
 
 // --- helper: turn client payload into your model call ---
 async function callModelWithInputs(body: any): Promise<any> {
-  // Accept a few aliases the client might send
   const promptText: string = body?.text ?? body?.prompt ?? body?.message ?? "";
-
-  // Collect images from common keys (base64 data URLs or URLs)
   const images: string[] =
     Array.isArray(body?.images) ? body.images :
     Array.isArray(body?.dataUrlPreviews) ? body.dataUrlPreviews :
     Array.isArray(body?.dataUrls) ? body.dataUrls :
     [];
 
-  // Call your real model function (old working logic)
-  // generateAnalysis may return a string or an object — both are fine.
-  const raw = await generateAnalysis({ prompt: promptText, images });
+  const systemPrompt: string = body?.systemPrompt ?? "";
+  const wantSimilar: boolean = Boolean(body?.wantSimilar);
 
-  // IMPORTANT: return RAW; the route normalizes it with normalizeForWire.
+  // OLD: stub or other call here
+  // return {...}
+
+  // 👉 REPLACE the inside with this:
+  const raw = await generateAnalysis({
+    prompt: promptText,
+    images,
+    systemPrompt,
+    wantSimilar,
+  });
   return raw;
 }
 
