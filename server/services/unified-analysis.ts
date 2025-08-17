@@ -1,5 +1,7 @@
 // server/services/unified-analysis.ts
 import OpenAI from "openai";
+import fs from "fs/promises";
+import path from "path";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -12,13 +14,26 @@ export type GenerateAnalysisParams = {
   wantSimilar?: boolean;     // ask backend to return 3 similar charts
 };
 
-// ------------- OPTIONAL: replace with your real vector/DB search -------------
-async function findSimilarCharts(_images: string[], _limit = 3): Promise<Array<number | string>> {
-  // TODO: hook up your CLIP / DB search here and return chart IDs (preferred) or URLs
-  // Return an empty array for now (UI handles both IDs and URLs).
-  return [];
+// --- very simple similar finder: pick 3 recent images from /public/uploads ---
+async function findSimilarCharts(_images: string[], limit = 3): Promise<string[]> {
+  try {
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    const entries = await fs.readdir(uploadsDir, { withFileTypes: true });
+
+    // keep only images we can serve
+    const files = entries
+      .filter(e => e.isFile())
+      .map(e => e.name)
+      .filter(n => /\.(png|jpg|jpeg|webp)$/i.test(n))
+      .sort((a, b) => b.localeCompare(a)); // crude "recent" ordering by name
+
+    // return absolute paths your client can load (Express is already serving /public)
+    const pick = files.slice(0, limit).map(n => `/uploads/${n}`);
+    return pick;
+  } catch {
+    return [];
+  }
 }
-// -----------------------------------------------------------------------------
 
 export async function generateAnalysis({
   prompt,
@@ -31,7 +46,8 @@ export async function generateAnalysis({
   }
 
   // 1) Build SYSTEM message from your Current Prompt (falls back if empty)
-  const system = (systemPrompt || "").trim() ||
+  const system =
+    (systemPrompt || "").trim() ||
     "You are a financial chart analysis expert. Analyze the chart images and return a short session prediction, direction bias (long/short/neutral), numeric confidence (0..1 or %), and a concise reasoning.";
 
   // 2) Build USER content (text + multiple images)
@@ -54,31 +70,29 @@ export async function generateAnalysis({
     });
   }
 
-  // 3) Instruct the model to return strict JSON
-  // We keep keys that your normalizer / AnalysisCard already expect.
+  // 3) Instruct the model to return strict JSON the UI expects
   const jsonInstruction = `
 Return ONLY a JSON object with the following keys:
 
 {
-  "sessionPrediction": string | null, // e.g. "Bullish breakout"
+  "sessionPrediction": string | null,
   "directionBias": "long" | "short" | "neutral" | null,
-  "confidence": number | string | null, // accept 0..1 or %, we will normalize
+  "confidence": number | string | null,
   "reasoning": string | null,
-  "similarImages": (number | string)[] | null, // chart IDs (preferred) or URLs
+  "similarImages": (number | string)[] | null,
   "targetVisuals": {
     "depthMapPath"?: string,
     "edgeMapPath"?: string,
     "gradientMapPath"?: string
   }
 }
-  `.trim();
+`.trim();
 
-  // Put the JSON instruction in the user message as well so JSON mode stays focused.
   userContent.push({ type: "text", text: jsonInstruction });
 
-  // 4) Call GPT-4o in JSON mode
+  // 4) Call GPT-4o (not mini) in JSON mode for higher quality
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",                   // works well for structured JSON; upgrade model if you like
+    model: "gpt-4o",
     response_format: { type: "json_object" },
     temperature: 0.2,
     messages: [
@@ -96,12 +110,12 @@ Return ONLY a JSON object with the following keys:
     parsed = {};
   }
 
-  // 5) Optionally attach similar charts (IDs or URLs)
-  if (wantSimilar && !Array.isArray(parsed?.similarImages)) {
+  // 5) If similarImages came back empty, fill with our simple picker
+  if (wantSimilar && (!Array.isArray(parsed?.similarImages) || parsed.similarImages.length === 0)) {
     parsed.similarImages = await findSimilarCharts(images, 3);
   }
 
-  // 6) Ensure all keys exist; the UI's normalizer will do further cleanup
+  // 6) Ensure keys exist (the UI’s normalizer will clean the rest)
   return {
     sessionPrediction: parsed?.sessionPrediction ?? null,
     directionBias: parsed?.directionBias ?? null,
