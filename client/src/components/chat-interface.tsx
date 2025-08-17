@@ -215,64 +215,30 @@ const sendMessageMutation = useMutation({
   },
 
   onSuccess: (json: any) => {
-    // Append assistant message with the structured result
+    // append assistant bubble with structured result
     addMessage?.({
       id:
         crypto?.randomUUID?.() ??
         `${Date.now()}_${Math.random().toString(36).slice(2)}`,
       role: "assistant",
-      content: "", // content unused when aiResponse is present
+      content: "",
       aiResponse: { result: json.result }, // IMPORTANT
       createdAt: Date.now(),
     });
+
+    // optional: clear previews after successful send
+    try { setUploadedImages?.([]); } catch {}
   },
 
-  onError: (err) => {
-    console.error("sendMessage analyze error", err);
-    // TODO: toast if you have one
+  onError: (error: any) => {
+    toast({
+      title: "Error sending message",
+      description: error.message || "Failed to send message. Please try again.",
+      variant: "destructive",
+    });
   },
 });
       
-      // Calculate total payload size for safety check
-      const totalPayloadSize = uploadedImages.reduce((sum, img) => sum + img.sizeBytes, 0);
-      if (totalPayloadSize > 9 * 1024 * 1024) { // 9MB limit
-        throw new Error(`Payload too large: ${(totalPayloadSize / (1024 * 1024)).toFixed(2)}MB. Maximum is 9MB.`);
-      }
-      
-      // Get inject text from dashboard if present
-      const injectText = localStorage.getItem('systemPrompt_inject') || '';
-      
-      // Check if this is a follow-up
-      const hasExistingMessages = Array.isArray(messages) && messages.length > 0;
-      const isFollowUp = Boolean(conversationId) && hasExistingMessages;
-      
-      // Debug logging
-      if (localStorage.getItem('NET_DEBUG') === '1') {
-        const payloadSummary = {
-          textLength: userMessage?.length || 0,
-          imageCount: uploadedImages.length,
-          totalBytes: totalPayloadSize,
-          dataUrlPreviews: uploadedImages.map(img => img.dataUrl.substring(0, 40) + '...')
-        };
-        console.log('[POST] /api/chat/analyze', payloadSummary);
-      }
-      
-     
-    onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        queryKey: ['/api/chat/conversations', activeConversationId, 'messages'] 
-      });
-      setMessage('');
-      setUploadedImages([]);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error sending message",
-        description: error.message || "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
