@@ -26,27 +26,30 @@ import { generateAnalysis } from "./services/unified-analysis";
 
 // --- helper: turn client payload into your model call ---
 async function callModelWithInputs(body: any): Promise<any> {
-  const promptText: string = body?.text ?? body?.prompt ?? body?.message ?? "";
+  // Pull what the client sends (with fallbacks)
+  const promptText: string =
+    body?.text ?? body?.prompt ?? body?.message ?? "";
+
   const images: string[] =
     Array.isArray(body?.images) ? body.images :
     Array.isArray(body?.dataUrlPreviews) ? body.dataUrlPreviews :
     Array.isArray(body?.dataUrls) ? body.dataUrls :
     [];
 
+  // NEW: take the Current Prompt + similars flag from client
   const systemPrompt: string = body?.systemPrompt ?? "";
-  const wantSimilar: boolean = Boolean(body?.wantSimilar);
+  const wantSimilar: boolean = body?.wantSimilar ?? body?.withSimilars ?? true;
 
-  // OLD: stub or other call here
-  // return {...}
-
-  // 👉 REPLACE the inside with this:
-  const raw = await generateAnalysis({
+  // Call your real analysis
+  const rawResult = await generateAnalysis({
     prompt: promptText,
     images,
     systemPrompt,
     wantSimilar,
   });
-  return raw;
+
+  // IMPORTANT: return raw; the route will normalize it
+  return rawResult;
 }
 
 // Ensure upload directories exist
