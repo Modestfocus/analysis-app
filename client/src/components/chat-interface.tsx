@@ -220,31 +220,24 @@ function addMessage(m: {
   // Send message mutation
  // Send message mutation (posts to our server and appends assistant message)
 const sendMessageMutation = useMutation({
-  mutationFn: async ({
-    text,
-    images,
-  }: {
-    text: string;
-    images: string[];
-  }) => {
-    // 1. Add prompt and similars flag
-    const prompt = "Current Prompt"; // later you’ll replace with your dynamic system message
-    const withSimilars = true;
+ mutationFn: async ({ text, images }: { text: string; images: string[] }) => {
+  // 1) pull the live Current Prompt from localStorage
+  const systemPrompt = getCurrentPrompt();  // <— THIS is the dynamic system message
+  // 2) ask backend for similars
+  const wantSimilar = true;
 
-    // 2. Send them in the body
-    const res = await fetch("/api/chat/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, images, prompt, withSimilars }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error(`analyze failed: ${res.status} ${errText}`);
-    }
-
-    return res.json(); // → { result: {...} }
-  },
+  // 3) POST everything the server now expects
+  const res = await fetch("/api/chat/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, images, systemPrompt, wantSimilar }),
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`analyze failed: ${res.status} ${errText}`);
+  }
+  return res.json(); // { result: {...} }
+},
   onSuccess: (json: any) => {
     // append assistant bubble with structured result
     addMessage({
