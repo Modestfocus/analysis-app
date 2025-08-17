@@ -261,27 +261,6 @@ const sendMessageMutation = useMutation({
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => abortController.abort(), 45000); // 45s timeout
       
-      try {
-        // POST to analysis endpoint
-        const response = await fetch("/api/chat/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: visionContent,
-            systemPrompt: undefined,        // let backend build the unified prompt
-            conversationId,
-            isFollowUp,
-            enableFullAnalysis: true,
-            injectText: injectText || undefined,
-          }),
-          signal: abortController.signal,
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
         
         const result = await response.json();
         
