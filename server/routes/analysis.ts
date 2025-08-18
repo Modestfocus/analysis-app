@@ -3,70 +3,80 @@ import { Router } from "express";
 import { normalizeForWire } from "../services/normalizeForWire";
 import { generateAnalysis } from "../services/unified-analysis";
 
-export const analysisRouter = Router();
+const router = Router();
 
-// POST /api/chat/analyze
-analysisRouter.post("/chat/analyze", async (req, res) => {
-  try {
-    const body = req.body || {};
+/**
+ * Accept BOTH payload shapes:
+ *  A) { text, images, systemPrompt?, wantSimilar? }
+ *  B) { messages: [ {role, content:[{type:'text'| 'image_url', ...}] } ], wantSimilar? }
+ * And convert to { prompt, images, systemPrompt, wantSimilar } for generateAnalysis()
+ */
+function toUnifiedInputs(body: any) {
+  // New shape: messages array
+  if (Array.isArray(body?.messages)) {
+    let systemPrompt = "";
+    let prompt = "";
+    const images: string[] = [];
 
-    // ---- Accept BOTH schemas ----
-    // A) New schema (what your client sends now)
-    //    { text: string, images: string[], systemPrompt?: string, wantSimilar?: boolean }
-    let promptText: string = body.text ?? body.prompt ?? body.message ?? "";
+    for (const msg of body.messages) {
+      if (!msg?.content || !Array.isArray(msg.content)) continue;
 
-    let images: string[] = Array.isArray(body.images)
-      ? body.images
-      : Array.isArray(body.dataUrlPreviews)
-      ? body.dataUrlPreviews
-      : Array.isArray(body.dataUrls)
-      ? body.dataUrls
-      : [];
+      // system -> pick first text
+      if (msg.role === "system") {
+        const t = msg.content.find((c: any) => c?.type === "text")?.text;
+        if (t) systemPrompt = String(t);
+      }
 
-    // B) Old "vision content" schema (fallback)
-    //    { content: [{ type:'text', text:'...' }, { type:'image_url', image_url:{ url:'...' }}, ...] }
-    if ((!images || images.length === 0) && Array.isArray(body.content)) {
-      for (const item of body.content) {
-        if (item?.type === "text" && typeof item.text === "string" && !promptText) {
-          promptText = item.text;
-        }
-        if (
-          item?.type === "image_url" &&
-          item?.image_url &&
-          typeof item.image_url.url === "string"
-        ) {
-          images.push(item.image_url.url);
+      // user -> collect text + images
+      if (msg.role === "user") {
+        for (const c of msg.content) {
+          if (c?.type === "text" && c.text) {
+            prompt += (prompt ? "\n\n" : "") + String(c.text);
+          }
+          if (c?.type === "image_url" && c.image_url?.url) {
+            images.push(String(c.image_url.url));
+          }
         }
       }
     }
 
-    // Optional extras from the new client
-    const systemPrompt: string = body.systemPrompt ?? "";
-    const wantSimilar: boolean = body.wantSimilar ?? true;
+    const wantSimilar = body?.wantSimilar !== false; // default true
+    return { prompt, images, systemPrompt, wantSimilar };
+  }
 
-    // Minimal validation
-    if (!Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({
-        error:
-          "No images provided. Send { images: [...] } or a vision-style { content: [...] } array.",
-      });
+  // Legacy shape: { text, images, systemPrompt?, wantSimilar? }
+  const prompt =
+    body?.text ?? body?.prompt ?? body?.message ?? "";
+  const images = Array.isArray(body?.images) ? body.images : [];
+  const systemPrompt = body?.systemPrompt ?? "";
+  const wantSimilar = body?.wantSimilar !== false;
+
+  return { prompt, images, systemPrompt, wantSimilar };
+}
+
+router.post("/analyze", async (req, res) => {
+  try {
+    // Unify inputs (works for both shapes)
+    const { prompt, images, systemPrompt, wantSimilar } = toUnifiedInputs(req.body);
+
+    if (!images?.length) {
+      return res.status(400).json({ error: "No images provided." });
     }
 
-    // Call the real analysis
+    // Call your model
     const raw = await generateAnalysis({
-      prompt: promptText,
+      prompt,
       images,
       systemPrompt,
       wantSimilar,
     });
 
-    // Normalize to the wire schema expected by the UI
-    const data = normalizeForWire(raw);
-
-    return res.json({ result: data });
+    // Normalize to the UI schema
+    const data = normalizeForWire(raw, raw?.reasoning ?? "");
+    res.json({ result: data });
   } catch (err: any) {
     console.error("analyze error:", err?.stack || err);
-    return res.status(500).json({
+    res.status(500).json({
       result: {
         sessionPrediction: null,
         directionBias: null,
@@ -79,3 +89,5 @@ analysisRouter.post("/chat/analyze", async (req, res) => {
     });
   }
 });
+
+export default router;
