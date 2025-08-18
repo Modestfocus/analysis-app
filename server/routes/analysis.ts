@@ -1,93 +1,84 @@
 // server/routes/analysis.ts
-import express from "express";
+import { Router } from "express";
+import type { Request, Response } from "express";
 import { generateAnalysis } from "../services/unified-analysis";
-import { normalizeForWire } from "../services/normalizeForWire";
 
-const router = express.Router();
+const router = Router();
 
-/**
- * Accepts ANY of these bodies:
- *  A) { text, images[], systemPrompt?, wantSimilar? }
- *  B) { content: [{type:'text'| 'image_url', ...}], systemPrompt?, wantSimilar? }
- *  C) { messages: [{role:'system'|'user', content:[...] }], wantSimilar? }
- */
-router.post("/analyze", async (req, res) => {
+/** Join all text chunks into one prompt string */
+function collectTextFromContent(content: any[]): string {
+  const texts: string[] = [];
+  for (const item of content || []) {
+    if (item?.type === "text" && typeof item.text === "string") {
+      texts.push(item.text);
+    }
+  }
+  return texts.join("\n").trim();
+}
+
+/** Collect image URLs from content array */
+function collectImagesFromContent(content: any[]): string[] {
+  const urls: string[] = [];
+  for (const item of content || []) {
+    if (item?.type === "image_url" && item.image_url?.url) {
+      urls.push(String(item.image_url.url));
+    }
+  }
+  return urls;
+}
+
+/** Coerce ANY of the accepted shapes into a single content[] array */
+function coerceToContent(body: any): { content: any[]; systemPrompt?: string; wantSimilar?: boolean } {
+  // NEW client shape: { text, images, systemPrompt, wantSimilar }
+  if (typeof body?.text === "string" || Array.isArray(body?.images)) {
+    const c: any[] = [];
+    if (body.text) c.push({ type: "text", text: String(body.text) });
+    for (const url of body.images || []) {
+      c.push({ type: "image_url", image_url: { url: String(url) } });
+    }
+    return { content: c, systemPrompt: body.systemPrompt, wantSimilar: body.wantSimilar };
+  }
+
+  // OpenAI content array: { content: [...] }
+  if (Array.isArray(body?.content)) {
+    return { content: body.content, systemPrompt: body.systemPrompt, wantSimilar: body.wantSimilar };
+  }
+
+  // OpenAI messages array: { messages: [{role, content:[...]}, ...] }
+  if (Array.isArray(body?.messages)) {
+    const merged: any[] = [];
+    for (const m of body.messages) {
+      if (Array.isArray(m?.content)) merged.push(...m.content);
+    }
+    return { content: merged, systemPrompt: body.systemPrompt, wantSimilar: body.wantSimilar };
+  }
+
+  return { content: [] };
+}
+
+router.post("/analyze", async (req: Request, res: Response) => {
   try {
-    const body = req.body ?? {};
+    const { content, systemPrompt, wantSimilar } = coerceToContent(req.body);
 
-    let systemPrompt: string =
-      (typeof body.systemPrompt === "string" && body.systemPrompt.trim()) || "";
-    const wantSimilar: boolean = Boolean(body.wantSimilar);
-
-    // Always build these two for generateAnalysis(...)
-    let promptText = typeof body.text === "string" ? body.text : "";
-    let images: string[] = Array.isArray(body.images) ? body.images.slice() : [];
-
-    // --- Shape B: { content: [...] }
-    if (Array.isArray(body.content)) {
-      for (const part of body.content) {
-        if (part?.type === "text" && !promptText && typeof part.text === "string") {
-          promptText = part.text;
-        }
-        if (
-          part?.type === "image_url" &&
-          part.image_url &&
-          typeof part.image_url.url === "string"
-        ) {
-          images.push(part.image_url.url);
-        }
-      }
+    if (!Array.isArray(content) || content.length === 0) {
+      return res.status(400).json({ error: "Invalid request format. Expected text and/or images." });
     }
 
-    // --- Shape C: { messages: [...] }
-    if (Array.isArray(body.messages)) {
-      for (const m of body.messages) {
-        const role = m?.role;
-        const content = Array.isArray(m?.content) ? m.content : [];
+    const prompt = collectTextFromContent(content);
+    const images = collectImagesFromContent(content);
 
-        if (role === "system" && !systemPrompt) {
-          const t = content.find((c: any) => c?.type === "text" && typeof c.text === "string");
-          if (t) systemPrompt = t.text;
-        }
-
-        if (role === "user") {
-          for (const c of content) {
-            if (!promptText && c?.type === "text" && typeof c.text === "string") {
-              promptText = c.text;
-            }
-            if (
-              c?.type === "image_url" &&
-              c.image_url &&
-              typeof c.image_url.url === "string"
-            ) {
-              images.push(c.image_url.url);
-            }
-          }
-        }
-      }
-    }
-
-    // Extra fallback names some clients might send
-    if (!images.length && Array.isArray(body.dataUrls)) images = body.dataUrls.slice();
-    if (!images.length && Array.isArray(body.dataUrlPreviews)) images = body.dataUrlPreviews.slice();
-
-    // Final safety
-    images = (images || []).filter((u) => typeof u === "string" && u.length > 0);
-
-    // Call your real model function
-    const raw = await generateAnalysis({
-      prompt: promptText || "",
+    // Call your model wrapper
+    const result = await generateAnalysis({
+      prompt,
       images,
-      systemPrompt,
-      wantSimilar,
+      systemPrompt: typeof systemPrompt === "string" ? systemPrompt : "",
+      wantSimilar: Boolean(wantSimilar),
     });
 
-    // Normalize for the UI
-    const data = normalizeForWire(raw, raw?.reasoning ?? "");
-    res.json({ result: data });
+    res.json({ result });
   } catch (err: any) {
-    console.error("analyze error:", err?.stack || err);
-    res.status(400).json({ error: err?.message || "Analyze failed." });
+    console.error("analyze route error:", err?.stack || err);
+    res.status(500).json({ error: err?.message || "Server error" });
   }
 });
 
