@@ -23,6 +23,7 @@ import { log, logErr } from "./utils/logger";
 import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
 import { normalizeForWire } from "./services/normalizeForWire";
 import { generateAnalysis } from "./services/unified-analysis";
+import analysisRouter from "./routes/analysis";
 
 // --- helper: turn client payload into your model call ---
 async function callModelWithInputs(body: any): Promise<any> {
@@ -169,6 +170,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!username || !password) {
         return res.status(400).json({ error: "Username and password required" });
       }
+
+      // Chat analysis endpoints
+app.use("/api", analysisRouter);
       
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -195,39 +199,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Internal server error" });
     }
   });
-
-app.post("/api/chat/analyze", async (req, res) => {
-  try {
-    // TODO: call your real model function here
-    const aiResponse: any = await callModelWithInputs(req.body);
-
-    const fallbackReasoning =
-      typeof aiResponse === "string"
-        ? aiResponse
-        : aiResponse?.text ?? aiResponse?.message ?? aiResponse?.content ?? "";
-
-    const data = normalizeForWire(
-      aiResponse?.result ?? aiResponse,
-      fallbackReasoning,
-    );
-
-    res.json({ result: data });
-  } catch (err: any) {
-    // Add this logging so we can see the real error in the server logs
-    console.error("analyze error:", err?.stack || err);
-    res.status(500).json({
-      result: {
-        sessionPrediction: null,
-        directionBias: null,
-        confidence: null,
-        reasoning: "Server error while analyzing chart.",
-        similarImages: [],
-        targetVisuals: {},
-      },
-      error: "analyze_failed",
-    });
-  }
-});
 
   
   app.post("/api/auth/wallet-login", async (req, res) => {
