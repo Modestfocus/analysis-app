@@ -23,7 +23,7 @@ import { log, logErr } from "./utils/logger";
 import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
 import { normalizeForWire } from "./services/normalizeForWire";
 import { generateAnalysis } from "./services/unified-analysis";
-import { analysisRouter } from "./routes/analysis";
+import analysisRouter from "./routes/analysis";
 
 // --- helper: turn client payload into your model call ---
 async function callModelWithInputs(body: any): Promise<any> {
@@ -172,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Chat analysis endpoints
-app.use("/api", analysisRouter);
+app.use("/api/chat", analysisRouter);
       
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
