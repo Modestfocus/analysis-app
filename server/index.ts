@@ -14,73 +14,88 @@ app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 
 // Serve public folder for depth/edge/gradient maps at root
 app.use(express.static(path.join(process.cwd(), "public")));
+
 // Health check endpoint
-app.get("/healthz", (req: Request, res: Response) => {
+app.get("/healthz", (_req: Request, res: Response) => {
   res.json({ ok: true, ts: new Date().toISOString() });
 });
+
+// --- request/response logger for /api/* ---
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  const urlPath = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined;
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
+  const originalResJson = res.json.bind(res);
+  (res as any).json = function (bodyJson: any, ...args: any[]) {
     capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
+    return originalResJson(bodyJson, ...args);
   };
 
   res.on("finish", () => {
+    if (!urlPath.startsWith("/api")) return;
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
+    let line = `${req.method} ${urlPath} ${res.statusCode} in ${duration}ms`;
+    if (capturedJsonResponse) line += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+    if (line.length > 80) line = line.slice(0, 79) + "…";
+    log(line);
   });
 
   next();
 });
 
+// --- guard: never let non-GET, non-/api requests fall into the SPA ---
+app.use((req, res, next) => {
+  if (req.method !== "GET" && !req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "Not found" });
+  }
+  next();
+});
+
 (async () => {
+  // 1) Mount all API routes FIRST
   const server = await registerRoutes(app);
 
+  // 2) Central error handler for API routes
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     res.status(status).json({ message });
+    // Re-throw so logs still show the stack
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // 3) Frontend middleware (Vite in dev, static in prod)
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // 4) FINAL catch-all for SPA — GET ONLY and MUST be last
+  app.get("*", (req, res, next) => {
+    // Never intercept API URLs
+    if (req.path.startsWith("/api/")) return next();
+
+    // Let Vite/static middleware serve index.html (already mounted above).
+    // If your static middleware doesn’t include a fallback, you can uncomment
+    // one of the sendFile lines below and point it to your index.html.
+    //
+    // DEV example (if you want to force-send the file yourself):
+    // return res.sendFile(path.join(process.cwd(), "client", "index.html"));
+    //
+    // PROD example:
+    // return res.sendFile(path.join(process.cwd(), "client", "dist", "index.html"));
+
+    // Otherwise, if the request reaches here, just pass through; the mounted
+    // Vite/static middleware should resolve the asset/fallback.
+    return next();
+  });
+
+  // 5) Start server
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
+    { port, host: "0.0.0.0", reusePort: true },
+    () => log(`serving on port ${port}`)
   );
 })();
