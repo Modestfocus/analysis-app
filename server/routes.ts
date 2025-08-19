@@ -2367,9 +2367,7 @@ app.use("/api/chat", analysisRouter);
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
     // Chat analysis (new)
-  app.post('/api/chat/analyze', async (req, res, next) => {
-    try {
-      // Accept common aliases from various frontends
+  // Accept common aliases from various frontends
 const rawPrompt =
   (req.body?.prompt ??
    req.body?.message ??
@@ -2377,15 +2375,21 @@ const rawPrompt =
    req.body?.content ??
    "");
 
-// normalize and trim
+// normalize
 const prompt = (typeof rawPrompt === "string" ? rawPrompt : "").trim();
 const images = Array.isArray(req.body?.images) ? req.body.images : [];
 const systemPrompt = typeof req.body?.systemPrompt === "string" ? req.body.systemPrompt : "";
 const wantSimilar = typeof req.body?.wantSimilar === "boolean" ? req.body.wantSimilar : true;
 
-      // 👇 Debug log
-      console.log("[express] POST /api/chat/analyze ::", {
+// Debug log (expanded)
+console.log("[express] POST /api/chat/analyze ::", {
   bodyKeys: Object.keys(req.body || {}),
+  promptSource: (
+    "prompt"  in (req.body || {}) ? "prompt"  :
+    "message" in (req.body || {}) ? "message" :
+    "text"    in (req.body || {}) ? "text"    :
+    "content" in (req.body || {}) ? "content" : "none"
+  ),
   promptPreview: prompt.slice(0, 80),
   promptLength: prompt.length,
   imageCount: images.length,
@@ -2393,12 +2397,17 @@ const wantSimilar = typeof req.body?.wantSimilar === "boolean" ? req.body.wantSi
   wantSimilar,
 });
 
-      if (!prompt || typeof prompt !== 'string') {
-        return res.status(400).json({ error: "Field 'prompt' (string) is required." });
-      }
-      if (!Array.isArray(images) || images.length === 0) {
-        return res.status(400).json({ error: "Field 'images' (array of base64 data URLs) is required." });
-      }
+// Validation
+if (!prompt) {
+  return res.status(400).json({
+    error: "Missing prompt text. Send one of: 'prompt', 'message', 'text', or 'content'."
+  });
+}
+if (images.length === 0) {
+  return res.status(400).json({
+    error: "Field 'images' (array of base64 data URLs) is required."
+  });
+}
 
       // Lazy import to avoid top-level coupling
       const { generateAnalysis } = await import('./services/unified-analysis');
