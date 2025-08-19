@@ -10,6 +10,7 @@ const router = Router();
  *  B) { text, images[], wantSimilar?, systemPrompt?, dataUrlPreviews?, dataUrls? }  // legacy
  */
 router.post("/analyze", async (req, res) => {
+  console.log("[analysis-router] USING tolerant router. Body keys:", Object.keys(req.body));
   try {
     const body = req.body || {};
 
