@@ -164,7 +164,7 @@ export async function generateAnalysis({
 
   if (wantSimilar) {
     // Use our disk-based fallback (you can replace with your real retriever later)
-    similarCharts = await findSimilarCharts(images, 3);
+   similarCharts = (await findSimilarCharts(images, 3)).slice(0, 3);
     console.log("[unified] similarCharts found:", similarCharts.length);
     
     if (similarCharts.length > 0) {
