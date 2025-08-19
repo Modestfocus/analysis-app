@@ -2369,15 +2369,29 @@ app.use("/api/chat", analysisRouter);
     // Chat analysis (new)
   app.post('/api/chat/analyze', async (req, res, next) => {
     try {
-      const { prompt, images, systemPrompt, wantSimilar } = req.body ?? {};
+      // Accept common aliases from various frontends
+const rawPrompt =
+  (req.body?.prompt ??
+   req.body?.message ??
+   req.body?.text ??
+   req.body?.content ??
+   "");
+
+// normalize and trim
+const prompt = (typeof rawPrompt === "string" ? rawPrompt : "").trim();
+const images = Array.isArray(req.body?.images) ? req.body.images : [];
+const systemPrompt = typeof req.body?.systemPrompt === "string" ? req.body.systemPrompt : "";
+const wantSimilar = typeof req.body?.wantSimilar === "boolean" ? req.body.wantSimilar : true;
 
       // 👇 Debug log
       console.log("[express] POST /api/chat/analyze ::", {
-        promptLength: prompt?.length ?? 0,
-        imageCount: Array.isArray(images) ? images.length : 0,
-        hasSystemPrompt: !!systemPrompt,
-        wantSimilar,
-      });
+  bodyKeys: Object.keys(req.body || {}),
+  promptPreview: prompt.slice(0, 80),
+  promptLength: prompt.length,
+  imageCount: images.length,
+  hasSystemPrompt: !!systemPrompt,
+  wantSimilar,
+});
 
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({ error: "Field 'prompt' (string) is required." });
