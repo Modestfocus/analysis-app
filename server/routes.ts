@@ -2366,10 +2366,18 @@ app.use("/api/chat", analysisRouter);
   app.get('/api/chat/conversations/:conversationId/messages', getConversationMessages);
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
-  // Chat analysis (new)
+    // Chat analysis (new)
   app.post('/api/chat/analyze', async (req, res, next) => {
     try {
       const { prompt, images, systemPrompt, wantSimilar } = req.body ?? {};
+
+      // 👇 Debug log
+      console.log("[express] POST /api/chat/analyze ::", {
+        promptLength: prompt?.length ?? 0,
+        imageCount: Array.isArray(images) ? images.length : 0,
+        hasSystemPrompt: !!systemPrompt,
+        wantSimilar,
+      });
 
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({ error: "Field 'prompt' (string) is required." });
