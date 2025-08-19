@@ -210,7 +210,8 @@ Rules:
   userContent.push({ type: "text", text: jsonInstruction });
 
   // 4) Call GPT-4o (not mini) in JSON mode for higher quality
-    const completion = await openai.chat.completions.create({
+      // --- OpenAI call (JSON only) ---
+  const completion = await openai.chat.completions.create({
     model: "gpt-4o",
     response_format: { type: "json_object" },
     temperature: 0.2,
@@ -221,19 +222,62 @@ Rules:
     ],
   });
 
+  // Preview a safe slice of the response
   console.log(
     "[openai] preview:",
     (completion?.choices?.[0]?.message?.content || "").slice(0, 160)
   );
 
-  const rawText = completion.choices?.[0]?.message?.content || "{}";
-
-  let parsed: any;
+  // --- Parse JSON result safely ---
+  const rawText = completion?.choices?.[0]?.message?.content?.trim() || "{}";
+  let parsed: any = {};
   try {
     parsed = JSON.parse(rawText);
   } catch {
+    console.warn("[unified] JSON parse failed; returning minimal object.");
     parsed = {};
   }
+
+  // If model didn't include similarImages and you want them in UI, backfill
+  if (wantSimilar && (!Array.isArray(parsed?.similarImages) || parsed.similarImages.length === 0)) {
+    parsed.similarImages = similarCharts.map(s => ({
+      id: s.id,
+      label: s.label,
+      original: s.links?.original ?? null,
+      depth: s.links?.depth ?? null,
+      edge: s.links?.edge ?? null,
+      gradient: s.links?.gradient ?? null,
+      url: s.url ?? null,
+    }));
+  }
+
+  // Prefer model-provided visuals if present; otherwise use our exact paths
+  const returnedTargetVisuals =
+    parsed?.targetVisuals &&
+    (parsed.targetVisuals.depthMapPath ||
+     parsed.targetVisuals.edgeMapPath ||
+     parsed.targetVisuals.gradientMapPath)
+      ? parsed.targetVisuals
+      : {
+          original: targetVisuals.original || null,
+          depth:    targetVisuals.depth    || null,
+          edge:     targetVisuals.edge     || null,
+          gradient: targetVisuals.gradient || null,
+        };
+
+  // --- Final normalized object returned to routes.ts ---
+  return {
+    sessionPrediction: parsed?.sessionPrediction ?? null,
+    directionBias:     parsed?.directionBias     ?? null,
+    confidence:        parsed?.confidence        ?? null,
+    reasoning:         parsed?.reasoning         ?? null,
+    targetVisuals:     returnedTargetVisuals,
+    similarImages:     parsed?.similarImages ?? [],
+    model:             completion?.model ?? "gpt-4o",
+    tokens:            completion?.usage?.total_tokens ?? null,
+    similarUsed:       (similarCharts?.length ?? 0) > 0,
+  };
+} // <-- CLOSES export async function generateAnalysis(...)
 
     // 5) If similarImages absent/empty, backfill from disk with maps
   if (wantSimilar && (!Array.isArray(parsed?.similarImages) || parsed.similarImages.length === 0)) {
