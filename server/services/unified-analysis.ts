@@ -1,66 +1,125 @@
 // server/services/unified-analysis.ts
-import OpenAI from "openai";
-import fs from "fs/promises";
-import path from "path";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+import { promises as fs } from "fs";
+import * as path from "path";
+import { openai } from "../openai"; // assumes server/openai.ts exports `openai`
 
-export type GenerateAnalysisParams = {
-  prompt: string;            // user typed text (question/instructions)
-  images: string[];          // base64 data URLs from the client
-  systemPrompt?: string;     // <-- your Current Prompt from the UI
-  wantSimilar?: boolean;     // ask backend to return 3 similar charts
+/** ---------- Types ---------- */
+type VisualLinks = {
+  original: string | null;
+  depth?: string | null;
+  edge?: string | null;
+  gradient?: string | null;
 };
 
-// --- basic similar finder: return objects with original + sibling maps if found ---
-async function findSimilarCharts(_images: string[], limit = 3): Promise<Array<{
+type SimilarItem = {
   id: string;
   label?: string;
-  links: { original: string; depth?: string | null; edge?: string | null; gradient?: string | null; };
+  links: { original: string; depth?: string | null; edge?: string | null; gradient?: string | null };
   url?: string | null;
-}>> {
+};
+
+type AnalysisResult = {
+  sessionPrediction: "Asia" | "London" | "New York" | string | null;
+  directionBias: "long" | "short" | "neutral" | string | null;
+  confidence: number | string | null;
+  reasoning: string | null;
+  targetVisuals: {
+    original?: string | null;
+    depth?: string | null;
+    edge?: string | null;
+    gradient?: string | null;
+    depthMapPath?: string | null;
+    edgeMapPath?: string | null;
+    gradientMapPath?: string | null;
+  };
+  similarImages: Array<any>;
+  model?: string | null;
+  tokens?: number | null;
+  similarUsed?: boolean;
+};
+
+/** ---------- Small helpers ---------- */
+
+// Build OpenAI "image_url" content parts
+function toImagePart(url?: string | null) {
+  if (!url) return null;
+  return {
+    type: "image_url",
+    image_url: { url },
+  } as const;
+}
+
+// Push only if non-null
+function pushIf<T>(arr: T[], part: T | null | undefined) {
+  if (part) arr.push(part as T);
+}
+
+// Discover sibling maps (depth/edge/gradient) next to an original image path under /public/uploads
+async function discoverMapsFor(originalUrl: string) {
+  try {
+    if (!originalUrl || originalUrl.startsWith("data:")) {
+      // Cannot discover siblings for data URLs
+      return { depth: null, edge: null, gradient: null };
+  }
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    const name = path.basename(originalUrl);
+    const base = name.replace(/\.(png|jpg|jpeg|webp)$/i, "");
+
+    const entries = await fs.readdir(uploadsDir);
+    const pick = (keyword: string) => {
+      const match = entries.find(
+        (n) =>
+          (n.startsWith(base) || n.includes(base)) &&
+          n.toLowerCase().includes(keyword)
+      );
+      return match ? `/uploads/${match}` : null;
+    };
+
+    return {
+      depth: pick("depth"),
+      edge: pick("edge"),
+      gradient: pick("gradient"),
+    };
+  } catch {
+    return { depth: null, edge: null, gradient: null };
+  }
+}
+
+// Naive similar finder: pick recent files from /public/uploads and attach sibling maps
+async function findSimilarCharts(_images: string[], limit = 3): Promise<SimilarItem[]> {
   try {
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    const entries = await fs.readdir(uploadsDir, { withFileTypes: true });
+    const dirents = await fs.readdir(uploadsDir, { withFileTypes: true });
+    const files = dirents.filter((e) => e.isFile()).map((e) => e.name);
+    const imageFiles = files.filter((n) => /\.(png|jpg|jpeg|webp)$/i.test(n));
 
-    const files = entries
-      .filter(e => e.isFile())
-      .map(e => e.name)
-      .filter(n => /\.(png|jpg|jpeg|webp)$/i.test(n))
-      .sort((a, b) => b.localeCompare(a));
+    // Sort by name desc as a proxy for recency (simple but works for many naming schemes)
+    imageFiles.sort((a, b) => b.localeCompare(a));
 
-    const picks = files.slice(0, limit).map(n => `/uploads/${n}`);
+    const picks = imageFiles.slice(0, Math.max(0, limit));
+    const results: SimilarItem[] = [];
 
-    const results = [];
-    for (const orig of picks) {
-      const maps = await (async () => {
-        try {
-          const name = path.basename(orig);
-          const base = name.replace(/\.(png|jpg|jpeg|webp)$/i, "");
-          const names = entries.filter(e => e.isFile()).map(e => e.name);
-
-          const find = (kw: string) => {
-            const match = names.find(m =>
-              (m.startsWith(base) || m.includes(base)) && m.toLowerCase().includes(kw)
-            );
-            return match ? `/uploads/${match}` : null;
-          };
-
-          return {
-            depth: find("depth"),
-            edge: find("edge"),
-            gradient: find("gradient"),
-          };
-        } catch { return { depth: null, edge: null, gradient: null }; }
-      })();
+    for (const n of picks) {
+      const original = `/uploads/${n}`;
+      const name = path.basename(original);
+      const base = name.replace(/\.(png|jpg|jpeg|webp)$/i, "");
+      const findSibling = (kw: string) => {
+        const m = imageFiles.find(
+          (m) =>
+            (m.startsWith(base) || m.includes(base)) && m.toLowerCase().includes(kw)
+        );
+        return m ? `/uploads/${m}` : null;
+      };
+      const depth = findSibling("depth");
+      const edge = findSibling("edge");
+      const gradient = findSibling("gradient");
 
       results.push({
-        id: path.basename(orig),
-        label: path.basename(orig),
-        links: { original: orig, ...maps },
-        url: orig,
+        id: name,
+        label: name,
+        links: { original, depth, edge, gradient },
+        url: original,
       });
     }
 
@@ -70,112 +129,76 @@ async function findSimilarCharts(_images: string[], limit = 3): Promise<Array<{
   }
 }
 
-export async function generateAnalysis({
-  prompt,
-  images,
-  systemPrompt = "",
-  wantSimilar = true,
-}: GenerateAnalysisParams): Promise<any> {
-  if (!images?.length) {
-    throw new Error("No images provided for analysis.");
-  }
+/** ---------- Core analysis ---------- */
 
-  // 1) Build SYSTEM message from your Current Prompt (falls back if empty)
+export async function generateAnalysis(opts: {
+  prompt?: string;
+  images?: string[]; // [original, depth, edge, gradient] or just [original]
+  systemPrompt?: string;
+  wantSimilar?: boolean;
+}): Promise<AnalysisResult> {
+  const prompt = (opts.prompt ?? "").trim();
+  const images = Array.isArray(opts.images) ? opts.images.filter(Boolean) : [];
+  const wantSimilar = Boolean(opts.wantSimilar);
   const system =
-    (systemPrompt || "").trim() ||
-    "You are a financial chart analysis expert. Analyze the chart images and return a short session prediction, direction bias (long/short/neutral), numeric confidence (0..1 or %), and a concise reasoning.";
+    (opts.systemPrompt ?? "").trim() ||
+    "You are a strict, JSON-only analyst for market charts.";
 
-  // 2) Build USER content (text + multiple images)
-  const userText = (prompt || "").trim();
+  // Build the user content parts (text + image_url parts)
   const userContent: Array<any> = [];
-  // Helpers to build OpenAI "image_url" parts and to discover sibling maps on disk
-  function toImagePart(url?: string) {
-    if (!url) return null;
-    return {
-      type: "image_url",
-      image_url: { url }
-    } as const;
-  }
-  function pushIf(arr: any[], part: any) {
-    if (part) arr.push(part);
-  }
-  async function discoverMapsFor(originalUrl: string) {
-    try {
-      const uploadsDir = path.join(process.cwd(), "public", "uploads");
-      const name = path.basename(originalUrl);
-      const base = name.replace(/\.(png|jpg|jpeg|webp)$/i, "");
-      const entries = await fs.readdir(uploadsDir);
 
-      const pick = (keyword: string) => {
-        const match = entries.find(n =>
-          (n.startsWith(base) || n.includes(base)) &&
-          n.toLowerCase().includes(keyword)
-        );
-        return match ? `/uploads/${match}` : null;
-      };
+  // Minimal cue text so the user message always has text
+  userContent.push({
+    type: "text",
+    text: prompt || "[AUTOGEN] Use systemPrompt + images + similar charts.",
+  });
 
-      return {
-        depth: pick("depth"),
-        edge: pick("edge"),
-        gradient: pick("gradient"),
-      };
-    } catch {
-      return { depth: null, edge: null, gradient: null };
-    }
-  }
-  
-  if (userText) {
-    userContent.push({ type: "text", text: userText });
-  } else {
-    userContent.push({
-      type: "text",
-      text: "Analyze the provided chart(s) using the system instructions.",
-    });
-  }
-
-    // Build target visuals: [original, depth, edge, gradient] or discover siblings
-  const targetVisuals = {
-    original: images[0] || null,
-    depth: images[1] || null,
-    edge: images[2] || null,
-    gradient: images[3] || null,
+  // Target visuals in fixed order
+  const targetVisuals: VisualLinks = {
+    original: images[0] ?? null,
+    depth: images[1] ?? null,
+    edge: images[2] ?? null,
+    gradient: images[3] ?? null,
   };
 
-  // If only original was passed, try to discover sibling map files
-  if (targetVisuals.original && !targetVisuals.depth && !targetVisuals.edge && !targetVisuals.gradient) {
+  // If only original provided, try to discover siblings on disk
+  if (
+    targetVisuals.original &&
+    !targetVisuals.depth &&
+    !targetVisuals.edge &&
+    !targetVisuals.gradient
+  ) {
     const discovered = await discoverMapsFor(targetVisuals.original);
     targetVisuals.depth = targetVisuals.depth || discovered.depth;
     targetVisuals.edge = targetVisuals.edge || discovered.edge;
     targetVisuals.gradient = targetVisuals.gradient || discovered.gradient;
   }
 
-  // Push target visuals to the user content (order matters)
+  // Push target visuals (order matters)
   pushIf(userContent, toImagePart(targetVisuals.original));
   pushIf(userContent, toImagePart(targetVisuals.depth));
   pushIf(userContent, toImagePart(targetVisuals.edge));
   pushIf(userContent, toImagePart(targetVisuals.gradient));
-  // --- Similar charts (original + depth + edge + gradient) ---
-  let similarCharts: Array<{
-    id: string;
-    label?: string;
-    links: { original: string; depth?: string | null; edge?: string | null; gradient?: string | null; };
-    url?: string | null;
-  }> = [];
 
+  // Similar charts with maps
+  let similarCharts: SimilarItem[] = [];
   if (wantSimilar) {
-    // Use our disk-based fallback (you can replace with your real retriever later)
-   similarCharts = (await findSimilarCharts(images, 3)).slice(0, 3);
+    similarCharts = await findSimilarCharts(images, 3);
     console.log("[unified] similarCharts found:", similarCharts.length);
-    
+
     if (similarCharts.length > 0) {
       userContent.push({
         type: "text",
-        text: `SIMILAR_COUNT=${similarCharts.length}. For each similar item, images appear in this fixed order: original, depth, edge, gradient.`,
+        text:
+          "SIMILAR_COUNT=" +
+          similarCharts.length +
+          ". For each similar item, images appear in this fixed order: original, depth, edge, gradient.",
       });
-
       for (const s of similarCharts) {
-        // lightweight tag so the model can reference it
-        userContent.push({ type: "text", text: `Similar: ${s.label || s.id}` });
+        userContent.push({
+          type: "text",
+          text: `Similar: ${s.label || s.id}`,
+        });
         pushIf(userContent, toImagePart(s.links.original));
         pushIf(userContent, toImagePart(s.links.depth));
         pushIf(userContent, toImagePart(s.links.edge));
@@ -183,8 +206,8 @@ export async function generateAnalysis({
       }
     }
   }
-  
-      // 3) Instruct the model to return strict JSON the UI expects
+
+  // JSON instruction (strict)
   const jsonInstruction = `
 Return ONLY a JSON object with these keys:
 
@@ -209,8 +232,7 @@ Rules:
 
   userContent.push({ type: "text", text: jsonInstruction });
 
-  // 4) Call GPT-4o (not mini) in JSON mode for higher quality
-      // --- OpenAI call (JSON only) ---
+  // --- OpenAI call (JSON only) ---
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",
     response_format: { type: "json_object" },
@@ -228,7 +250,7 @@ Rules:
     (completion?.choices?.[0]?.message?.content || "").slice(0, 160)
   );
 
-  // --- Parse JSON result safely ---
+  // Parse JSON result safely
   const rawText = completion?.choices?.[0]?.message?.content?.trim() || "{}";
   let parsed: any = {};
   try {
@@ -238,9 +260,12 @@ Rules:
     parsed = {};
   }
 
-  // If model didn't include similarImages and you want them in UI, backfill
-  if (wantSimilar && (!Array.isArray(parsed?.similarImages) || parsed.similarImages.length === 0)) {
-    parsed.similarImages = similarCharts.map(s => ({
+  // If model didn't include similarImages and you want them in UI, backfill from discovered similars
+  if (
+    wantSimilar &&
+    (!Array.isArray(parsed?.similarImages) || parsed.similarImages.length === 0)
+  ) {
+    parsed.similarImages = similarCharts.map((s) => ({
       id: s.id,
       label: s.label,
       original: s.links?.original ?? null,
@@ -255,65 +280,33 @@ Rules:
   const returnedTargetVisuals =
     parsed?.targetVisuals &&
     (parsed.targetVisuals.depthMapPath ||
-     parsed.targetVisuals.edgeMapPath ||
-     parsed.targetVisuals.gradientMapPath)
+      parsed.targetVisuals.edgeMapPath ||
+      parsed.targetVisuals.gradientMapPath)
       ? parsed.targetVisuals
       : {
           original: targetVisuals.original || null,
-          depth:    targetVisuals.depth    || null,
-          edge:     targetVisuals.edge     || null,
+          depth: targetVisuals.depth || null,
+          edge: targetVisuals.edge || null,
           gradient: targetVisuals.gradient || null,
         };
 
-  // --- Final normalized object returned to routes.ts ---
+  // Final normalized object
   return {
     sessionPrediction: parsed?.sessionPrediction ?? null,
-    directionBias:     parsed?.directionBias     ?? null,
-    confidence:        parsed?.confidence        ?? null,
-    reasoning:         parsed?.reasoning         ?? null,
-    targetVisuals:     returnedTargetVisuals,
-    similarImages:     parsed?.similarImages ?? [],
-    model:             completion?.model ?? "gpt-4o",
-    tokens:            completion?.usage?.total_tokens ?? null,
-    similarUsed:       (similarCharts?.length ?? 0) > 0,
+    directionBias: parsed?.directionBias ?? null,
+    confidence: parsed?.confidence ?? null,
+    reasoning: parsed?.reasoning ?? null,
+    targetVisuals: returnedTargetVisuals,
+    similarImages: parsed?.similarImages ?? [],
+    model: completion?.model ?? "gpt-4o",
+    tokens: completion?.usage?.total_tokens ?? null,
+    similarUsed: (similarCharts?.length ?? 0) > 0,
   };
-} // <-- CLOSES export async function generateAnalysis(...)
+}
 
-    // 5) If similarImages absent/empty, backfill from disk with maps
-  if (wantSimilar && (!Array.isArray(parsed?.similarImages) || parsed.similarImages.length === 0)) {
-    parsed.similarImages = await findSimilarCharts(images, 3);
-  }
+// Some callers import `.run(...)`; keep that API stable.
+export async function run(opts: Parameters<typeof generateAnalysis>[0]) {
+  return generateAnalysis(opts);
+}
 
-  // 6) Ensure keys exist (the UI’s normalizer will clean the rest)
-    return {
-    sessionPrediction: parsed?.sessionPrediction ?? null,
-    directionBias:     parsed?.directionBias     ?? null,
-    confidence:        parsed?.confidence        ?? null,
-    reasoning:         parsed?.reasoning         ?? null,
-
-    // Prefer model-provided visuals if it filled them; otherwise send our exact paths
-    targetVisuals: parsed?.targetVisuals && (
-      parsed.targetVisuals.depthMapPath ||
-      parsed.targetVisuals.edgeMapPath ||
-      parsed.targetVisuals.gradientMapPath
-    ) ? parsed.targetVisuals : {
-      original: targetVisuals.original || null,
-      depth:    targetVisuals.depth    || null,
-      edge:     targetVisuals.edge     || null,
-      gradient: targetVisuals.gradient || null,
-    },
-
-    // Prefer model-filled similarImages; otherwise map the ones we discovered
-    similarImages:
-      Array.isArray(parsed?.similarImages) && parsed.similarImages.length
-        ? parsed.similarImages
-        : (Array.isArray(similarCharts) ? similarCharts.map(s => ({
-            id:       s.id,
-            label:    s.label,
-            original: s.links?.original ?? null,
-            depth:    s.links?.depth    ?? null,
-            edge:     s.links?.edge     ?? null,
-            gradient: s.links?.gradient ?? null,
-            url:      s.url ?? null,
-          })) : []),
-  };
+export default { generateAnalysis, run };
