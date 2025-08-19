@@ -1,5 +1,6 @@
 // server/vite.ts
 import type { Express, Request, Response, NextFunction } from "express";
+import express from "express"; // <-- add normal import (so we can use express.static)
 import type { Server as HttpServer } from "http";
 import fs from "fs/promises";
 import path from "path";
@@ -48,7 +49,7 @@ export function serveStatic(app: Express) {
 
   // Serve built static assets (do NOT auto-index)
   app.use(
-    (await import("express")).default.static(clientDist, {
+    express.static(clientDist, {
       index: false,
       fallthrough: true,
     })
