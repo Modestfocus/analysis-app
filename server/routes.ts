@@ -2369,7 +2369,7 @@ app.use("/api/chat", analysisRouter);
 
   // Chat analysis endpoint
   const { analyzeChatChartsEndpoint } = await import('./routes/chat-analysis');
-  app.post('/api/chat/analyze', analyzeChatChartsEndpoint);
+  
 
   const httpServer = createServer(app);
   return httpServer;
