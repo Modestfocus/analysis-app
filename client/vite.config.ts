@@ -6,12 +6,14 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // This makes "@/..." point to client/src
+      // existing alias for client/src
       "@": path.resolve(__dirname, "./src"),
+      // NEW: alias to the repo-level shared folder
+      "@shared": path.resolve(__dirname, "../shared"),
     },
   },
   server: {
-    port: 3000,       // ok to change
-    strictPort: false // ok to leave
+    port: 3000,
+    strictPort: false,
   },
 });
