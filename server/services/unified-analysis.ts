@@ -14,22 +14,57 @@ export type GenerateAnalysisParams = {
   wantSimilar?: boolean;     // ask backend to return 3 similar charts
 };
 
-// --- very simple similar finder: pick 3 recent images from /public/uploads ---
-async function findSimilarCharts(_images: string[], limit = 3): Promise<string[]> {
+// --- basic similar finder: return objects with original + sibling maps if found ---
+async function findSimilarCharts(_images: string[], limit = 3): Promise<Array<{
+  id: string;
+  label?: string;
+  links: { original: string; depth?: string | null; edge?: string | null; gradient?: string | null; };
+  url?: string | null;
+}>> {
   try {
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
     const entries = await fs.readdir(uploadsDir, { withFileTypes: true });
 
-    // keep only images we can serve
     const files = entries
       .filter(e => e.isFile())
       .map(e => e.name)
       .filter(n => /\.(png|jpg|jpeg|webp)$/i.test(n))
-      .sort((a, b) => b.localeCompare(a)); // crude "recent" ordering by name
+      .sort((a, b) => b.localeCompare(a));
 
-    // return absolute paths your client can load (Express is already serving /public)
-    const pick = files.slice(0, limit).map(n => `/uploads/${n}`);
-    return pick;
+    const picks = files.slice(0, limit).map(n => `/uploads/${n}`);
+
+    const results = [];
+    for (const orig of picks) {
+      const maps = await (async () => {
+        try {
+          const name = path.basename(orig);
+          const base = name.replace(/\.(png|jpg|jpeg|webp)$/i, "");
+          const names = entries.filter(e => e.isFile()).map(e => e.name);
+
+          const find = (kw: string) => {
+            const match = names.find(m =>
+              (m.startsWith(base) || m.includes(base)) && m.toLowerCase().includes(kw)
+            );
+            return match ? `/uploads/${match}` : null;
+          };
+
+          return {
+            depth: find("depth"),
+            edge: find("edge"),
+            gradient: find("gradient"),
+          };
+        } catch { return { depth: null, edge: null, gradient: null }; }
+      })();
+
+      results.push({
+        id: path.basename(orig),
+        label: path.basename(orig),
+        links: { original: orig, ...maps },
+        url: orig,
+      });
+    }
+
+    return results;
   } catch {
     return [];
   }
@@ -53,7 +88,42 @@ export async function generateAnalysis({
   // 2) Build USER content (text + multiple images)
   const userText = (prompt || "").trim();
   const userContent: Array<any> = [];
+  // Helpers to build OpenAI "image_url" parts and to discover sibling maps on disk
+  function toImagePart(url?: string) {
+    if (!url) return null;
+    return {
+      type: "image_url",
+      image_url: { url }
+    } as const;
+  }
+  function pushIf(arr: any[], part: any) {
+    if (part) arr.push(part);
+  }
+  async function discoverMapsFor(originalUrl: string) {
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      const name = path.basename(originalUrl);
+      const base = name.replace(/\.(png|jpg|jpeg|webp)$/i, "");
+      const entries = await fs.readdir(uploadsDir);
 
+      const pick = (keyword: string) => {
+        const match = entries.find(n =>
+          (n.startsWith(base) || n.includes(base)) &&
+          n.toLowerCase().includes(keyword)
+        );
+        return match ? `/uploads/${match}` : null;
+      };
+
+      return {
+        depth: pick("depth"),
+        edge: pick("edge"),
+        gradient: pick("gradient"),
+      };
+    } catch {
+      return { depth: null, edge: null, gradient: null };
+    }
+  }
+  
   if (userText) {
     userContent.push({ type: "text", text: userText });
   } else {
@@ -63,12 +133,27 @@ export async function generateAnalysis({
     });
   }
 
-  for (const url of images) {
-    userContent.push({
-      type: "image_url",
-      image_url: { url },
-    });
+    // Build target visuals: [original, depth, edge, gradient] or discover siblings
+  const targetVisuals = {
+    original: images[0] || null,
+    depth: images[1] || null,
+    edge: images[2] || null,
+    gradient: images[3] || null,
+  };
+
+  // If only original was passed, try to discover sibling map files
+  if (targetVisuals.original && !targetVisuals.depth && !targetVisuals.edge && !targetVisuals.gradient) {
+    const discovered = await discoverMapsFor(targetVisuals.original);
+    targetVisuals.depth = targetVisuals.depth || discovered.depth;
+    targetVisuals.edge = targetVisuals.edge || discovered.edge;
+    targetVisuals.gradient = targetVisuals.gradient || discovered.gradient;
   }
+
+  // Push target visuals to the user content (order matters)
+  pushIf(userContent, toImagePart(targetVisuals.original));
+  pushIf(userContent, toImagePart(targetVisuals.depth));
+  pushIf(userContent, toImagePart(targetVisuals.edge));
+  pushIf(userContent, toImagePart(targetVisuals.gradient));
 
   // 3) Instruct the model to return strict JSON the UI expects
   const jsonInstruction = `
@@ -110,7 +195,7 @@ Return ONLY a JSON object with the following keys:
     parsed = {};
   }
 
-  // 5) If similarImages came back empty, fill with our simple picker
+    // 5) If similarImages absent/empty, backfill from disk with maps
   if (wantSimilar && (!Array.isArray(parsed?.similarImages) || parsed.similarImages.length === 0)) {
     parsed.similarImages = await findSimilarCharts(images, 3);
   }
