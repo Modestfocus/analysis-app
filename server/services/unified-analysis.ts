@@ -2,7 +2,8 @@
 
 import { promises as fs } from "fs";
 import * as path from "path";
-import openai from "./openai.ts";
+import OpenAI from "openai";
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 /** ---------- Types ---------- */
 type VisualLinks = {
