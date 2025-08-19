@@ -636,7 +636,60 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                           return <pre className="text-xs whitespace-pre-wrap">{msg.content}</pre>;
                         }
                         const data = normalizeAnalysis(parsed);
-                        return <AnalysisCard data={data} />;
+                       return (
+  <>
+    <AnalysisCard data={data} />
+
+    {/* Similar charts gallery (clickable thumbnails) */}
+    {Array.isArray(data.similarImages) && data.similarImages.length > 0 && (
+      <div className="mt-6">
+        <div className="text-sm font-semibold mb-3">Similar Charts</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {data.similarImages.map((s: any, idx: number) => (
+            <div key={s.id || idx} className="rounded-xl border border-gray-700 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm opacity-80">{s.label || `Similar ${idx + 1}`}</div>
+                {s.url && (
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs underline opacity-80 hover:opacity-100"
+                  >
+                    Open
+                  </a>
+                )}
+              </div>
+
+              <div className="grid grid-cols-4 gap-2">
+                {s.original && (
+                  <a href={s.original} target="_blank" rel="noreferrer" title="Original">
+                    <img src={s.original} alt="original" className="w-full h-20 object-cover rounded-md" />
+                  </a>
+                )}
+                {s.depth && (
+                  <a href={s.depth} target="_blank" rel="noreferrer" title="Depth map">
+                    <img src={s.depth} alt="depth" className="w-full h-20 object-cover rounded-md" />
+                  </a>
+                )}
+                {s.edge && (
+                  <a href={s.edge} target="_blank" rel="noreferrer" title="Edge map">
+                    <img src={s.edge} alt="edge" className="w-full h-20 object-cover rounded-md" />
+                  </a>
+                )}
+                {s.gradient && (
+                  <a href={s.gradient} target="_blank" rel="noreferrer" title="Gradient map">
+                    <img src={s.gradient} alt="gradient" className="w-full h-20 object-cover rounded-md" />
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </>
+);
                       })()
                     ) : (
                       <div className="whitespace-pre-wrap">{msg.content}</div>
