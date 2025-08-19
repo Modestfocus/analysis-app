@@ -183,7 +183,7 @@ export async function generateAnalysis({
     }
   }
   
-  // 3) Instruct the model to return strict JSON the UI expects
+    // 3) Instruct the model to return strict JSON the UI expects
   const jsonInstruction = `
 Return ONLY a JSON object with the following keys:
 
@@ -192,7 +192,10 @@ Return ONLY a JSON object with the following keys:
   "directionBias": "long" | "short" | "neutral" | null,
   "confidence": number | string | null,
   "reasoning": string | null,
-  "similarImages": (number | string)[] | null,
+
+  // You may fill these from your analysis of the target + similar visuals,
+  // but the server will also backfill if missing.
+  "similarImages": (any[]) | null,
   "targetVisuals": {
     "depthMapPath"?: string,
     "edgeMapPath"?: string,
