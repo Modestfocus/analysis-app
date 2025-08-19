@@ -1,9 +1,15 @@
 // server/vite.ts
 import type { Express, Request, Response, NextFunction } from "express";
-import express from "express"; // <-- add normal import (so we can use express.static)
+import express from "express";
 import type { Server as HttpServer } from "http";
 import fs from "fs/promises";
 import path from "path";
+
+// Simple logger so index.ts can import { log } from "./vite"
+export const log = (...args: any[]) => {
+  // keep the prefix identical to your existing logs
+  console.log("[express]", ...args);
+};
 
 /**
  * In dev, wire Vite in middleware mode.
@@ -11,7 +17,6 @@ import path from "path";
  * so POST /api/... can never be swallowed by index.html.
  */
 export async function setupVite(app: Express, _server: HttpServer) {
-  // Lazy-import Vite only in dev
   const vite = await (await import("vite")).createServer({
     root: path.join(process.cwd(), "client"),
     server: { middlewareMode: true },
@@ -31,7 +36,6 @@ export async function setupVite(app: Express, _server: HttpServer) {
       const indexHtmlPath = path.join(clientRoot, "index.html");
 
       let template = await fs.readFile(indexHtmlPath, "utf-8");
-      // Let Vite transform index.html (HMR, env injection, etc.)
       template = await vite.transformIndexHtml(req.originalUrl, template);
 
       res.status(200).type("text/html").send(template);
