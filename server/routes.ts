@@ -1479,9 +1479,10 @@ app.use("/api/chat", analysisRouter);
   // Get all charts with filtering
   app.get('/api/charts', async (req, res) => {
     try {
-      const { timeframe, instrument } = req.query;
+      const timeframe = (req.query.timeframe as string) || "all";
+      const instrument = (req.query.instrument as string) || "all";
       console.log(`🔍 Filter request - Timeframe: "${timeframe}", Instrument: "${instrument}"`);
-      const charts = await storage.getAllCharts(timeframe as string, instrument as string);
+      const charts = await storage.getAllCharts(timeframe, instrument);
       console.log(`📊 Found ${charts.length} charts for filter`);
 
       // Include all map paths for comprehensive analysis
@@ -1672,8 +1673,8 @@ app.use("/api/chat", analysisRouter);
 
   app.get('/api/bundles', async (req, res) => {
     try {
-      const { instrument } = req.query;
-      const bundles = await storage.getAllBundles(instrument as string);
+            const instrument = (req.query.instrument as string) || "all";
+      const bundles = await storage.getAllBundles(instrument);
 
       // Parse metadata for each bundle
       const bundlesWithMetadata = bundles.map(bundle => ({
@@ -2383,6 +2384,19 @@ app.post('/api/chat/analyze', async (req, res, next) => {
     const systemPrompt = typeof req.body?.systemPrompt === "string" ? req.body.systemPrompt : "";
     const wantSimilar = typeof req.body?.wantSimilar === "boolean" ? req.body.wantSimilar : true;
 
+    // Accept text or images; synthesize a minimal prompt if only images are provided
+    let finalPrompt = prompt;
+    if (!finalPrompt && images.length > 0) {
+      finalPrompt = "[AUTOGEN] Image-only analysis request. Use systemPrompt + images + similar charts.";
+    }
+
+    // If absolutely nothing was sent, reject
+    if (!finalPrompt && images.length === 0) {
+      return res.status(400).json({
+        error: "Missing input. Provide `text`/`prompt`/`message`/`content` or at least one image."
+      });
+    }
+    
     // Debug log (expanded)
     console.log("[express] POST /api/chat/analyze ::", {
       bodyKeys: Object.keys(req.body || {}),
@@ -2392,30 +2406,19 @@ app.post('/api/chat/analyze', async (req, res, next) => {
         "text"    in (req.body || {}) ? "text"    :
         "content" in (req.body || {}) ? "content" : "none"
       ),
-      promptPreview: prompt.slice(0, 80),
-      promptLength: prompt.length,
+      promptPreview: finalPrompt.slice(0, 80),
+      promptLength: finalPrompt.length,
       imageCount: images.length,
       hasSystemPrompt: !!systemPrompt,
       wantSimilar,
     });
 
-    // Validation
-    if (!prompt) {
-      return res.status(400).json({
-        error: "Missing prompt text. Send one of: 'prompt', 'message', 'text', or 'content'."
-      });
-    }
-    if (images.length === 0) {
-      return res.status(400).json({
-        error: "Field 'images' (array of base64 data URLs) is required."
-      });
-    }
 
     // Lazy import to avoid top-level coupling
     const { generateAnalysis } = await import('./services/unified-analysis');
 
     const result = await generateAnalysis({
-      prompt,
+      prompt: finalPrompt,
       images,
       systemPrompt,
       wantSimilar,
