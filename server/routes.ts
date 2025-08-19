@@ -2424,7 +2424,7 @@ app.post('/api/chat/analyze', async (req, res, next) => {
       wantSimilar,
     });
 
-    return res.status(200).json({ success: true, ...result });
+    return res.status(200).json({ success: true, result });
   } catch (err) {
     next(err);
   }
