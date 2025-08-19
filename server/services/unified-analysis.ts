@@ -154,7 +154,35 @@ export async function generateAnalysis({
   pushIf(userContent, toImagePart(targetVisuals.depth));
   pushIf(userContent, toImagePart(targetVisuals.edge));
   pushIf(userContent, toImagePart(targetVisuals.gradient));
+  // --- Similar charts (original + depth + edge + gradient) ---
+  let similarCharts: Array<{
+    id: string;
+    label?: string;
+    links: { original: string; depth?: string | null; edge?: string | null; gradient?: string | null; };
+    url?: string | null;
+  }> = [];
 
+  if (wantSimilar) {
+    // Use our disk-based fallback (you can replace with your real retriever later)
+    similarCharts = await findSimilarCharts(images, 3);
+
+    if (similarCharts.length > 0) {
+      userContent.push({
+        type: "text",
+        text: `SIMILAR_COUNT=${similarCharts.length}. For each similar item, images appear in this fixed order: original, depth, edge, gradient.`,
+      });
+
+      for (const s of similarCharts) {
+        // lightweight tag so the model can reference it
+        userContent.push({ type: "text", text: `Similar: ${s.label || s.id}` });
+        pushIf(userContent, toImagePart(s.links.original));
+        pushIf(userContent, toImagePart(s.links.depth));
+        pushIf(userContent, toImagePart(s.links.edge));
+        pushIf(userContent, toImagePart(s.links.gradient));
+      }
+    }
+  }
+  
   // 3) Instruct the model to return strict JSON the UI expects
   const jsonInstruction = `
 Return ONLY a JSON object with the following keys:
