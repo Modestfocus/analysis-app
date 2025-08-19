@@ -2367,63 +2367,65 @@ app.use("/api/chat", analysisRouter);
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
     // Chat analysis (new)
-  // Accept common aliases from various frontends
-const rawPrompt =
-  (req.body?.prompt ??
-   req.body?.message ??
-   req.body?.text ??
-   req.body?.content ??
-   "");
+app.post('/api/chat/analyze', async (req, res, next) => {
+  try {
+    // Accept common aliases from various frontends
+    const rawPrompt =
+      (req.body?.prompt ??
+       req.body?.message ??
+       req.body?.text ??
+       req.body?.content ??
+       "");
 
-// normalize
-const prompt = (typeof rawPrompt === "string" ? rawPrompt : "").trim();
-const images = Array.isArray(req.body?.images) ? req.body.images : [];
-const systemPrompt = typeof req.body?.systemPrompt === "string" ? req.body.systemPrompt : "";
-const wantSimilar = typeof req.body?.wantSimilar === "boolean" ? req.body.wantSimilar : true;
+    // normalize
+    const prompt = (typeof rawPrompt === "string" ? rawPrompt : "").trim();
+    const images = Array.isArray(req.body?.images) ? req.body.images : [];
+    const systemPrompt = typeof req.body?.systemPrompt === "string" ? req.body.systemPrompt : "";
+    const wantSimilar = typeof req.body?.wantSimilar === "boolean" ? req.body.wantSimilar : true;
 
-// Debug log (expanded)
-console.log("[express] POST /api/chat/analyze ::", {
-  bodyKeys: Object.keys(req.body || {}),
-  promptSource: (
-    "prompt"  in (req.body || {}) ? "prompt"  :
-    "message" in (req.body || {}) ? "message" :
-    "text"    in (req.body || {}) ? "text"    :
-    "content" in (req.body || {}) ? "content" : "none"
-  ),
-  promptPreview: prompt.slice(0, 80),
-  promptLength: prompt.length,
-  imageCount: images.length,
-  hasSystemPrompt: !!systemPrompt,
-  wantSimilar,
-});
+    // Debug log (expanded)
+    console.log("[express] POST /api/chat/analyze ::", {
+      bodyKeys: Object.keys(req.body || {}),
+      promptSource: (
+        "prompt"  in (req.body || {}) ? "prompt"  :
+        "message" in (req.body || {}) ? "message" :
+        "text"    in (req.body || {}) ? "text"    :
+        "content" in (req.body || {}) ? "content" : "none"
+      ),
+      promptPreview: prompt.slice(0, 80),
+      promptLength: prompt.length,
+      imageCount: images.length,
+      hasSystemPrompt: !!systemPrompt,
+      wantSimilar,
+    });
 
-// Validation
-if (!prompt) {
-  return res.status(400).json({
-    error: "Missing prompt text. Send one of: 'prompt', 'message', 'text', or 'content'."
-  });
-}
-if (images.length === 0) {
-  return res.status(400).json({
-    error: "Field 'images' (array of base64 data URLs) is required."
-  });
-}
-
-      // Lazy import to avoid top-level coupling
-      const { generateAnalysis } = await import('./services/unified-analysis');
-
-      const result = await generateAnalysis({
-        prompt,
-        images,
-        systemPrompt: systemPrompt ?? '',
-        wantSimilar: wantSimilar ?? true,
+    // Validation
+    if (!prompt) {
+      return res.status(400).json({
+        error: "Missing prompt text. Send one of: 'prompt', 'message', 'text', or 'content'."
       });
-
-      return res.status(200).json({ success: true, ...result });
-    } catch (err) {
-      next(err);
     }
-  });
+    if (images.length === 0) {
+      return res.status(400).json({
+        error: "Field 'images' (array of base64 data URLs) is required."
+      });
+    }
+
+    // Lazy import to avoid top-level coupling
+    const { generateAnalysis } = await import('./services/unified-analysis');
+
+    const result = await generateAnalysis({
+      prompt,
+      images,
+      systemPrompt,
+      wantSimilar,
+    });
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+});
   
 
   const httpServer = createServer(app);
