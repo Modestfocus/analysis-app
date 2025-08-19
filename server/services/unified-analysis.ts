@@ -165,7 +165,8 @@ export async function generateAnalysis({
   if (wantSimilar) {
     // Use our disk-based fallback (you can replace with your real retriever later)
     similarCharts = await findSimilarCharts(images, 3);
-
+    console.log("[unified] similarCharts found:", similarCharts.length);
+    
     if (similarCharts.length > 0) {
       userContent.push({
         type: "text",
@@ -183,18 +184,15 @@ export async function generateAnalysis({
     }
   }
   
-    // 3) Instruct the model to return strict JSON the UI expects
+      // 3) Instruct the model to return strict JSON the UI expects
   const jsonInstruction = `
-Return ONLY a JSON object with the following keys:
+Return ONLY a JSON object with these keys:
 
 {
-  "sessionPrediction": string | null,
+  "sessionPrediction": "Asia" | "London" | "New York" | null,
   "directionBias": "long" | "short" | "neutral" | null,
   "confidence": number | string | null,
   "reasoning": string | null,
-
-  // You may fill these from your analysis of the target + similar visuals,
-  // but the server will also backfill if missing.
   "similarImages": (any[]) | null,
   "targetVisuals": {
     "depthMapPath"?: string,
@@ -202,20 +200,31 @@ Return ONLY a JSON object with the following keys:
     "gradientMapPath"?: string
   }
 }
+
+Rules:
+- Base your reasoning ONLY on the provided visuals (target + similar) in this order: original, depth, edge, gradient.
+- Be specific: reference EMA colors (20 red, 50 blue, 96 green, 200 purple), compression on edge map, and gradient slope.
+- Do not output prose outside the JSON. No markdown. No backticks.
 `.trim();
 
   userContent.push({ type: "text", text: jsonInstruction });
 
   // 4) Call GPT-4o (not mini) in JSON mode for higher quality
-  const completion = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
     model: "gpt-4o",
     response_format: { type: "json_object" },
     temperature: 0.2,
+    max_tokens: 1600,
     messages: [
       { role: "system", content: system },
       { role: "user", content: userContent as any },
     ],
   });
+
+  console.log(
+    "[openai] preview:",
+    (completion?.choices?.[0]?.message?.content || "").slice(0, 160)
+  );
 
   const rawText = completion.choices?.[0]?.message?.content || "{}";
 
@@ -232,12 +241,35 @@ Return ONLY a JSON object with the following keys:
   }
 
   // 6) Ensure keys exist (the UI’s normalizer will clean the rest)
-  return {
+    return {
     sessionPrediction: parsed?.sessionPrediction ?? null,
-    directionBias: parsed?.directionBias ?? null,
-    confidence: parsed?.confidence ?? null,
-    reasoning: parsed?.reasoning ?? null,
-    similarImages: parsed?.similarImages ?? [],
-    targetVisuals: parsed?.targetVisuals ?? {},
+    directionBias:     parsed?.directionBias     ?? null,
+    confidence:        parsed?.confidence        ?? null,
+    reasoning:         parsed?.reasoning         ?? null,
+
+    // Prefer model-provided visuals if it filled them; otherwise send our exact paths
+    targetVisuals: parsed?.targetVisuals && (
+      parsed.targetVisuals.depthMapPath ||
+      parsed.targetVisuals.edgeMapPath ||
+      parsed.targetVisuals.gradientMapPath
+    ) ? parsed.targetVisuals : {
+      original: targetVisuals.original || null,
+      depth:    targetVisuals.depth    || null,
+      edge:     targetVisuals.edge     || null,
+      gradient: targetVisuals.gradient || null,
+    },
+
+    // Prefer model-filled similarImages; otherwise map the ones we discovered
+    similarImages:
+      Array.isArray(parsed?.similarImages) && parsed.similarImages.length
+        ? parsed.similarImages
+        : (Array.isArray(similarCharts) ? similarCharts.map(s => ({
+            id:       s.id,
+            label:    s.label,
+            original: s.links?.original ?? null,
+            depth:    s.links?.depth    ?? null,
+            edge:     s.links?.edge     ?? null,
+            gradient: s.links?.gradient ?? null,
+            url:      s.url ?? null,
+          })) : []),
   };
-}
