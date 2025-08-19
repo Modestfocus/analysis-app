@@ -2367,8 +2367,6 @@ app.use("/api/chat", analysisRouter);
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
 
-  // Chat analysis endpoint
-  const { analyzeChatChartsEndpoint } = await import('./routes/chat-analysis');
   
 
   const httpServer = createServer(app);
