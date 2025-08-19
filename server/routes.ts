@@ -2366,7 +2366,33 @@ app.use("/api/chat", analysisRouter);
   app.get('/api/chat/conversations/:conversationId/messages', getConversationMessages);
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
+  // Chat analysis (new)
+  app.post('/api/chat/analyze', async (req, res, next) => {
+    try {
+      const { prompt, images, systemPrompt, wantSimilar } = req.body ?? {};
 
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: "Field 'prompt' (string) is required." });
+      }
+      if (!Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({ error: "Field 'images' (array of base64 data URLs) is required." });
+      }
+
+      // Lazy import to avoid top-level coupling
+      const { generateAnalysis } = await import('./services/unified-analysis');
+
+      const result = await generateAnalysis({
+        prompt,
+        images,
+        systemPrompt: systemPrompt ?? '',
+        wantSimilar: wantSimilar ?? true,
+      });
+
+      return res.status(200).json({ success: true, ...result });
+    } catch (err) {
+      next(err);
+    }
+  });
   
 
   const httpServer = createServer(app);
