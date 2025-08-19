@@ -2,7 +2,7 @@
 
 import { promises as fs } from "fs";
 import * as path from "path";
-import { openai } from "../openai"; // assumes server/openai.ts exports `openai`
+import { openai } from "../openai.js";
 
 /** ---------- Types ---------- */
 type VisualLinks = {
