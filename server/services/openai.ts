@@ -952,7 +952,8 @@ Respond ONLY in this exact JSON format:
       max_tokens: 2000,
       temperature: 0.1,
     });
-
+    console.log("[openai] preview:", (response?.choices?.[0]?.message?.content || "").slice(0, 120));
+    
     const analysisText = response.choices[0].message.content || "";
 
     // Try to parse JSON response
