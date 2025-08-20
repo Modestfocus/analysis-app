@@ -160,28 +160,30 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
   // Local client-side buffer so we can append bubbles immediately
   const [clientMessages, setClientMessages] = useState<ChatMessage[]>([]);
 
-  // Minimal helper to add a user/assistant message to the buffer
-  function addMessage(m: {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    aiResponse?: any;      // only for assistant
-    createdAt: number;     // Date.now()
-  }) {
-    setClientMessages((prev) => [
-      ...prev,
-      {
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        // pass-through so AnalysisCard can read it
-        // @ts-ignore
-        aiResponse: m.aiResponse,
-        // ChatMessage expects a string; store ISO
-        createdAt: new Date(m.createdAt).toISOString(),
-      } as ChatMessage,
-    ]);
-  }
+ // Minimal helper to add a user/assistant message to the buffer
+function addMessage(m: {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  aiResponse?: any;      // only for assistant
+  imageUrls?: string[];  // NEW
+  createdAt: number;     // Date.now()
+}) {
+  setClientMessages((prev) => [
+    ...prev,
+    {
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      // pass-through so AnalysisCard can read it
+      // @ts-ignore
+      aiResponse: m.aiResponse,
+      imageUrls: m.imageUrls ?? [], // NEW
+      // ChatMessage expects a string; store ISO
+      createdAt: new Date(m.createdAt).toISOString(),
+    } as ChatMessage,
+  ]);
+}
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
