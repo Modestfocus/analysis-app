@@ -625,9 +625,8 @@ onSuccess: (json: any) => {
                     {/* Assistant -> card ; User -> text */}
                     {msg.role === 'assistant' ? (
                       (() => {
-                        const parsed = safeParseAI((msg as any).aiResponse?.result ?? msg.content);
-                        // TEMP: log the raw payload so we can see what's coming back
-                        console.debug('[AI RAW]', (msg as any).aiResponse?.result ?? msg.content);
+                        const parsed = safeParseAI((msg as any).aiResponse ?? msg.content);
+console.debug('[AI RAW]', (msg as any).aiResponse ?? msg.content);
                         if (!parsed) {
                           return <pre className="text-xs whitespace-pre-wrap">{msg.content}</pre>;
                         }
