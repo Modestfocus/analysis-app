@@ -2439,15 +2439,41 @@ console.log("[express] POST /api/chat/analyze ::", {
 });
 
 // Build absolute URLs so OpenAI can download images
-const host = req.get("host") || "";
-const forwardedProto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0];
-const proto = forwardedProto || "https";
-const origin = process.env.PUBLIC_BASE_URL ?? `${proto}://${host}`;
+const xfProto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0];
+const xfHost  = (req.headers["x-forwarded-host"]  as string)?.split(",")[0];
+const hostHdr = xfHost || req.get("host"); // prefer forwarded host if present
+const proto   = xfProto || req.protocol || "https";
 
-const toAbs = (u: any) =>
-  (typeof u === "string" && typeof u === "string" && u.startsWith("/")) ? origin + u : u;
+if (!process.env.PUBLIC_BASE_URL && hostHdr) {
+  // Make PUBLIC_BASE_URL available to downstream code (unified-analysis, etc.)
+  process.env.PUBLIC_BASE_URL = `${proto}://${hostHdr}`;
+}
+
+// Final origin preference: env wins, else computed, else bail with explicit error
+const origin =
+  process.env.PUBLIC_BASE_URL ??
+  (hostHdr ? `${proto}://${hostHdr}` : "");
+
+if (!origin) {
+  // If we still can't build an origin, fail fast with a clear message
+  return res.status(400).json({
+    error:
+      "Cannot determine PUBLIC_BASE_URL/host. Set PUBLIC_BASE_URL or ensure Host/X-Forwarded-* headers are present.",
+  });
+}
+
+const toAbs = (u: any) => {
+  if (typeof u !== "string") return u;
+  if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("data:")) return u;
+  // Handle "/uploads/..." or "uploads/..." or "./uploads/..."
+  const rel = u.replace(/^\.?\//, "");
+  return `${origin}/${rel.startsWith("uploads") ? rel : rel.startsWith("server/uploads") ? rel.replace(/^server\//, "") : rel.startsWith("depthmaps") || rel.startsWith("edgemaps") || rel.startsWith("gradientmaps") ? rel : rel}`;
+};
 
 const modelImages = images.map(toAbs);
+
+// Optional: debug what we are actually sending (won’t log base64)
+console.log("[/api/chat/analyze] origin:", origin, "modelImages:", modelImages);
 
 // Hotfix: ensure PUBLIC_BASE_URL is available to downstream code
 if (!process.env.PUBLIC_BASE_URL && host) {
