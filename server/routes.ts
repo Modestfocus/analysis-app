@@ -2446,10 +2446,6 @@ const toAbs = (u: any) =>
 
 const modelImages = images.map(toAbs);
 
-// Lazy import to avoid top-level coupling
-const { generateAnalysis } = await import("./services/unified-analysis");
-
-
 
     // Lazy import to avoid top-level coupling
 const { generateAnalysis } = await import("./services/unified-analysis");
