@@ -2475,11 +2475,6 @@ const modelImages = images.map(toAbs);
 // Optional: debug what we are actually sending (won’t log base64)
 console.log("[/api/chat/analyze] origin:", origin, "modelImages:", modelImages);
 
-// Hotfix: ensure PUBLIC_BASE_URL is available to downstream code
-if (!process.env.PUBLIC_BASE_URL && host) {
-  process.env.PUBLIC_BASE_URL = origin;
-}
-
 
     // Lazy import to avoid top-level coupling
 const { generateAnalysis } = await import("./services/unified-analysis");
