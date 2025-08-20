@@ -2412,22 +2412,7 @@ if (images.length > 0 && typeof images[0] === "string" && images[0].startsWith("
   }
 }
     // Persist first image if it is a data URL so UI can click/open it
-    if (images.length > 0 && typeof images[0] === "string" && images[0].startsWith("data:")) {
-      try {
-        const match = images[0].match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i);
-        if (match) {
-          const ext = match[1] === "jpeg" ? "jpg" : match[1];
-          const b64 = match[2];
-          const filename = `chat-${Math.floor(Date.now() / 1000)}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-          const fullPath = path.join(uploadsDir, filename);
-          await fs.writeFile(fullPath, Buffer.from(b64, "base64"));
-          // Replace the data URL with a static URL served by Express (/uploads -> server/uploads)
-          images[0] = `/uploads/${filename}`;
-        }
-      } catch (e) {
-        console.warn("[/api/chat/analyze] Could not persist data URL:", e);
-      }
-    }
+  
 
     
     // If absolutely nothing was sent, reject
