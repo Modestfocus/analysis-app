@@ -175,6 +175,12 @@ export async function generateAnalysis(opts: {
     gradient: images[3] ?? null,
   };
 
+  // Force absolute URLs for target visuals up front
+targetVisuals.original = toAbs(targetVisuals.original);
+targetVisuals.depth    = toAbs(targetVisuals.depth);
+targetVisuals.edge     = toAbs(targetVisuals.edge);
+targetVisuals.gradient = toAbs(targetVisuals.gradient);
+  
   // If only original provided, try to discover siblings on disk
   if (
     targetVisuals.original &&
