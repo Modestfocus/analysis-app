@@ -244,23 +244,19 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
     return res.json(); // -> { result: {...} }
   }, // <-- REQUIRED comma to separate props
 
-  onSuccess: (json: any) => {
-    // append assistant bubble with structured result for <AnalysisCard>
-    addMessage({
-      id:
-        crypto?.randomUUID?.() ??
-        `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      role: "assistant",
-      content: "",
-      aiResponse: { result: json.result }, // IMPORTANT
-      createdAt: Date.now(),
-    });
+onSuccess: (json: any) => {
+  addMessage({
+    id:
+      crypto?.randomUUID?.() ??
+      `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    role: "assistant",
+    content: "",
+    aiResponse: json, // <— use the server JSON directly
+    createdAt: Date.now(),
+  });
 
-    // optional: clear previews after successful send
-    try {
-      setUploadedImages([]);
-    } catch {}
-  },
+  try { setUploadedImages([]); } catch {}
+},
 
   onError: (error: any) => {
     toast({
