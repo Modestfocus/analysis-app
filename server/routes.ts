@@ -2389,6 +2389,28 @@ app.post('/api/chat/analyze', async (req, res, next) => {
     if (!finalPrompt && images.length > 0) {
       finalPrompt = "[AUTOGEN] Image-only analysis request. Use systemPrompt + images + similar charts.";
     }
+    // Persist first image if it is a data URL, so the UI & OpenAI can load it
+const uploadsDir = path.join(process.cwd(), "server", "uploads");
+try {
+  await fs.mkdir(uploadsDir, { recursive: true });
+} catch {}
+
+if (images.length > 0 && typeof images[0] === "string" && images[0].startsWith("data:")) {
+  try {
+    const m = images[0].match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i);
+    if (m) {
+      const ext = m[1] === "jpeg" ? "jpg" : m[1];
+      const b64 = m[2];
+      const filename = `chat-${Math.floor(Date.now() / 1000)}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const full = path.join(uploadsDir, filename);
+      await fs.writeFile(full, Buffer.from(b64, "base64"));
+      // Replace data URL with a static URL that Express serves
+      images[0] = `/uploads/${filename}`;
+    }
+  } catch (e) {
+    console.warn("[/api/chat/analyze] Could not persist data URL:", e);
+  }
+}
     // Persist first image if it is a data URL so UI can click/open it
     if (images.length > 0 && typeof images[0] === "string" && images[0].startsWith("data:")) {
       try {
@@ -2429,6 +2451,13 @@ app.post('/api/chat/analyze', async (req, res, next) => {
       imageCount: images.length,
       hasSystemPrompt: !!systemPrompt,
       wantSimilar,
+      // Build absolute URLs so OpenAI can download images
+const origin =
+  process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+const toAbs = (u: any) =>
+  (typeof u === "string" && u.startsWith("/")) ? origin + u : u;
+
+const modelImages = images.map(toAbs);
     });
 
 
@@ -2437,7 +2466,7 @@ app.post('/api/chat/analyze', async (req, res, next) => {
 
     const result = await generateAnalysis({
       prompt: finalPrompt,
-      images,
+      images: modelImages,
       systemPrompt,
       wantSimilar,
     });
