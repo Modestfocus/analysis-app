@@ -140,6 +140,7 @@ function extractInstrumentFromFilename(filename: string): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await ensureDirectories();
+  app.set("trust proxy", 1);
 
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
