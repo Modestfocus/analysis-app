@@ -639,7 +639,38 @@ export default function ChatInterface({ systemPrompt, isExpanded = false }: Chat
                        return (
   <>
     <AnalysisCard data={data} />
+        {/* Target chart (clickable) */}
+    {data?.targetVisuals?.original && (
+      <div className="mt-4">
+        <div className="text-sm font-semibold mb-2">Target Chart</div>
+        <a href={data.targetVisuals.original} target="_blank" rel="noreferrer">
+          <img
+            src={data.targetVisuals.original}
+            alt="target"
+            className="w-full max-w-2xl rounded-lg border border-gray-700"
+          />
+        </a>
 
+        {/* Optional: quick map thumbnails */}
+        <div className="mt-3 grid grid-cols-3 gap-2 max-w-2xl">
+          {data.targetVisuals.depth && (
+            <a href={data.targetVisuals.depth} target="_blank" rel="noreferrer" title="Depth">
+              <img src={data.targetVisuals.depth} alt="depth" className="w-full h-24 object-cover rounded-md border border-gray-700" />
+            </a>
+          )}
+          {data.targetVisuals.edge && (
+            <a href={data.targetVisuals.edge} target="_blank" rel="noreferrer" title="Edge">
+              <img src={data.targetVisuals.edge} alt="edge" className="w-full h-24 object-cover rounded-md border border-gray-700" />
+            </a>
+          )}
+          {data.targetVisuals.gradient && (
+            <a href={data.targetVisuals.gradient} target="_blank" rel="noreferrer" title="Gradient">
+              <img src={data.targetVisuals.gradient} alt="gradient" className="w-full h-24 object-cover rounded-md border border-gray-700" />
+            </a>
+          )}
+        </div>
+      </div>
+    )}
     {/* Similar charts gallery (clickable thumbnails) */}
     {Array.isArray(data.similarImages) && data.similarImages.length > 0 && (
       <div className="mt-6">
