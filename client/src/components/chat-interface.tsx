@@ -492,14 +492,15 @@ onSuccess: (json: any) => {
 
     // Show the user's bubble before clearing the input
     const userText = message.trim();
-    addMessage({
-      id:
-        crypto?.randomUUID?.() ??
-        `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      role: "user",
-      content: userText,
-      createdAt: Date.now(),
-    });
+   addMessage({
+  id:
+    crypto?.randomUUID?.() ??
+    `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+  role: "user",
+  content: userText,
+  imageUrls: uploadedImages.map((img) => img.dataUrl), // NEW
+  createdAt: Date.now(),
+});
 
     // clear the input so the UI is responsive
     setMessage("");
