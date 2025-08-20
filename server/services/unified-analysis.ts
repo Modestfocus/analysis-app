@@ -57,9 +57,10 @@ type AnalysisResult = {
 // Build OpenAI "image_url" content parts
 function toImagePart(url?: string | null) {
   if (!url) return null;
+  const abs = toAbs(url); // ensure absolute (https://...) for OpenAI
   return {
     type: "image_url",
-    image_url: { url },
+    image_url: { url: abs },
   } as const;
 }
 
