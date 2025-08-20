@@ -2439,13 +2439,20 @@ console.log("[express] POST /api/chat/analyze ::", {
 });
 
 // Build absolute URLs so OpenAI can download images
-const origin =
-  process.env.PUBLIC_BASE_URL ?? `${req.protocol}://${req.get("host")}`;
+const host = req.get("host") || "";
+const forwardedProto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0];
+const proto = forwardedProto || "https";
+const origin = process.env.PUBLIC_BASE_URL ?? `${proto}://${host}`;
 
 const toAbs = (u: any) =>
-  (typeof u === "string" && u.startsWith("/")) ? origin + u : u;
+  (typeof u === "string" && typeof u === "string" && u.startsWith("/")) ? origin + u : u;
 
 const modelImages = images.map(toAbs);
+
+// Hotfix: ensure PUBLIC_BASE_URL is available to downstream code
+if (!process.env.PUBLIC_BASE_URL && host) {
+  process.env.PUBLIC_BASE_URL = origin;
+}
 
     // Ensure PUBLIC_BASE_URL is set so downstream code can absolutize any /uploads paths
 if (!process.env.PUBLIC_BASE_URL) {
