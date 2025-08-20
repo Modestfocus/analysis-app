@@ -22,7 +22,6 @@ import { v4 as uuidv4 } from "uuid";
 import { log, logErr } from "./utils/logger";
 import { callOpenAIAnalyze, toAbsoluteFromReq } from "./services/openaiClient";
 import { normalizeForWire } from "./services/normalizeForWire";
-import { generateAnalysis } from "./services/unified-analysis";
 import analysisRouter from "./routes/analysis";
 
 // --- helper: turn client payload into your model call ---
