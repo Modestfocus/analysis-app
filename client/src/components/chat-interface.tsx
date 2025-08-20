@@ -720,9 +720,24 @@ console.debug('[AI RAW]', (msg as any).aiResponse ?? msg.content);
   </>
 );
                       })()
-                    ) : (
-                      <div className="whitespace-pre-wrap">{msg.content}</div>
-                    )}
+                   ) : (
+  <>
+    <div className="whitespace-pre-wrap">{msg.content}</div>
+
+    {Array.isArray(msg.imageUrls) && msg.imageUrls.length > 0 && (
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        {msg.imageUrls.map((src, i) => (
+          <img
+            key={i}
+            src={src}
+            alt={`upload ${i + 1}`}
+            className="w-full h-24 object-cover rounded-md border border-gray-600"
+          />
+        ))}
+      </div>
+    )}
+  </>
+)}
                   </div>
                 </div>
               ))
