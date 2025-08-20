@@ -230,6 +230,8 @@ Rules:
 - Base your reasoning ONLY on the provided visuals (target + similar) in this order: original, depth, edge, gradient.
 - Be specific: reference EMA colors (20 red, 50 blue, 96 green, 200 purple), compression on edge map, and gradient slope.
 - Do not output prose outside the JSON. No markdown. No backticks.
+- If visual evidence is mixed, still choose the most probable session and bias and explain the key contradicting signals.
+- Explicitly reference which layer(s) informed each point (e.g., "edge: compression", "gradient: positive slope", "EMA20 > EMA50").
 `.trim();
 
   userContent.push({ type: "text", text: jsonInstruction });
