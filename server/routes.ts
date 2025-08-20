@@ -2422,48 +2422,52 @@ if (images.length > 0 && typeof images[0] === "string" && images[0].startsWith("
       });
     }
     
-    // Debug log (expanded)
-         console.log("[express] POST /api/chat/analyze ::", {
-        bodyKeys: Object.keys(req.body || {}),
-        promptSource: (
-          "prompt"  in (req.body || {}) ? "prompt"  :
-          "message" in (req.body || {}) ? "message" :
-          "text"    in (req.body || {}) ? "text"    :
-          "content" in (req.body || {}) ? "content" : "none"
-        ),
-        promptPreview: finalPrompt.slice(0, 80),
-        promptLength: finalPrompt.length,
-        imageCount: images.length,
-        hasSystemPrompt: !!systemPrompt,
-        wantSimilar,
-      });
+   // Debug log (expanded)
+console.log("[express] POST /api/chat/analyze ::", {
+  bodyKeys: Object.keys(req.body || {}),
+  promptSource: (
+    "prompt"  in (req.body || {}) ? "prompt"  :
+    "message" in (req.body || {}) ? "message" :
+    "text"    in (req.body || {}) ? "text"    :
+    "content" in (req.body || {}) ? "content" : "none"
+  ),
+  promptPreview: finalPrompt.slice(0, 80),
+  promptLength: finalPrompt.length,
+  imageCount: images.length,
+  hasSystemPrompt: !!systemPrompt,
+  wantSimilar,
+});
 
-      // Build absolute URLs so OpenAI can download images
-      const origin =
-        process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+// Build absolute URLs so OpenAI can download images
+const origin =
+  process.env.PUBLIC_BASE_URL ?? `${req.protocol}://${req.get("host")}`;
 
-      const toAbs = (u: any) =>
-        (typeof u === "string" && u.startsWith("/")) ? origin + u : u;
+const toAbs = (u: any) =>
+  (typeof u === "string" && u.startsWith("/")) ? origin + u : u;
 
-      const modelImages = images.map(toAbs);
-    });
+const modelImages = images.map(toAbs);
+
+// Lazy import to avoid top-level coupling
+const { generateAnalysis } = await import("./services/unified-analysis");
+
 
 
     // Lazy import to avoid top-level coupling
-    const { generateAnalysis } = await import('./services/unified-analysis');
+const { generateAnalysis } = await import("./services/unified-analysis");
 
-    const result = await generateAnalysis({
-      prompt: finalPrompt,
-      images: modelImages,
-      systemPrompt,
-      wantSimilar,
-    });
-
-    return res.status(200).json({ success: true, result });
-  } catch (err) {
-    next(err);
-  }
+const result = await generateAnalysis({
+  prompt: finalPrompt,
+  images: modelImages,
+  systemPrompt,
+  wantSimilar,
 });
+
+return res.json(result);
+} catch (e: any) {
+  console.error("[/api/chat/analyze] error:", e);
+  return res.status(500).json({ error: e?.message ?? "Internal Server Error" });
+}
+}); // <- closes app.post("/api/chat/analyze", ...)
   
 
   const httpServer = createServer(app);
