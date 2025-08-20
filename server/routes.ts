@@ -2438,26 +2438,29 @@ if (images.length > 0 && typeof images[0] === "string" && images[0].startsWith("
     }
     
     // Debug log (expanded)
-    console.log("[express] POST /api/chat/analyze ::", {
-      bodyKeys: Object.keys(req.body || {}),
-      promptSource: (
-        "prompt"  in (req.body || {}) ? "prompt"  :
-        "message" in (req.body || {}) ? "message" :
-        "text"    in (req.body || {}) ? "text"    :
-        "content" in (req.body || {}) ? "content" : "none"
-      ),
-      promptPreview: finalPrompt.slice(0, 80),
-      promptLength: finalPrompt.length,
-      imageCount: images.length,
-      hasSystemPrompt: !!systemPrompt,
-      wantSimilar,
-      // Build absolute URLs so OpenAI can download images
-const origin =
-  process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
-const toAbs = (u: any) =>
-  (typeof u === "string" && u.startsWith("/")) ? origin + u : u;
+         console.log("[express] POST /api/chat/analyze ::", {
+        bodyKeys: Object.keys(req.body || {}),
+        promptSource: (
+          "prompt"  in (req.body || {}) ? "prompt"  :
+          "message" in (req.body || {}) ? "message" :
+          "text"    in (req.body || {}) ? "text"    :
+          "content" in (req.body || {}) ? "content" : "none"
+        ),
+        promptPreview: finalPrompt.slice(0, 80),
+        promptLength: finalPrompt.length,
+        imageCount: images.length,
+        hasSystemPrompt: !!systemPrompt,
+        wantSimilar,
+      });
 
-const modelImages = images.map(toAbs);
+      // Build absolute URLs so OpenAI can download images
+      const origin =
+        process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+
+      const toAbs = (u: any) =>
+        (typeof u === "string" && u.startsWith("/")) ? origin + u : u;
+
+      const modelImages = images.map(toAbs);
     });
 
 
