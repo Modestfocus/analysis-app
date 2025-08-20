@@ -14,6 +14,8 @@ app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 
 // Serve public folder for depth/edge/gradient maps at root
 app.use(express.static(path.join(process.cwd(), "public")));
+// Serve files saved by the chat (/server/uploads) at /uploads
+app.use("/uploads", express.static(path.join(process.cwd(), "server", "uploads")));
 
 // Health check endpoint
 app.get("/healthz", (_req: Request, res: Response) => {
