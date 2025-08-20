@@ -4,6 +4,7 @@ import { promises as fs } from "fs";
 import * as path from "path";
 import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), "server", "uploads");
 
 /** ---------- Types ---------- */
 type VisualLinks = {
@@ -63,7 +64,7 @@ async function discoverMapsFor(originalUrl: string) {
       // Cannot discover siblings for data URLs
       return { depth: null, edge: null, gradient: null };
   }
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    const uploadsDir = UPLOADS_DIR;
     const name = path.basename(originalUrl);
     const base = name.replace(/\.(png|jpg|jpeg|webp)$/i, "");
 
@@ -90,7 +91,7 @@ async function discoverMapsFor(originalUrl: string) {
 // Naive similar finder: pick recent files from /public/uploads and attach sibling maps
 async function findSimilarCharts(_images: string[], limit = 3): Promise<SimilarItem[]> {
   try {
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    const uploadsDir = UPLOADS_DIR;
     const dirents = await fs.readdir(uploadsDir, { withFileTypes: true });
     const files = dirents.filter((e) => e.isFile()).map((e) => e.name);
     const imageFiles = files.filter((n) => /\.(png|jpg|jpeg|webp)$/i.test(n));
