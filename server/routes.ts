@@ -2446,6 +2446,16 @@ const toAbs = (u: any) =>
 
 const modelImages = images.map(toAbs);
 
+    // Ensure PUBLIC_BASE_URL is set so downstream code can absolutize any /uploads paths
+if (!process.env.PUBLIC_BASE_URL) {
+  const host = req.get("host");
+  const forwardedProto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0];
+  const proto = forwardedProto || req.protocol || "https";
+  if (host) {
+    process.env.PUBLIC_BASE_URL = `${proto}://${host}`;
+  }
+}
+
 
     // Lazy import to avoid top-level coupling
 const { generateAnalysis } = await import("./services/unified-analysis");
