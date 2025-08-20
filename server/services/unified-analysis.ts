@@ -6,6 +6,17 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), "server", "uploads");
 
+// absolutize any local path using PUBLIC_BASE_URL
+const toAbs = (u: any) => {
+  if (typeof u !== "string" || !u) return u;
+  if (/^(https?:|data:)/i.test(u)) return u;
+  const base = process.env.PUBLIC_BASE_URL || "";
+  // if we still don't have a base, leave as-is and let caller fail fast
+  if (!base) return u;
+  if (u.startsWith("/")) return `${base}${u}`;
+  return `${base}/${u}`;
+};
+
 /** ---------- Types ---------- */
 type VisualLinks = {
   original: string | null;
