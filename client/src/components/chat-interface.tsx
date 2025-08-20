@@ -678,16 +678,16 @@ console.debug('[AI RAW]', (msg as any).aiResponse ?? msg.content);
             <div key={s.id || idx} className="rounded-xl border border-gray-700 p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-sm opacity-80">{s.label || `Similar ${idx + 1}`}</div>
-                {s.url && (
-                  <a
-                    href={s.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs underline opacity-80 hover:opacity-100"
-                  >
-                    Open
-                  </a>
-                )}
+               {(s.original || s.url) && (
+  <a
+    href={s.original || s.url}
+    target="_blank"
+    rel="noreferrer"
+    className="text-xs underline opacity-80 hover:opacity-100"
+  >
+    Open
+  </a>
+)}
               </div>
 
               <div className="grid grid-cols-4 gap-2">
