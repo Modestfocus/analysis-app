@@ -165,9 +165,9 @@ function addMessage(m: {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  aiResponse?: any;      // only for assistant
-  imageUrls?: string[];  // NEW
-  createdAt: number;     // Date.now()
+  aiResponse?: any;        // only for assistant
+  imageUrls?: string[];    // <-- NEW: carry user uploads into the bubble
+  createdAt: number;       // Date.now()
 }) {
   setClientMessages((prev) => [
     ...prev,
@@ -175,10 +175,10 @@ function addMessage(m: {
       id: m.id,
       role: m.role,
       content: m.content,
+      imageUrls: m.imageUrls ?? [],   // <-- NEW
       // pass-through so AnalysisCard can read it
       // @ts-ignore
       aiResponse: m.aiResponse,
-      imageUrls: m.imageUrls ?? [], // NEW
       // ChatMessage expects a string; store ISO
       createdAt: new Date(m.createdAt).toISOString(),
     } as ChatMessage,
