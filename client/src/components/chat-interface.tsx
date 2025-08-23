@@ -627,55 +627,56 @@ addMessage({
 
                     {/* Assistant -> card ; User -> text */}
                     {msg.role === "assistant" ? (
-                      (() => {
-                        const parsed = safeParseAI((msg as any).aiResponse ?? msg.content);
-                        console.debug("[AI RAW]", (msg as any).aiResponse ?? msg.content);
+  (() => {
+    const parsed = safeParseAI((msg as any).aiResponse ?? msg.content);
+    console.debug("[AI RAW]", (msg as any).aiResponse ?? msg.content);
 
-                        if (!parsed) {
-                          return (
-                            <pre className="text-xs whitespace-pre-wrap">
-                              {msg.content}
-                            </pre>
-                          );
-                        }
+    if (!parsed) {
+      return (
+        <pre className="text-xs whitespace-pre-wrap">
+          {msg.content}
+        </pre>
+      );
+    }
 
-                        const data = normalizeAnalysis(parsed);
+    const data = normalizeAnalysis(parsed);
 
-                        return (
-                          <div className="space-y-4">
-                            <AnalysisCard data={data} />
-                            </div>
-);
-})() : (
-                      <div className="space-y-3">
-                        {/* user text (if any) */}
-                        {msg.content && (
-                          <div className="whitespace-pre-wrap">{msg.content}</div>
-                        )}
+    return (
+      <div className="space-y-4">
+        <AnalysisCard data={data} />
+      </div>
+    );
+  })()
+) : (
+  <div className="space-y-3">
+    {/* user text (if any) */}
+    {msg.content && (
+      <div className="whitespace-pre-wrap">{msg.content}</div>
+    )}
 
-                        {/* user images (click to open in new tab) */}
-                        {Array.isArray(msg.imageUrls) && msg.imageUrls.length > 0 && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {msg.imageUrls.map((src: string, i: number) => (
-                              <a
-                                key={i}
-                                href={src}
-                                target="_blank"
-                                rel="noreferrer"
-                                title="Click to open full size"
-                                className="block"
-                              >
-                                <img
-                                  src={src}
-                                  alt={`uploaded-${i}`}
-                                  className="w-full h-28 object-cover rounded-md border border-white/20 hover:opacity-90 transition-opacity cursor-zoom-in"
-                                />
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
+    {/* user images (click to open in new tab) */}
+    {Array.isArray(msg.imageUrls) && msg.imageUrls.length > 0 && (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {msg.imageUrls.map((src: string, i: number) => (
+          <a
+            key={i}
+            href={src}
+            target="_blank"
+            rel="noreferrer"
+            title="Click to open full size"
+            className="block"
+          >
+            <img
+              src={src}
+              alt={`uploaded-${i}`}
+              className="w-full h-28 object-cover rounded-md border border-white/20 hover:opacity-90 transition-opacity cursor-zoom-in"
+            />
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+)}
                     
                   </div>
                 </div>
