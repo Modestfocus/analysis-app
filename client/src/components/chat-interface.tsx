@@ -601,17 +601,16 @@ addMessage({
             ) : (
               displayedMessages.map((msg: ChatMessage) => (
                 <div
-                  key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-  className={`max-w-[80%] rounded-lg p-4 ${
-    msg.role === "user"
-      // push user bubble further right
-      ? 'bg-purple-600 text-white ml-16 md:ml-24'
-      : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
-  }`}
+  key={msg.id}
+  className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
 >
+  <div
+    className={`max-w-[80%] rounded-lg p-4 ${
+      msg.role === "user"
+        ? 'bg-purple-600 text-white ml-auto mr-0'   // <-- push to right edge cleanly
+        : 'bg-gray-100 dark:bg-[#2d3748] text-gray-900 dark:text-white'
+    }`}
+  >
                     <div className="flex items-center mb-2">
                       {msg.role === 'user' ? (
                         <User className="w-4 h-4 mr-2" />
