@@ -490,15 +490,15 @@ onSuccess: (json: any) => {
       return;
     }
 
-    // Show the user's bubble before clearing the input
-    const userText = message.trim();
-   addMessage({
+   // Show the user's bubble before clearing the input
+const userText = message.trim();
+addMessage({
   id:
     crypto?.randomUUID?.() ??
     `${Date.now()}_${Math.random().toString(36).slice(2)}`,
   role: "user",
   content: userText,
-  imageUrls: uploadedImages.map((img) => img.dataUrl), // NEW
+  imageUrls: uploadedImages.map((img) => img.dataUrl), // <-- NEW
   createdAt: Date.now(),
 });
 
