@@ -627,251 +627,212 @@ addMessage({
                     </div>
 
                     {/* Assistant -> card ; User -> text */}
-                  {msg.role === "assistant" ? (
-  (() => {
-    const parsed = safeParseAI((msg as any).aiResponse ?? msg.content);
-    console.debug("[AI RAW]", (msg as any).aiResponse ?? msg.content);
+                    {msg.role === "assistant" ? (
+                      (() => {
+                        const parsed = safeParseAI((msg as any).aiResponse ?? msg.content);
+                        console.debug("[AI RAW]", (msg as any).aiResponse ?? msg.content);
 
-    if (!parsed) {
-      return (
-        <pre className="text-xs whitespace-pre-wrap">
-          {msg.content}
-        </pre>
-      );
-    }
+                        if (!parsed) {
+                          return (
+                            <pre className="text-xs whitespace-pre-wrap">
+                              {msg.content}
+                            </pre>
+                          );
+                        }
 
-    const data = normalizeAnalysis(parsed);
+                        const data = normalizeAnalysis(parsed);
 
-    return (
-      <div className="space-y-4">
-        <AnalysisCard data={data} />
+                        return (
+                          <div className="space-y-4">
+                            <AnalysisCard data={data} />
 
-        {/* Target chart (clickable) */}
-        {data?.targetVisuals?.original && (
-          <div className="mt-2">
-            <div className="text-sm font-semibold mb-2">Target Chart</div>
-            <a
-              href={data.targetVisuals.original}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <img
-                src={data.targetVisuals.original}
-                alt="target"
-                className="w-full max-w-2xl rounded-lg border border-gray-700"
-              />
-            </a>
+                            {/* Target chart (clickable) */}
+                            {data?.targetVisuals?.original && (
+                              <div className="mt-2">
+                                <div className="text-sm font-semibold mb-2">Target Chart</div>
+                                <a
+                                  href={data.targetVisuals.original}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  <img
+                                    src={data.targetVisuals.original}
+                                    alt="target"
+                                    className="w-full max-w-2xl rounded-lg border border-gray-700"
+                                  />
+                                </a>
 
-            {/* Quick map thumbnails */}
-            <div className="mt-3 grid grid-cols-3 gap-2 max-w-2xl">
-              {data.targetVisuals.depth && (
-                <a
-                  href={data.targetVisuals.depth}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Depth"
-                >
-                  <img
-                    src={data.targetVisuals.depth}
-                    alt="depth"
-                    className="w-full h-24 object-cover rounded-md border border-gray-700"
-                  />
-                </a>
-              )}
-              {data.targetVisuals.edge && (
-                <a
-                  href={data.targetVisuals.edge}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Edge"
-                >
-                  <img
-                    src={data.targetVisuals.edge}
-                    alt="edge"
-                    className="w-full h-24 object-cover rounded-md border border-gray-700"
-                  />
-                </a>
-              )}
-              {data.targetVisuals.gradient && (
-                <a
-                  href={data.targetVisuals.gradient}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Gradient"
-                >
-                  <img
-                    src={data.targetVisuals.gradient}
-                    alt="gradient"
-                    className="w-full h-24 object-cover rounded-md border border-gray-700"
-                  />
-                </a>
-              )}
-            </div>
-          </div>
-        )}
+                                {/* Quick map thumbnails */}
+                                <div className="mt-3 grid grid-cols-3 gap-2 max-w-2xl">
+                                  {data.targetVisuals.depth && (
+                                    <a
+                                      href={data.targetVisuals.depth}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title="Depth"
+                                    >
+                                      <img
+                                        src={data.targetVisuals.depth}
+                                        alt="depth"
+                                        className="w-full h-24 object-cover rounded-md border border-gray-700"
+                                      />
+                                    </a>
+                                  )}
+                                  {data.targetVisuals.edge && (
+                                    <a
+                                      href={data.targetVisuals.edge}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title="Edge"
+                                    >
+                                      <img
+                                        src={data.targetVisuals.edge}
+                                        alt="edge"
+                                        className="w-full h-24 object-cover rounded-md border border-gray-700"
+                                      />
+                                    </a>
+                                  )}
+                                  {data.targetVisuals.gradient && (
+                                    <a
+                                      href={data.targetVisuals.gradient}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title="Gradient"
+                                    >
+                                      <img
+                                        src={data.targetVisuals.gradient}
+                                        alt="gradient"
+                                        className="w-full h-24 object-cover rounded-md border border-gray-700"
+                                      />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
 
-        {/* Similar charts gallery (clickable thumbnails) */}
-        {Array.isArray(data.similarImages) && data.similarImages.length > 0 && (
-          <div className="mt-4">
-            <div className="text-sm font-semibold mb-3">Similar Charts</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.similarImages.map((s: any, idx: number) => (
-                <div
-                  key={s.id || idx}
-                  className="rounded-xl border border-gray-700 p-3"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm opacity-80">
-                      {s.label || `Similar ${idx + 1}`}
-                    </div>
-                    {s.url && (
-                      <a
-                        href={s.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs underline opacity-80 hover:opacity-100"
-                      >
-                        Open
-                      </a>
+                            {/* Similar charts gallery (clickable thumbnails) */}
+                            {Array.isArray(data.similarImages) && data.similarImages.length > 0 && (
+                              <div className="mt-4">
+                                <div className="text-sm font-semibold mb-3">Similar Charts</div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  {data.similarImages.map((s: any, idx: number) => (
+                                    <div
+                                      key={s.id || idx}
+                                      className="rounded-xl border border-gray-700 p-3"
+                                    >
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="text-sm opacity-80">
+                                          {s.label || `Similar ${idx + 1}`}
+                                        </div>
+                                        {s.url && (
+                                          <a
+                                            href={s.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-xs underline opacity-80 hover:opacity-100"
+                                          >
+                                            Open
+                                          </a>
+                                        )}
+                                      </div>
+
+                                      <div className="grid grid-cols-4 gap-2">
+                                        {s.original && (
+                                          <a
+                                            href={s.original}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            title="Original"
+                                          >
+                                            <img
+                                              src={s.original}
+                                              alt="original"
+                                              className="w-full h-20 object-cover rounded-md"
+                                            />
+                                          </a>
+                                        )}
+                                        {s.depth && (
+                                          <a
+                                            href={s.depth}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            title="Depth map"
+                                          >
+                                            <img
+                                              src={s.depth}
+                                              alt="depth"
+                                              className="w-full h-20 object-cover rounded-md"
+                                            />
+                                          </a>
+                                        )}
+                                        {s.edge && (
+                                          <a
+                                            href={s.edge}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            title="Edge map"
+                                          >
+                                            <img
+                                              src={s.edge}
+                                              alt="edge"
+                                              className="w-full h-20 object-cover rounded-md"
+                                            />
+                                          </a>
+                                        )}
+                                        {s.gradient && (
+                                          <a
+                                            href={s.gradient}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            title="Gradient map"
+                                          >
+                                            <img
+                                              src={s.gradient}
+                                              alt="gradient"
+                                              className="w-full h-20 object-cover rounded-md"
+                                            />
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="space-y-3">
+                        {/* user text (if any) */}
+                        {msg.content && (
+                          <div className="whitespace-pre-wrap">{msg.content}</div>
+                        )}
+
+                        {/* user images (click to open in new tab) */}
+                        {Array.isArray(msg.imageUrls) && msg.imageUrls.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {msg.imageUrls.map((src: string, i: number) => (
+                              <a
+                                key={i}
+                                href={src}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Click to open full size"
+                                className="block"
+                              >
+                                <img
+                                  src={src}
+                                  alt={`uploaded-${i}`}
+                                  className="w-full h-28 object-cover rounded-md border border-white/20 hover:opacity-90 transition-opacity cursor-zoom-in"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    {s.original && (
-                      <a
-                        href={s.original}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Original"
-                      >
-                        <img
-                          src={s.original}
-                          alt="original"
-                          className="w-full h-20 object-cover rounded-md"
-                        />
-                      </a>
-                    )}
-                    {s.depth && (
-                      <a
-                        href={s.depth}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Depth map"
-                      >
-                        <img
-                          src={s.depth}
-                          alt="depth"
-                          className="w-full h-20 object-cover rounded-md"
-                        />
-                      </a>
-                    )}
-                    {s.edge && (
-                      <a
-                        href={s.edge}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Edge map"
-                      >
-                        <img
-                          src={s.edge}
-                          alt="edge"
-                          className="w-full h-20 object-cover rounded-md"
-                        />
-                      </a>
-                    )}
-                    {s.gradient && (
-                      <a
-                        href={s.gradient}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Gradient map"
-                      >
-                        <img
-                          src={s.gradient}
-                          alt="gradient"
-                          className="w-full h-20 object-cover rounded-md"
-                        />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  })()
-) : (
-  <div className="space-y-3">
-    {/* user text (if any) */}
-    {msg.content && (
-      <div className="whitespace-pre-wrap">{msg.content}</div>
-    )}
-
-    {/* user images (click to open in new tab) */}
-    {Array.isArray((msg as any).imageUrls) && (msg as any).imageUrls.length > 0 && (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {(msg as any).imageUrls.map((src: string, i: number) => (
-          <a
-            key={i}
-            href={src}
-            target="_blank"
-            rel="noreferrer"
-            title="Click to open full size"
-            className="block"
-          >
-            <img
-              src={src}
-              alt={`uploaded-${i}`}
-              className="w-full h-28 object-cover rounded-md border border-white/20 hover:opacity-90 transition-opacity cursor-zoom-in"
-            />
-          </a>
-        ))}
-      </div>
-    )}
-  </div>
-)}
-
-    {/* user images (click to enlarge) */}
-    {Array.isArray((msg as any).imageUrls) && (msg as any).imageUrls.length > 0 && (
-      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {(msg as any).imageUrls.map((src: string, i: number) => (
-          <a
-            key={i}
-            href={src}
-            target="_blank"
-            rel="noreferrer"
-            title="Click to open full size"
-            className="block"
-          >
-            <img
-              src={src}
-              alt={`uploaded-${i}`}
-              className="w-full h-28 object-cover rounded-md border border-white/20 hover:opacity-90 transition-opacity cursor-zoom-in"
-            />
-          </a>
-        ))}
-      </div>
-    )}
-  </>
-)}
-
                     
-    {Array.isArray(msg.imageUrls) && msg.imageUrls.length > 0 && (
-      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-        {msg.imageUrls.map((src, i) => (
-          <img
-            key={i}
-            src={src}
-            alt={`upload ${i + 1}`}
-            className="w-full h-24 object-cover rounded-md border border-gray-600"
-          />
-        ))}
-      </div>
-    )}
-  </>
-)}
                   </div>
                 </div>
               ))
