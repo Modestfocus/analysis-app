@@ -644,11 +644,9 @@ addMessage({
                         return (
                           <div className="space-y-4">
                             <AnalysisCard data={data} />
-
-                           
-                        );
-                      })()
-                    ) : (
+                            </div>
+);
+})() : (
                       <div className="space-y-3">
                         {/* user text (if any) */}
                         {msg.content && (
