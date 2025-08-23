@@ -166,23 +166,69 @@ export default function AnalysisCard({ data }: { data: NormalizedAnalysis }) {
       )}
 
       {/* Similar charts */}
-      {similarSrc.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold mb-2">Similar Charts</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {similarSrc.map((src, i) =>
-              src ? (
+     {/* Similar charts (top 3), each with map links */}
+{Array.isArray(similarImages) && similarImages.length > 0 && (
+  <div>
+    <h3 className="text-sm font-semibold mb-2">Similar Charts</h3>
+
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {similarImages.slice(0, 3).map((s: any, i: number) => {
+        const thumb =
+          s.original || s.url || s.depth || s.edge || s.gradient || null;
+
+        return (
+          <div key={s.id || i} className="rounded-lg border border-black/5 p-2">
+            {thumb && (
+              <a href={thumb} target="_blank" rel="noreferrer">
                 <img
-                  key={i}
-                  src={src}
-                  className="w-full aspect-video object-cover rounded-lg border border-black/5"
+                  src={thumb}
+                  className="w-full aspect-video object-cover rounded-md"
                   alt={`Similar chart ${i + 1}`}
                 />
-              ) : null
+              </a>
             )}
+
+            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              {s.depth && (
+                <a
+                  href={s.depth}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline text-blue-600 dark:text-blue-400"
+                  title="Depth"
+                >
+                  Depth
+                </a>
+              )}
+              {s.edge && (
+                <a
+                  href={s.edge}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline text-blue-600 dark:text-blue-400"
+                  title="Edge"
+                >
+                  Edge
+                </a>
+              )}
+              {s.gradient && (
+                <a
+                  href={s.gradient}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline text-blue-600 dark:text-blue-400"
+                  title="Gradient"
+                >
+                  Gradient
+                </a>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })}
+    </div>
+  </div>
+)}
     </div>
   );
 }
