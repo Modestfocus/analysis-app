@@ -2033,6 +2033,31 @@ app.post('/api/admin/resync', async (req, res) => {
     });
   }
 });
+  // 📝 NEW: Admin diagnostics
+app.get('/api/admin/diag', async (_req, res) => {
+  try {
+    const charts = await storage.getAllCharts();
+    const bundles = await storage.getAllBundles?.('all') ?? [];
+    res.json({
+      ok: true,
+      counts: {
+        charts: charts.length,
+        bundles: bundles.length,
+      },
+      sample: charts.slice(0, 3).map(c => ({
+        id: c.id,
+        filename: c.filename,
+        instrument: c.instrument,
+        timeframe: c.timeframe,
+        depthMapPath: c.depthMapPath,
+        edgeMapPath: c.edgeMapPath,
+        gradientMapPath: c.gradientMapPath,
+      })),
+    });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e?.message });
+  }
+});
 
   // Watchlist API Routes
   app.get('/api/watchlist', async (req, res) => {
