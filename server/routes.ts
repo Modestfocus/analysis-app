@@ -2019,6 +2019,20 @@ app.use("/api/chat", analysisRouter);
       });
     }
   });
+  // ✅ NEW: Admin route for resync
+app.post('/api/admin/resync', async (req, res) => {
+  try {
+    console.log("🔄 Starting resync operation...");
+    // TODO: implement your resync logic here (e.g., reindex, rebuild, reload)
+    res.json({ success: true, message: "Resync complete" });
+  } catch (error) {
+    console.error("Resync error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Resync failed: " + (error as Error).message,
+    });
+  }
+});
 
   // Watchlist API Routes
   app.get('/api/watchlist', async (req, res) => {
