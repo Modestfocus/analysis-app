@@ -16,6 +16,11 @@ app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 app.use(express.static(path.join(process.cwd(), "public")));
 // Serve files saved by the chat (/server/uploads) at /uploads
 app.use("/uploads", express.static(path.join(process.cwd(), "server", "uploads")));
+// Serve generated visual maps (so URLs like /depthmaps/foo.png work)
+app.use("/depthmaps", express.static(path.join(process.cwd(), "server", "depthmaps")));
+app.use("/edgemaps", express.static(path.join(process.cwd(), "server", "edgemaps")));
+app.use("/gradientmaps", express.static(path.join(process.cwd(), "server", "gradientmaps")));
+
 
 // Health check endpoint
 app.get("/healthz", (_req: Request, res: Response) => {
