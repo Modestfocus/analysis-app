@@ -2058,6 +2058,146 @@ app.get('/api/admin/diag', async (_req, res) => {
     res.status(500).json({ ok: false, error: e?.message });
   }
 });
+  // 🧭 Admin: rescan disk → (re)create DB rows & link visual maps, rebuild embeddings
+app.post("/api/admin/rescan-disk", async (_req, res) => {
+  try {
+    // Re-use existing dirs/constants defined near the top of this file
+    //   uploadsDir, depthmapsDir, edgemapsDir, gradientmapsDir
+    // And storage/embeddings helpers already imported in this file.
+
+    // 0) Helpers
+    const imageExts = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+    const toPng = (name: string) => name.replace(/\.[^/.]+$/, ".png");
+    const exists = async (absPath: string) => {
+      try { await fs.access(absPath); return true; } catch { return false; }
+    };
+    const detectTimeframeFromFilename = (name: string): "5M"|"15M"|"1H"|"4H"|"Daily" => {
+      const s = name.toLowerCase();
+      if (/\b5m\b/.test(s)) return "5M";
+      if (/\b15m\b/.test(s)) return "15M";
+      if (/\b1h\b/.test(s)) return "1H";
+      if (/\b4h\b/.test(s)) return "4H";
+      if (/\bdaily\b|_d\b|-d\b/.test(s)) return "Daily";
+      return "5M";
+    };
+
+    // 1) Read what’s already in the DB
+    const dbCharts = await storage.getAllCharts();
+    const byFilename = new Map(dbCharts.map(c => [c.filename, c]));
+    const created: number[] = [];
+
+    // 2) Scan disk for originals
+    const allFiles = await fs.readdir(uploadsDir);
+    const originals = allFiles.filter(f => imageExts.has(require("path").extname(f).toLowerCase()));
+
+    // 3) Create missing chart rows
+    for (const filename of originals) {
+      if (byFilename.has(filename)) continue;
+
+      const originalName = filename;
+      const timeframe = detectTimeframeFromFilename(originalName);
+      const instrument = extractInstrumentFromFilename(originalName) || "UNKNOWN";
+
+      const chartData = {
+        filename,
+        originalName,
+        timeframe,
+        instrument,
+        session: null,
+        comment: "",
+        depthMapPath: null,
+        edgeMapPath: null,
+        gradientMapPath: null,
+        embedding: null,
+      };
+
+      const validated = insertChartSchema.parse(chartData);
+      const chart = await storage.createChart(validated);
+      byFilename.set(filename, chart);
+      created.push(chart.id);
+    }
+
+    // 4) Link depth/edge/gradient maps by filename heuristic
+    let linkedDepth = 0, linkedEdge = 0, linkedGradient = 0;
+
+    for (const [filename, chart] of byFilename.entries()) {
+      // Expected names (we used these elsewhere in the codebase)
+      const pngName = toPng(filename);                   // ensure .png variant
+      const depthRel = `/depthmaps/depth_${pngName}`;
+      const edgeRel  = `/edgemaps/edge_${pngName}`;
+      const gradRel  = `/gradientmaps/gradient_${pngName}`;
+
+      const depthAbs = path.join(process.cwd(), "server", depthRel);
+      const edgeAbs  = path.join(process.cwd(), "server", edgeRel);
+      const gradAbs  = path.join(process.cwd(), "server", gradRel);
+
+      const patches: any = {};
+
+      if (!chart.depthMapPath && await exists(depthAbs)) {
+        patches.depthMapPath = depthRel;
+        linkedDepth++;
+      }
+      if (!chart.edgeMapPath && await exists(edgeAbs)) {
+        patches.edgeMapPath = edgeRel;
+        linkedEdge++;
+      }
+      if (!chart.gradientMapPath && await exists(gradAbs)) {
+        patches.gradientMapPath = gradRel;
+        linkedGradient++;
+      }
+
+      if (Object.keys(patches).length > 0) {
+        await storage.updateChart(chart.id, patches);
+      }
+    }
+
+    // 5) Rebuild embeddings for any charts that still don’t have a 1024-D vector
+    let embedded = 0;
+    for (const chart of await storage.getAllCharts()) {
+      if (chart.embedding && chart.embedding.length === 1024) continue;
+
+      const imagePath = path.join(uploadsDir, chart.filename);
+      // Skip if original file isn’t present
+      try { await fs.access(imagePath); } catch { continue; }
+
+      const buf = await fs.readFile(imagePath);
+      const sha = require("crypto").createHash("sha256").update(buf).digest("hex").slice(0, 16);
+
+      const vec = await embedImageToVectorCached(imagePath, sha);
+      if (Array.isArray(vec) && vec.length === EMB_DIM) {
+        await storage.updateChart(chart.id, { embedding: Array.from(vec) });
+        embedded++;
+      }
+    }
+
+    // 6) Return summary
+    const finalCharts = await storage.getAllCharts();
+    res.json({
+      ok: true,
+      totals: {
+        onDisk: originals.length,
+        inDb: finalCharts.length,
+        created: created.length,
+        linkedDepth,
+        linkedEdge,
+        linkedGradient,
+        embedded,
+      },
+      createdIds: created,
+      sample: finalCharts.slice(0, 5).map(c => ({
+        id: c.id,
+        filename: c.filename,
+        depth: !!c.depthMapPath,
+        edge: !!c.edgeMapPath,
+        gradient: !!c.gradientMapPath,
+        hasEmbedding: !!(c.embedding && c.embedding.length === 1024),
+      }))
+    });
+  } catch (err: any) {
+    console.error("rescan-disk error:", err);
+    res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
+  }
+});s
 
   // Watchlist API Routes
   app.get('/api/watchlist', async (req, res) => {
