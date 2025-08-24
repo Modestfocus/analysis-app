@@ -2197,7 +2197,7 @@ app.post("/api/admin/rescan-disk", async (_req, res) => {
     console.error("rescan-disk error:", err);
     res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
   }
-});s
+});
 
   // Watchlist API Routes
   app.get('/api/watchlist', async (req, res) => {
