@@ -109,18 +109,20 @@ const resolveMainUrl = (item: any): string | null => {
   }
 
   // b) top-level filename
-  if (item.filename && typeof item.filename === "string") {
-    return item.filename.startsWith("/uploads/")
-      ? item.filename
-      : `/uploads/${item.filename}`;
-  }
+if (item.filename && typeof item.filename === "string") {
+  if (/^https?:\/\//i.test(item.filename)) return item.filename; // absolute URL
+  return item.filename.startsWith("/uploads/")
+    ? item.filename
+    : `/uploads/${item.filename}`;
+}
 
-  // c) nested chart.filename
-  if (item.chart?.filename && typeof item.chart.filename === "string") {
-    return item.chart.filename.startsWith("/uploads/")
-      ? item.chart.filename
-      : `/uploads/${item.chart.filename}`;
-  }
+// c) nested chart.filename
+if (item.chart?.filename && typeof item.chart.filename === "string") {
+  if (/^https?:\/\//i.test(item.chart.filename)) return item.chart.filename; // absolute URL
+  return item.chart.filename.startsWith("/uploads/")
+    ? item.chart.filename
+    : `/uploads/${item.chart.filename}`;
+}
 
   return null;
 };
