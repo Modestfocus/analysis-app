@@ -127,9 +127,19 @@ const resolveMainUrl = (item: any): string | null => {
 
 const mainUrl = resolveMainUrl(s);
       
-          const depthUrl    = s.depthMapUrl    || s.depthMapPath    || s.chart?.depthMapPath;
-          const edgeUrl     = s.edgeMapUrl     || s.edgeMapPath     || s.chart?.edgeMapPath;
-          const gradientUrl = s.gradientMapUrl || s.gradientMapPath || s.chart?.gradientMapPath;
+         const fixMapUrl = (u?: string): string | undefined => {
+  if (!u || typeof u !== "string") return undefined;
+  if (u.startsWith("/uploads/") || /^https?:\/\//i.test(u)) return u;
+  if (u.includes("/uploads/")) {
+    const after = u.slice(u.indexOf("/uploads/"));
+    return after.startsWith("/uploads/") ? after : `/uploads/${after}`;
+  }
+  return `/uploads/${u}`;
+};
+
+const depthUrl    = fixMapUrl(s.depthMapUrl    || s.depthMapPath    || s.chart?.depthMapPath);
+const edgeUrl     = fixMapUrl(s.edgeMapUrl     || s.edgeMapPath     || s.chart?.edgeMapPath);
+const gradientUrl = fixMapUrl(s.gradientMapUrl || s.gradientMapPath || s.chart?.gradientMapPath);
 
           let simPct: number | undefined;
           if (typeof s.similarity === "number") {
