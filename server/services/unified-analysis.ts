@@ -49,27 +49,32 @@ async function toOpenAIImageUrl(u?: string | null): Promise<string | null> {
   if (!u || typeof u !== "string") return null;
   if (/^data:/i.test(u)) return u; // already a data URL
 
+  const toDataUrlIfLocal = async (maybeSameOriginOrRel: string) => {
+    const p = urlToLocalPath(maybeSameOriginOrRel);
+    if (!p) return maybeSameOriginOrRel;        // not a local path we can read
+    const mime = guessMimeByExt(p);
+    if (!/^image\//.test(mime)) return null;
+    try {
+      await fs.access(p);                        // <— check existence first
+    } catch (e: any) {
+      if (e?.code === "ENOENT") return null;     // <— skip missing layers quietly
+      throw e;                                   // bubble up other errors
+    }
+    const buf = await fs.readFile(p);
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  };
+
   if (/^https?:\/\//i.test(u)) {
     // If it’s our own origin, convert; external URLs pass through
     const base = (process.env.PUBLIC_BASE_URL || "").replace(/\/+$/, "");
     if (base && u.startsWith(base + "/")) {
-      const p = urlToLocalPath(u);
-      if (!p) return u;
-      const mime = guessMimeByExt(p);
-      if (!/^image\//.test(mime)) return null;
-      const buf = await fs.readFile(p);
-      return `data:${mime};base64,${buf.toString("base64")}`;
+      return toDataUrlIfLocal(u);
     }
-    return u;
+    return u; // external URLs ok for OpenAI
   }
 
-  // server-relative like /uploads/...
-  const p = urlToLocalPath(u);
-  if (!p) return null;
-  const mime = guessMimeByExt(p);
-  if (!/^image\//.test(mime)) return null;
-  const buf = await fs.readFile(p);
-  return `data:${mime};base64,${buf.toString("base64")}`;
+  // server-relative like /uploads/... /depthmaps/... etc.
+  return toDataUrlIfLocal(u);
 }
 
 /** ---------- Types ---------- */
