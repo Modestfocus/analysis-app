@@ -3,6 +3,9 @@
 import { promises as fs } from "fs";
 import * as path from "path";
 import OpenAI from "openai";
+import crypto from "crypto";
+import { embedImageToVectorCached, EMB_DIM } from "./embeddings";
+import { storage } from "../storage";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), "server", "uploads");
 
