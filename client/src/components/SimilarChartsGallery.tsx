@@ -6,14 +6,15 @@ import { useQuery } from "@tanstack/react-query";
 const resolveMainUrl = (item: any): string | null => {
   // direct url-ish fields
   const direct =
-    item.filePath ||
-    item.filepath ||
-    item.file_url ||
-    item.url ||
-    item.imageUrl ||
-    item.image_url ||
-    item.chart?.filePath ||
-    item.chart?.file_url;
+  item.original ||          // normalized primary image
+  item.filePath ||
+  item.filepath ||
+  item.file_url ||
+  item.url ||
+  item.imageUrl ||
+  item.image_url ||
+  item.chart?.filePath ||
+  item.chart?.file_url;
 
   if (typeof direct === "string" && direct.length > 0) {
     if (direct.startsWith("/uploads/") || /^https?:\/\//i.test(direct)) {
