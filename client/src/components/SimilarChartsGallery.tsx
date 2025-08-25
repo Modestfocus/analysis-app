@@ -211,7 +211,7 @@ const nameForAlt =
       
           return (
             <div
-              key={s.id ?? i}
+              key={(typeof s === "object" && s && s.id) ?? i}
               className="bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-700"
             >
               {mainUrl ? (
