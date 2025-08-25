@@ -103,47 +103,57 @@ async function discoverMapsFor(originalUrl: string) {
   }
 }
 
-// Naive similar finder: pick recent files from /public/uploads and attach sibling maps
-async function findSimilarCharts(_images: string[], limit = 3): Promise<SimilarItem[]> {
+// Vector/RAG-based similar finder: embed target → query DB → exclude self
+async function findSimilarCharts(images: string[], limit = 3): Promise<SimilarItem[]> {
+  // Expect first image to be the target original
+  const targetUrl = images?.[0];
+  if (!targetUrl) return [];
+
+  // Convert abs URL (/uploads/foo.png or https://.../uploads/foo.png) → local disk path
+  const filename = path.basename(targetUrl);
+  const localPath = path.join(UPLOADS_DIR, filename);
+
+  // If file doesn’t exist locally, bail
+  try { await fs.access(localPath); } catch { return []; }
+
+  // Create/cached CLIP embedding for target
+  let vec: Float32Array | number[] | undefined;
   try {
-    const uploadsDir = UPLOADS_DIR;
-    const dirents = await fs.readdir(uploadsDir, { withFileTypes: true });
-    const files = dirents.filter((e) => e.isFile()).map((e) => e.name);
-    const imageFiles = files.filter((n) => /\.(png|jpg|jpeg|webp)$/i.test(n));
-
-    // Sort by name desc as a proxy for recency (simple but works for many naming schemes)
-    imageFiles.sort((a, b) => b.localeCompare(a));
-
-    const picks = imageFiles.slice(0, Math.max(0, limit));
-    const results: SimilarItem[] = [];
-
-    for (const n of picks) {
-      const original = `/uploads/${n}`;
-      const name = path.basename(original);
-      const base = name.replace(/\.(png|jpg|jpeg|webp)$/i, "");
-      const findSibling = (kw: string) => {
-        const m = imageFiles.find(
-          (m) =>
-            (m.startsWith(base) || m.includes(base)) && m.toLowerCase().includes(kw)
-        );
-        return m ? `/uploads/${m}` : null;
-      };
-      const depth = findSibling("depth");
-      const edge = findSibling("edge");
-      const gradient = findSibling("gradient");
-
-      results.push({
-        id: name,
-        label: name,
-        links: { original, depth, edge, gradient },
-        url: original,
-      });
-    }
-
-    return results;
-  } catch {
+    const buf = await fs.readFile(localPath);
+    const sha = crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16);
+    vec = await embedImageToVectorCached(localPath, sha);
+  } catch (e) {
+    console.warn("[unified] embedImageToVectorCached failed:", e);
     return [];
   }
+
+  if (!vec || (vec as any).length !== EMB_DIM) return [];
+
+  // Query nearest neighbors from DB
+  const neighbors = await storage.findSimilarCharts(Array.from(vec as number[]), Math.max(1, limit + 1));
+
+  // Map to UI shape, skipping the uploaded chart itself (same filename)
+  const out: SimilarItem[] = [];
+  for (const { chart, similarity } of neighbors) {
+    if (chart.filename === filename) continue; // exclude self
+
+    const original = `/uploads/${chart.filename}`;
+    out.push({
+      id: String(chart.id),
+      label: `${chart.originalName || chart.filename} (${Math.round(similarity * 100)}%)`,
+      links: {
+        original,
+        depth: chart.depthMapPath || null,
+        edge: chart.edgeMapPath || null,
+        gradient: chart.gradientMapPath || null,
+      },
+      url: original,
+    });
+
+    if (out.length >= limit) break;
+  }
+
+  return out;
 }
 
 /** ---------- Core analysis ---------- */
