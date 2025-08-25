@@ -191,18 +191,24 @@ const gradientUrl = (typeof s === "object" && s)
   : undefined;
 
           let simPct: number | undefined;
-          if (typeof s.similarity === "number") {
-            simPct = s.similarity > 1 ? s.similarity : s.similarity * 100;
-          } else if (typeof s.score === "number") {
-            simPct = s.score > 1 ? s.score : s.score * 100;
-          }
+if (typeof s === "object" && s) {
+  if (typeof s.similarity === "number") {
+    simPct = s.similarity > 1 ? s.similarity : s.similarity * 100;
+  } else if (typeof s.score === "number") {
+    simPct = s.score > 1 ? s.score : s.score * 100;
+  }
+}
 
-          const chartId = s.id ?? s.chart?.id;
-          const nameForAlt =
-            s.filename ||
-            s.chart?.originalName ||
-            (chartId ? `chart-${chartId}` : `similar-${i}`);
+const chartId =
+  (typeof s === "object" && s) ? (s.id ?? s.chart?.id) : undefined;
 
+const nameForAlt =
+  (typeof s === "string")
+    ? s
+    : (s.filename ||
+       s.chart?.originalName ||
+       (chartId ? `chart-${chartId}` : `similar-${i}`));
+      
           return (
             <div
               key={s.id ?? i}
