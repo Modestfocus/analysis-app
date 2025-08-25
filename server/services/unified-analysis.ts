@@ -262,10 +262,10 @@ targetVisuals.gradient = toAbs(targetVisuals.gradient);
   }
 
   // Push target visuals (order matters)
-  pushIf(userContent, toImagePart(targetVisuals.original));
-  pushIf(userContent, toImagePart(targetVisuals.depth));
-  pushIf(userContent, toImagePart(targetVisuals.edge));
-  pushIf(userContent, toImagePart(targetVisuals.gradient));
+pushIf(userContent, await toImagePart(targetVisuals.original));
+pushIf(userContent, await toImagePart(targetVisuals.depth));
+pushIf(userContent, await toImagePart(targetVisuals.edge));
+pushIf(userContent, await toImagePart(targetVisuals.gradient));
 
   // Similar charts with maps
   let similarCharts: SimilarItem[] = [];
