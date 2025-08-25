@@ -644,8 +644,10 @@ addMessage({
 
     return (
   <div className="space-y-6">
-    {/* Main Analysis Card */}
     <AnalysisCard data={data} />
+    <SimilarChartsGallery source={parsed} />
+  </div>
+);
 
     {/* Similar Charts Gallery */}
     {(() => {
