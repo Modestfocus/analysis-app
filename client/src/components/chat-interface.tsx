@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 import AnalysisCard from "./AnalysisCard";
+import SimilarChartsGallery from "./SimilarChartsGallery";
 import { normalizeAnalysis } from '../lib/normalize-analysis';
 
 // Safely turn whatever the assistant returned into an object
