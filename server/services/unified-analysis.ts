@@ -109,13 +109,15 @@ type AnalysisResult = {
 
 /** ---------- Small helpers ---------- */
 
-// Build OpenAI "image_url" content parts
-function toImagePart(url?: string | null) {
+// Build OpenAI "image_url" content parts (now async to allow data URL conversion)
+async function toImagePart(url?: string | null) {
   if (!url) return null;
-  const abs = toAbs(url); // ensure absolute (https://...) for OpenAI
+  const abs = toAbs(url);
+  const modelUrl = await toOpenAIImageUrl(abs); // convert local/same-origin to data URL
+  if (!modelUrl) return null;
   return {
     type: "image_url",
-    image_url: { url: abs },
+    image_url: { url: modelUrl },
   } as const;
 }
 
