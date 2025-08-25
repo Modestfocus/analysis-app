@@ -127,18 +127,16 @@ type Props = {
   title?: string;
 };
 
-export default function SimilarChartsGallery({
-  source,
-  title = "Similar Charts",
-}: Props) {
-  // accept multiple shapes: `similarCharts`, `similar`, `result.similarCharts`, `result.similar`
+export default function SimilarChartsGallery({ source, title = "Similar Charts" }: Props) {
+  // accept multiple shapes, including normalized `similarImages`
   const similarRaw =
     (source &&
-      (source.similarCharts ||
-        source.similar ||
-        source.result?.similarCharts ||
-        source.result?.similar)) ||
-    [];
+      (source.similarImages ||                      // normalized shape
+       source.similarCharts ||
+       source.similar ||
+       source.result?.similarImages ||              // raw-in-result
+       source.result?.similarCharts ||
+       source.result?.similar)) || [];
 
   // Debug
   // eslint-disable-next-line no-console
