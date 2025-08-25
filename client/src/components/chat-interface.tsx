@@ -643,11 +643,13 @@ addMessage({
     const data = normalizeAnalysis(parsed);
 
     return (
-      <div className="space-y-6">
-        <AnalysisCard data={data} />
-        <SimilarChartsGallery source={parsed} />
-      </div>
-    );
+  <div className="space-y-6">
+    <AnalysisCard data={data} />
+    {/* Pass the normalized data so the gallery always sees similarImages */}
+    <SimilarChartsGallery source={data} />
+  </div>
+);
+    
   })()
 ) : (
     
