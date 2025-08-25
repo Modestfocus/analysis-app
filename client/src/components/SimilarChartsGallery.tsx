@@ -163,21 +163,32 @@ export default function SimilarChartsGallery({ source, title = "Similar Charts" 
           const mainUrl = resolveMainUrl(s);
 
           // also accept s.maps.{depth,edge,gradient}
-          const depthUrl = fixMapUrl(
-            s.depthMapUrl ||
-              s.depthMapPath ||
-              s.chart?.depthMapPath ||
-              s.maps?.depth
-          );
-          const edgeUrl = fixMapUrl(
-            s.edgeMapUrl || s.edgeMapPath || s.chart?.edgeMapPath || s.maps?.edge
-          );
-          const gradientUrl = fixMapUrl(
-            s.gradientMapUrl ||
-              s.gradientMapPath ||
-              s.chart?.gradientMapPath ||
-              s.maps?.gradient
-          );
+          const depthUrl = (typeof s === "object" && s)
+  ? fixMapUrl(
+      s.depthMapUrl ||
+      s.depthMapPath ||
+      s.chart?.depthMapPath ||
+      s.maps?.depth
+    )
+  : undefined;
+
+const edgeUrl = (typeof s === "object" && s)
+  ? fixMapUrl(
+      s.edgeMapUrl ||
+      s.edgeMapPath ||
+      s.chart?.edgeMapPath ||
+      s.maps?.edge
+    )
+  : undefined;
+
+const gradientUrl = (typeof s === "object" && s)
+  ? fixMapUrl(
+      s.gradientMapUrl ||
+      s.gradientMapPath ||
+      s.chart?.gradientMapPath ||
+      s.maps?.gradient
+    )
+  : undefined;
 
           let simPct: number | undefined;
           if (typeof s.similarity === "number") {
