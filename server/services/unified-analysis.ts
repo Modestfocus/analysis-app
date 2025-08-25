@@ -20,6 +20,58 @@ const toAbs = (u: any) => {
   return `${base}/${u}`;
 };
 
+// --- NEW: helpers to turn local/same-origin URLs into data:image/...;base64 ---
+const SERVER_ROOT = path.join(process.cwd(), "server");
+
+function guessMimeByExt(p: string) {
+  const ext = path.extname(p).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  return "application/octet-stream";
+}
+
+function urlToLocalPath(u: string): string | null {
+  const base = (process.env.PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+  // convert absolute same-origin → relative
+  if (base && u.startsWith(base + "/")) u = u.slice(base.length);
+  if (!u.startsWith("/")) return null;
+
+  if (u.startsWith("/uploads/"))      return path.join(SERVER_ROOT, "uploads", u.replace(/^\/uploads\//, ""));
+  if (u.startsWith("/depthmaps/"))    return path.join(SERVER_ROOT, "depthmaps", u.replace(/^\/depthmaps\//, ""));
+  if (u.startsWith("/edgemaps/"))     return path.join(SERVER_ROOT, "edgemaps", u.replace(/^\/edgemaps\//, ""));
+  if (u.startsWith("/gradientmaps/")) return path.join(SERVER_ROOT, "gradientmaps", u.replace(/^\/gradientmaps\//, ""));
+  return null;
+}
+
+async function toOpenAIImageUrl(u?: string | null): Promise<string | null> {
+  if (!u || typeof u !== "string") return null;
+  if (/^data:/i.test(u)) return u; // already a data URL
+
+  if (/^https?:\/\//i.test(u)) {
+    // If it’s our own origin, convert; external URLs pass through
+    const base = (process.env.PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+    if (base && u.startsWith(base + "/")) {
+      const p = urlToLocalPath(u);
+      if (!p) return u;
+      const mime = guessMimeByExt(p);
+      if (!/^image\//.test(mime)) return null;
+      const buf = await fs.readFile(p);
+      return `data:${mime};base64,${buf.toString("base64")}`;
+    }
+    return u;
+  }
+
+  // server-relative like /uploads/...
+  const p = urlToLocalPath(u);
+  if (!p) return null;
+  const mime = guessMimeByExt(p);
+  if (!/^image\//.test(mime)) return null;
+  const buf = await fs.readFile(p);
+  return `data:${mime};base64,${buf.toString("base64")}`;
+}
+
 /** ---------- Types ---------- */
 type VisualLinks = {
   original: string | null;
