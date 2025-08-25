@@ -83,12 +83,50 @@ export default function SimilarChartsGallery({ source, title = "Similar Charts" 
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {similarRaw.map((s: any, i: number) => {
-          const mainUrl =
-            s.filePath ||
-            s.file_url ||
-            (s.chart?.filename ? `/uploads/${s.chart.filename}` :
-              s.filename ? `/uploads/${s.filename}` : null);
+          // Robust resolver for the primary thumbnail URL
+const resolveMainUrl = (item: any): string | null => {
+  // a) direct url-ish fields first
+  const direct =
+    item.filePath ||
+    item.filepath ||
+    item.file_url ||
+    item.url ||
+    item.imageUrl ||
+    item.image_url ||
+    item.chart?.filePath ||
+    item.chart?.file_url;
 
+  if (typeof direct === "string" && direct.length > 0) {
+    // if it already looks like /uploads/... or http(s)://... just return it
+    if (direct.startsWith("/uploads/") || /^https?:\/\//i.test(direct)) {
+      return direct;
+    }
+    // otherwise try to coerce common local patterns
+    if (direct.includes("/uploads/")) {
+      const after = direct.slice(direct.indexOf("/uploads/"));
+      return after.startsWith("/uploads/") ? after : `/uploads/${after}`;
+    }
+  }
+
+  // b) top-level filename
+  if (item.filename && typeof item.filename === "string") {
+    return item.filename.startsWith("/uploads/")
+      ? item.filename
+      : `/uploads/${item.filename}`;
+  }
+
+  // c) nested chart.filename
+  if (item.chart?.filename && typeof item.chart.filename === "string") {
+    return item.chart.filename.startsWith("/uploads/")
+      ? item.chart.filename
+      : `/uploads/${item.chart.filename}`;
+  }
+
+  return null;
+};
+
+const mainUrl = resolveMainUrl(s);
+      
           const depthUrl    = s.depthMapUrl    || s.depthMapPath    || s.chart?.depthMapPath;
           const edgeUrl     = s.edgeMapUrl     || s.edgeMapPath     || s.chart?.edgeMapPath;
           const gradientUrl = s.gradientMapUrl || s.gradientMapPath || s.chart?.gradientMapPath;
