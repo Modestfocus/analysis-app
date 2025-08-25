@@ -643,126 +643,14 @@ addMessage({
     const data = normalizeAnalysis(parsed);
 
     return (
-  <div className="space-y-6">
-    <AnalysisCard data={data} />
-    <SimilarChartsGallery source={parsed} />
-  </div>
-);
-
-    {/* Similar Charts Gallery */}
-    {(() => {
-      // Try several common shapes from your various endpoints
-      const similarRaw =
-        (parsed && (
-          parsed.similarCharts ||
-          parsed.similar ||
-          parsed.result?.similarCharts ||
-          parsed.result?.similar
-        )) || [];
-
-      if (!Array.isArray(similarRaw) || similarRaw.length === 0) return null;
-
-      return (
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Similar Charts
-          </h4>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {similarRaw.map((s: any, i: number) => {
-              // Try to resolve the main thumbnail URL
-              const mainUrl =
-                s.filePath ||
-                s.file_url ||
-                (s.chart?.filename ? `/uploads/${s.chart.filename}` :
-                 s.filename ? `/uploads/${s.filename}` : null);
-
-              // Depth / Edge / Gradient map urls (support both *Path and *Url keys)
-              const depthUrl    = s.depthMapUrl    || s.depthMapPath    || s.chart?.depthMapPath;
-              const edgeUrl     = s.edgeMapUrl     || s.edgeMapPath     || s.chart?.edgeMapPath;
-              const gradientUrl = s.gradientMapUrl || s.gradientMapPath || s.chart?.gradientMapPath;
-
-              // Similarity can be 0..1 or 0..100
-              let simPct: number | undefined = undefined;
-              if (typeof s.similarity === "number") {
-                simPct = s.similarity > 1 ? s.similarity : s.similarity * 100;
-              } else if (typeof s.score === "number") {
-                simPct = s.score > 1 ? s.score : s.score * 100;
-              }
-
-              const chartId = s.id ?? s.chart?.id;
-              const nameForAlt =
-                s.filename || s.chart?.originalName || (chartId ? `chart-${chartId}` : `similar-${i}`);
-
-              return (
-                <div
-                  key={i}
-                  className="bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-700"
-                >
-                  {/* Main image (fallback to fetch-by-id component if we don't have a URL) */}
-                  {mainUrl ? (
-                    <img
-                      src={mainUrl}
-                      alt={`Similar: ${nameForAlt}`}
-                      className="w-full h-28 object-cover rounded-md border dark:border-gray-600"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  ) : (
-                    chartId ? (
-                      <SimilarChartImage
-                        chartId={chartId as number}
-                        filename={nameForAlt}
-                      />
-                    ) : null
-                  )}
-
-                  {/* Small strip of maps */}
-                  {(depthUrl || edgeUrl || gradientUrl) && (
-                    <div className="flex gap-1 mt-2">
-                      {depthUrl && (
-                        <img
-                          src={depthUrl}
-                          alt="depth"
-                          className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      )}
-                      {edgeUrl && (
-                        <img
-                          src={edgeUrl}
-                          alt="edge"
-                          className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      )}
-                      {gradientUrl && (
-                        <img
-                          src={gradientUrl}
-                          alt="gradient"
-                          className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Similarity label */}
-                  {typeof simPct === "number" && !Number.isNaN(simPct) && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Similarity: {simPct.toFixed(1)}%
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    })()}
-  </div>
-);
+      <div className="space-y-6">
+        <AnalysisCard data={data} />
+        <SimilarChartsGallery source={parsed} />
+      </div>
+    );
   })()
 ) : (
+    
   <div className="space-y-3">
     {/* user text (if any) */}
     {msg.content && (
