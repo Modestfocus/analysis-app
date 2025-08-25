@@ -4,6 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 
 /* ------------------------- helpers ------------------------- */
 const resolveMainUrl = (item: any): string | null => {
+  // If the item itself is a string (filename or full URL)
+  if (typeof item === "string") {
+    return item.startsWith("/uploads/") || /^https?:\/\//i.test(item)
+      ? item
+      : `/uploads/${item}`;
+  }
+
   // direct url-ish fields
   const direct =
   item.original ||          // normalized primary image
