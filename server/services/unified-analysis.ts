@@ -282,15 +282,15 @@ pushIf(userContent, await toImagePart(targetVisuals.gradient));
           ". For each similar item, images appear in this fixed order: original, depth, edge, gradient.",
       });
       for (const s of similarCharts) {
-        userContent.push({
-          type: "text",
-          text: `Similar: ${s.label || s.id}`,
-        });
-        pushIf(userContent, toImagePart(s.links.original));
-        pushIf(userContent, toImagePart(s.links.depth));
-        pushIf(userContent, toImagePart(s.links.edge));
-        pushIf(userContent, toImagePart(s.links.gradient));
-      }
+  userContent.push({
+    type: "text",
+    text: `Similar: ${s.label || s.id}`,
+  });
+  pushIf(userContent, await toImagePart(s.links.original));
+  pushIf(userContent, await toImagePart(s.links.depth));
+  pushIf(userContent, await toImagePart(s.links.edge));
+  pushIf(userContent, await toImagePart(s.links.gradient));
+}
     }
   }
 
