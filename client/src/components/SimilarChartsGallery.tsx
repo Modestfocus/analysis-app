@@ -139,64 +139,88 @@ const mainUrl = resolveMainUrl(s);
   return `/uploads/${u}`;
 };
 
-const depthUrl    = fixMapUrl(s.depthMapUrl    || s.depthMapPath    || s.chart?.depthMapPath);
-const edgeUrl     = fixMapUrl(s.edgeMapUrl     || s.edgeMapPath     || s.chart?.edgeMapPath);
-const gradientUrl = fixMapUrl(s.gradientMapUrl || s.gradientMapPath || s.chart?.gradientMapPath);
+// 1) Add a queryFn so fetching-by-id actually works
+function SimilarChartImage({ chartId, filename }: { chartId: number; filename: string }) {
+  const { data: chart, isLoading, error } = useQuery({
+    queryKey: ['/api/charts', chartId],
+    queryFn: async () => {
+      const r = await fetch(`/api/charts/${chartId}`);
+      if (!r.ok) throw new Error('Failed to fetch chart');
+      return r.json();
+    },
+    enabled: !!chartId,
+  });
+  ...
+}
 
-          let simPct: number | undefined;
-          if (typeof s.similarity === "number") {
-            simPct = s.similarity > 1 ? s.similarity : s.similarity * 100;
-          } else if (typeof s.score === "number") {
-            simPct = s.score > 1 ? s.score : s.score * 100;
-          }
+// 2) Normalize more shapes (s.maps.{depth,edge,gradient})
+const depthUrl = fixMapUrl(
+  s.depthMapUrl ||
+  s.depthMapPath ||
+  s.chart?.depthMapPath ||
+  s.maps?.depth
+);
+const edgeUrl = fixMapUrl(
+  s.edgeMapUrl ||
+  s.edgeMapPath ||
+  s.chart?.edgeMapPath ||
+  s.maps?.edge
+);
+const gradientUrl = fixMapUrl(
+  s.gradientMapUrl ||
+  s.gradientMapPath ||
+  s.chart?.gradientMapPath ||
+  s.maps?.gradient
+);
 
-          const chartId = s.id ?? s.chart?.id;
-          const nameForAlt = s.filename || s.chart?.originalName || (chartId ? `chart-${chartId}` : `similar-${i}`);
+// 3) Make the main thumb clickable, and wrap each map thumb in <a> links
+{mainUrl ? (
+  <a href={mainUrl} target="_blank" rel="noreferrer">
+    <img
+      src={mainUrl}
+      alt={`Similar: ${nameForAlt}`}
+      className="w-full h-28 object-cover rounded-md border dark:border-gray-600"
+      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+    />
+  </a>
+) : chartId ? (
+  <SimilarChartImage chartId={chartId as number} filename={nameForAlt} />
+) : null}
 
-          return (
-            <div
-              key={i}
-              className="bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-700"
-            >
-              {mainUrl ? (
-                <img
-                  src={mainUrl}
-                  alt={`Similar: ${nameForAlt}`}
-                  className="w-full h-28 object-cover rounded-md border dark:border-gray-600"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              ) : chartId ? (
-                <SimilarChartImage chartId={chartId as number} filename={nameForAlt} />
-              ) : null}
-
-              {(depthUrl || edgeUrl || gradientUrl) && (
-                <div className="flex gap-1 mt-2">
-                  {depthUrl && (
-                    <img
-                      src={depthUrl}
-                      alt="depth"
-                      className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
-                  {edgeUrl && (
-                    <img
-                      src={edgeUrl}
-                      alt="edge"
-                      className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
-                  {gradientUrl && (
-                    <img
-                      src={gradientUrl}
-                      alt="gradient"
-                      className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
-                </div>
-              )}
+{(depthUrl || edgeUrl || gradientUrl) && (
+  <div className="flex gap-1 mt-2">
+    {depthUrl && (
+      <a href={depthUrl} target="_blank" rel="noreferrer" title="Depth">
+        <img
+          src={depthUrl}
+          alt="depth"
+          className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      </a>
+    )}
+    {edgeUrl && (
+      <a href={edgeUrl} target="_blank" rel="noreferrer" title="Edge">
+        <img
+          src={edgeUrl}
+          alt="edge"
+          className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      </a>
+    )}
+    {gradientUrl && (
+      <a href={gradientUrl} target="_blank" rel="noreferrer" title="Gradient">
+        <img
+          src={gradientUrl}
+          alt="gradient"
+          className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      </a>
+    )}
+  </div>
+)}
 
               {typeof simPct === "number" && !Number.isNaN(simPct) && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
