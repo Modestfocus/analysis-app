@@ -2550,133 +2550,178 @@ app.post("/api/admin/rescan-disk", async (_req, res) => {
   app.get('/api/chat/conversations/:conversationId/messages', getConversationMessages);
   app.post('/api/chat/conversations/:conversationId/messages', sendChatMessage);
   app.post('/api/chat/upload-image', uploadChatImage);
-    // Chat analysis (new)
-app.post('/api/chat/analyze', async (req, res, next) => {
+   
+// Chat + Analysis endpoint (split behavior)
+app.post("/api/chat/analyze", async (req, res) => {
   try {
-    // Accept common aliases from various frontends
+    // ——— input normalization ———
     const rawPrompt =
       (req.body?.prompt ??
-       req.body?.message ??
-       req.body?.text ??
-       req.body?.content ??
-       "");
-
-    // normalize
+        req.body?.message ??
+        req.body?.text ??
+        req.body?.content ??
+        "");
     const prompt = (typeof rawPrompt === "string" ? rawPrompt : "").trim();
     const images = Array.isArray(req.body?.images) ? req.body.images : [];
-    const systemPrompt = typeof req.body?.systemPrompt === "string" ? req.body.systemPrompt : "";
-    const wantSimilar = typeof req.body?.wantSimilar === "boolean" ? req.body.wantSimilar : true;
+    const systemPrompt =
+      typeof req.body?.systemPrompt === "string" ? req.body.systemPrompt : "";
+    const wantSimilar =
+      typeof req.body?.wantSimilar === "boolean" ? req.body.wantSimilar : true;
 
-    // Accept text or images; synthesize a minimal prompt if only images are provided
+    // Optional: prior turns for real conversation
+    // Expect: history = [{ role: "user"|"assistant"|"system", content: string }, ...]
+    const history = Array.isArray(req.body?.history) ? req.body.history : [];
+
+    // If only images were sent, create a minimal cue
     let finalPrompt = prompt;
     if (!finalPrompt && images.length > 0) {
-      finalPrompt = "[AUTOGEN] Image-only analysis request. Use systemPrompt + images + similar charts.";
+      finalPrompt =
+        "[AUTOGEN] Image-only analysis request. Use systemPrompt + images + similar charts.";
     }
-    // Persist first image if it is a data URL, so the UI & OpenAI can load it
-const uploadsDir = path.join(process.cwd(), "server", "uploads");
-try {
-  await fs.mkdir(uploadsDir, { recursive: true });
-} catch {}
 
-if (images.length > 0 && typeof images[0] === "string" && images[0].startsWith("data:")) {
-  try {
-    const m = images[0].match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i);
-    if (m) {
-      const ext = m[1] === "jpeg" ? "jpg" : m[1];
-      const b64 = m[2];
-      const filename = `chat-${Math.floor(Date.now() / 1000)}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const full = path.join(uploadsDir, filename);
-      await fs.writeFile(full, Buffer.from(b64, "base64"));
-      // Replace data URL with a static URL that Express serves
-      images[0] = `/uploads/${filename}`;
+    // ——— persist first dataURL image so both UI and OpenAI can fetch it ———
+    const uploadsDir = path.join(process.cwd(), "server", "uploads");
+    try {
+      await fs.mkdir(uploadsDir, { recursive: true });
+    } catch {}
+    if (
+      images.length > 0 &&
+      typeof images[0] === "string" &&
+      images[0].startsWith("data:")
+    ) {
+      try {
+        const m = images[0].match(
+          /^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i
+        );
+        if (m) {
+          const ext = m[1] === "jpeg" ? "jpg" : m[1];
+          const b64 = m[2];
+          const filename = `chat-${Math.floor(Date.now() / 1000)}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}.${ext}`;
+          const full = path.join(uploadsDir, filename);
+          await fs.writeFile(full, Buffer.from(b64, "base64"));
+          images[0] = `/uploads/${filename}`;
+        }
+      } catch (e) {
+        console.warn("[/api/chat/analyze] Could not persist data URL:", e);
+      }
     }
-  } catch (e) {
-    console.warn("[/api/chat/analyze] Could not persist data URL:", e);
-  }
-}
-    // Persist first image if it is a data URL so UI can click/open it
-  
 
-    
-    // If absolutely nothing was sent, reject
+    // Reject if literally nothing to do
     if (!finalPrompt && images.length === 0) {
       return res.status(400).json({
-        error: "Missing input. Provide `text`/`prompt`/`message`/`content` or at least one image."
+        error:
+          "Missing input. Provide `text`/`prompt`/`message`/`content` or at least one image.",
       });
     }
-    
-   // Debug log (expanded)
-console.log("[express] POST /api/chat/analyze ::", {
-  bodyKeys: Object.keys(req.body || {}),
-  promptSource: (
-    "prompt"  in (req.body || {}) ? "prompt"  :
-    "message" in (req.body || {}) ? "message" :
-    "text"    in (req.body || {}) ? "text"    :
-    "content" in (req.body || {}) ? "content" : "none"
-  ),
-  promptPreview: finalPrompt.slice(0, 80),
-  promptLength: finalPrompt.length,
-  imageCount: images.length,
-  hasSystemPrompt: !!systemPrompt,
-  wantSimilar,
+
+    // ——— build absolute URLs for images (so OpenAI can fetch) ———
+    const xfProto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0];
+    const xfHost = (req.headers["x-forwarded-host"] as string)?.split(",")[0];
+    const hostHdr = xfHost || req.get("host");
+    const proto = xfProto || req.protocol || "https";
+
+    if (!process.env.PUBLIC_BASE_URL && hostHdr) {
+      process.env.PUBLIC_BASE_URL = `${proto}://${hostHdr}`;
+    }
+    const origin =
+      process.env.PUBLIC_BASE_URL ?? (hostHdr ? `${proto}://${hostHdr}` : "");
+    if (!origin) {
+      return res.status(400).json({
+        error:
+          "Cannot determine PUBLIC_BASE_URL/host. Set PUBLIC_BASE_URL or ensure Host/X-Forwarded-* headers are present.",
+      });
+    }
+    const toAbs = (u: any) => {
+      if (typeof u !== "string") return u;
+      if (
+        u.startsWith("http://") ||
+        u.startsWith("https://") ||
+        u.startsWith("data:")
+      )
+        return u;
+      const rel = u.replace(/^\.?\//, "");
+      return `${origin}/${
+        rel.startsWith("uploads")
+          ? rel
+          : rel.startsWith("server/uploads")
+          ? rel.replace(/^server\//, "")
+          : rel.startsWith("depthmaps") ||
+            rel.startsWith("edgemaps") ||
+            rel.startsWith("gradientmaps")
+          ? rel
+          : rel
+      }`;
+    };
+    const modelImages = images.map(toAbs);
+
+    console.log("[/api/chat/analyze] mode select ::", {
+      hasImages: modelImages.length > 0,
+      promptPreview: (finalPrompt || "").slice(0, 80),
+      historyTurns: history.length,
+      wantSimilar,
+    });
+
+    // ——— BRANCH 1: ANALYSIS MODE (images present) ———
+    if (modelImages.length > 0) {
+      const { generateAnalysis } = await import("./services/unified-analysis");
+      const result = await generateAnalysis({
+        prompt: finalPrompt,
+        images: modelImages,
+        systemPrompt,
+        wantSimilar,
+      });
+      // Tag the payload so the UI can render an analysis card
+      return res.json({ type: "analysis", ...result });
+    }
+
+    // ——— BRANCH 2: CHAT MODE (no images → keep the conversation going) ———
+    const { default: OpenAI } = await import("openai");
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    // minimal, sensible system message
+    const system =
+      systemPrompt ||
+      "You are a helpful trading assistant. Continue the conversation naturally. If the user references the last analysis, answer directly without re-running image analysis or repeating the same JSON card.";
+
+    // Normalize prior history (optional)
+    const safeHistory =
+      history
+        ?.filter(
+          (m: any) =>
+            m &&
+            typeof m.content === "string" &&
+            (m.role === "user" || m.role === "assistant" || m.role === "system")
+        )
+        .map((m: any) => ({ role: m.role, content: m.content })) ?? [];
+
+    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> =
+      [{ role: "system", content: system }, ...safeHistory, { role: "user", content: finalPrompt }];
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+      max_tokens: 800,
+      temperature: 0.7,
+    });
+
+    const text = completion.choices[0]?.message?.content || "";
+    return res.json({
+      type: "chat",
+      ok: true,
+      text,
+      model: completion.model || "gpt-4o",
+      tokens: completion.usage?.total_tokens ?? null,
+    });
+  } catch (e: any) {
+    console.error("[/api/chat/analyze] error:", e);
+    return res
+      .status(500)
+      .json({ error: e?.message ?? "Internal Server Error" });
+  }
 });
-
-// Build absolute URLs so OpenAI can download images
-const xfProto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0];
-const xfHost  = (req.headers["x-forwarded-host"]  as string)?.split(",")[0];
-const hostHdr = xfHost || req.get("host"); // prefer forwarded host if present
-const proto   = xfProto || req.protocol || "https";
-
-if (!process.env.PUBLIC_BASE_URL && hostHdr) {
-  // Make PUBLIC_BASE_URL available to downstream code (unified-analysis, etc.)
-  process.env.PUBLIC_BASE_URL = `${proto}://${hostHdr}`;
-}
-
-// Final origin preference: env wins, else computed, else bail with explicit error
-const origin =
-  process.env.PUBLIC_BASE_URL ??
-  (hostHdr ? `${proto}://${hostHdr}` : "");
-
-if (!origin) {
-  // If we still can't build an origin, fail fast with a clear message
-  return res.status(400).json({
-    error:
-      "Cannot determine PUBLIC_BASE_URL/host. Set PUBLIC_BASE_URL or ensure Host/X-Forwarded-* headers are present.",
-  });
-}
-
-const toAbs = (u: any) => {
-  if (typeof u !== "string") return u;
-  if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("data:")) return u;
-  // Handle "/uploads/..." or "uploads/..." or "./uploads/..."
-  const rel = u.replace(/^\.?\//, "");
-  return `${origin}/${rel.startsWith("uploads") ? rel : rel.startsWith("server/uploads") ? rel.replace(/^server\//, "") : rel.startsWith("depthmaps") || rel.startsWith("edgemaps") || rel.startsWith("gradientmaps") ? rel : rel}`;
-};
-
-const modelImages = images.map(toAbs);
-
-// Optional: debug what we are actually sending (won’t log base64)
-console.log("[/api/chat/analyze] origin:", origin, "modelImages:", modelImages);
-
-
-    // Lazy import to avoid top-level coupling
-const { generateAnalysis } = await import("./services/unified-analysis");
-
-const result = await generateAnalysis({
-  prompt: finalPrompt,
-  images: modelImages,
-  systemPrompt,
-  wantSimilar,
-});
-
-return res.json(result);
-} catch (e: any) {
-  console.error("[/api/chat/analyze] error:", e);
-  return res.status(500).json({ error: e?.message ?? "Internal Server Error" });
-}
-}); // <- closes app.post("/api/chat/analyze", ...)
   
-
   const httpServer = createServer(app);
   return httpServer;
 }
