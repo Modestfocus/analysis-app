@@ -626,29 +626,56 @@ addMessage({
                       </span>
                     </div>
 
-                    {/* Assistant -> card ; User -> text */}
+                                        {/* Assistant -> card ; User -> text */}
                     {msg.role === "assistant" ? (
   (() => {
-    const parsed = safeParseAI((msg as any).aiResponse ?? msg.content);
-    console.debug("[AI RAW]", (msg as any).aiResponse ?? msg.content);
+    const raw = (msg as any).aiResponse ?? msg.content;
+    const parsed = safeParseAI(raw);
+    console.debug("[AI RAW]", raw);
 
+    // Fallback if nothing parseable came back
     if (!parsed) {
       return (
         <pre className="text-xs whitespace-pre-wrap">
-          {msg.content}
+          {typeof raw === "string" ? raw : JSON.stringify(raw, null, 2)}
         </pre>
       );
     }
 
-    const data = normalizeAnalysis(parsed);
+    // 1) Chat-mode: explicit { type: "chat", text: string }
+    if (parsed?.type === "chat" && typeof parsed?.text === "string") {
+      return (
+        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+          {parsed.text}
+        </div>
+      );
+    }
 
+    // 2) Analysis-mode: explicit { type: "analysis", ... } OR legacy analysis-like shapes
+    const looksLikeAnalysis =
+      parsed?.type === "analysis" ||
+      parsed?.sessionPrediction !== undefined ||
+      parsed?.directionBias !== undefined ||
+      parsed?.confidence !== undefined ||
+      parsed?.reasoning !== undefined ||
+      parsed?.result !== undefined; // some backends wrap payload in `result`
+
+    if (looksLikeAnalysis) {
+      const data = normalizeAnalysis(parsed);
+      return (
+        <div className="space-y-6">
+          <AnalysisCard data={data} />
+          {/* Gallery removed; AnalysisCard shows the top-3 similars */}
+        </div>
+      );
+    }
+
+    // 3) Unknown shape → render JSON so you can debug
     return (
-  <div className="space-y-6">
-    <AnalysisCard data={data} />
-    {/* Removed duplicate gallery; keep only the top-3 inside AnalysisCard */}
-  </div>
-);
-    
+      <pre className="text-xs whitespace-pre-wrap">
+        {JSON.stringify(parsed, null, 2)}
+      </pre>
+    );
   })()
 ) : (
     
