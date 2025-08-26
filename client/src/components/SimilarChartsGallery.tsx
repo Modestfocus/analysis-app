@@ -170,7 +170,8 @@ export default function SimilarChartsGallery({ source, title = "Similar Charts" 
       s.depthMapUrl ||
       s.depthMapPath ||
       s.chart?.depthMapPath ||
-      s.maps?.depth
+      s.maps?.depth ||
+      s.links?.depth              // <-- NEW
     )
   : undefined;
 
@@ -179,7 +180,8 @@ const edgeUrl = (typeof s === "object" && s)
       s.edgeMapUrl ||
       s.edgeMapPath ||
       s.chart?.edgeMapPath ||
-      s.maps?.edge
+      s.maps?.edge ||
+      s.links?.edge               // <-- NEW
     )
   : undefined;
 
@@ -188,7 +190,8 @@ const gradientUrl = (typeof s === "object" && s)
       s.gradientMapUrl ||
       s.gradientMapPath ||
       s.chart?.gradientMapPath ||
-      s.maps?.gradient
+      s.maps?.gradient ||
+      s.links?.gradient           // <-- NEW
     )
   : undefined;
 
