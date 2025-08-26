@@ -131,6 +131,24 @@ function pushIf<T>(arr: T[], part: T | null | undefined) {
   if (part) arr.push(part as T);
 }
 
+/** NEW: determine if similarImages array is renderable by the client */
+function isRenderableSimilarArray(arr: any): boolean {
+  if (!Array.isArray(arr) || arr.length === 0) return false;
+  // At least one recognizable field the client can use to show an image
+  return arr.some((s) => {
+    if (!s || typeof s !== "object") return typeof s === "string";
+    return Boolean(
+      s.original ||
+      s.url ||
+      s.filePath || s.filepath || s.file_url ||
+      s.imageUrl || s.image_url ||
+      s.filename ||
+      s.chart?.filePath || s.chart?.file_url || s.chart?.filename ||
+      s.links?.original
+    );
+  });
+}
+
 // Discover sibling maps (depth/edge/gradient) next to an original image path under /public/uploads
 async function discoverMapsFor(originalUrl: string) {
   try {
@@ -354,19 +372,17 @@ Rules:
     parsed = {};
   }
 
-  // If model didn't include similarImages and you want them in UI, backfill from discovered similars
-  if (
-    wantSimilar &&
-    (!Array.isArray(parsed?.similarImages) || parsed.similarImages.length === 0)
-  ) {
+    // If model's array is missing/empty OR not renderable, normalize/backfill from our RAG results
+  if (wantSimilar && !isRenderableSimilarArray(parsed?.similarImages)) {
     parsed.similarImages = similarCharts.map((s) => ({
       id: s.id,
       label: s.label,
+      // Put canonical fields top-level so the client can render without guessing
       original: s.links?.original ?? null,
-      depth: s.links?.depth ?? null,
-      edge: s.links?.edge ?? null,
+      depth:    s.links?.depth ?? null,
+      edge:     s.links?.edge ?? null,
       gradient: s.links?.gradient ?? null,
-      url: s.url ?? null,
+      url: s.url ?? (s.links?.original ?? null),
     }));
   }
 
