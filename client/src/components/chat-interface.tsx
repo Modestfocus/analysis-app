@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 import AnalysisCard from "./AnalysisCard";
-import SimilarChartsGallery from "./SimilarChartsGallery";
+// import SimilarChartsGallery from "./SimilarChartsGallery"; // removed
 import { normalizeAnalysis } from '../lib/normalize-analysis';
 
 // Safely turn whatever the assistant returned into an object
@@ -645,8 +645,7 @@ addMessage({
     return (
   <div className="space-y-6">
     <AnalysisCard data={data} />
-    {/* Pass the normalized data so the gallery always sees similarImages */}
-    <SimilarChartsGallery source={data} />
+    {/* Removed duplicate gallery; keep only the top-3 inside AnalysisCard */}
   </div>
 );
     
