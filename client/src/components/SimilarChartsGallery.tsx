@@ -253,62 +253,53 @@ export default function SimilarChartsGallery({ source, title = "Similar Charts" 
       </h4>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {similarRaw.map((s: any, i: number) => {
-          const mainUrl = resolveMainUrl(s);
+        {(Array.isArray(similarRaw) ? similarRaw : []).map((raw: any, i: number) => {
+          // Normalize shape first
+          const s = normalizeSimilar(raw, i);
 
-          // also accept s.maps.{depth,edge,gradient}
-          const depthUrl = (typeof s === "object" && s)
-  ? fixMapUrl(
-      s.depthMapUrl ||
-      s.depthMapPath ||
-      s.chart?.depthMapPath ||
-      s.maps?.depth ||
-      s.links?.depth              // <-- NEW
-    )
-  : undefined;
+          // Stable key (fixes duplicate-key warning)
+          const key = s.id || `idx-${i}`;
 
-const edgeUrl = (typeof s === "object" && s)
-  ? fixMapUrl(
-      s.edgeMapUrl ||
-      s.edgeMapPath ||
-      s.chart?.edgeMapPath ||
-      s.maps?.edge ||
-      s.links?.edge               // <-- NEW
-    )
-  : undefined;
+          // Primary image and optional maps
+          const mainUrl =
+            s.links?.original || s.filePath || s.url || s.original || null;
 
-const gradientUrl = (typeof s === "object" && s)
-  ? fixMapUrl(
-      s.gradientMapUrl ||
-      s.gradientMapPath ||
-      s.chart?.gradientMapPath ||
-      s.maps?.gradient ||
-      s.links?.gradient           // <-- NEW
-    )
-  : undefined;
+          const depthUrl = fixMapUrl(
+            (s.links?.depth as string | undefined) ??
+              (s.depth as string | undefined) ??
+              (s.depthMapPath as string | undefined)
+          );
 
-          let simPct: number | undefined;
-if (typeof s === "object" && s) {
-  if (typeof s.similarity === "number") {
-    simPct = s.similarity > 1 ? s.similarity : s.similarity * 100;
-  } else if (typeof s.score === "number") {
-    simPct = s.score > 1 ? s.score : s.score * 100;
-  }
-}
+          const edgeUrl = fixMapUrl(
+            (s.links?.edge as string | undefined) ??
+              (s.edge as string | undefined) ??
+              (s.edgeMapPath as string | undefined)
+          );
 
-const chartId =
-  (typeof s === "object" && s) ? (s.id ?? s.chart?.id) : undefined;
+          const gradientUrl = fixMapUrl(
+            (s.links?.gradient as string | undefined) ??
+              (s.gradient as string | undefined) ??
+              (s.gradientMapPath as string | undefined)
+          );
 
-const nameForAlt =
-  (typeof s === "string")
-    ? s
-    : (s.filename ||
-       s.chart?.originalName ||
-       (chartId ? `chart-${chartId}` : `similar-${i}`));
-      
+          // Label/alt text + similarity %
+          const nameForAlt = s.label || s.filename || `similar-${i}`;
+          const simPct =
+            typeof s.similarity === "number"
+              ? s.similarity > 1
+                ? s.similarity
+                : s.similarity * 100
+              : undefined;
+
+          // If we don't have a direct URL but have a numeric chart id, we can fallback to fetch-by-id
+          const chartId =
+            typeof s.id === "number"
+              ? s.id
+              : (s as any).chartId || (s as any).chart?.id;
+
           return (
             <div
-              key={(typeof s === "object" && s && s.id) ?? i}
+              key={key}
               className="bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-700"
             >
               {mainUrl ? (
@@ -317,16 +308,14 @@ const nameForAlt =
                     src={mainUrl}
                     alt={`Similar: ${nameForAlt}`}
                     className="w-full h-28 object-cover rounded-md border dark:border-gray-600"
+                    loading="lazy"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
                   />
                 </a>
               ) : chartId ? (
-                <SimilarChartImage
-                  chartId={chartId as number}
-                  filename={nameForAlt}
-                />
+                <SimilarChartImage chartId={chartId as number} filename={nameForAlt} />
               ) : null}
 
               {(depthUrl || edgeUrl || gradientUrl) && (
@@ -337,6 +326,7 @@ const nameForAlt =
                         src={depthUrl}
                         alt="depth"
                         className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
+                        loading="lazy"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
@@ -349,6 +339,7 @@ const nameForAlt =
                         src={edgeUrl}
                         alt="edge"
                         className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
+                        loading="lazy"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
@@ -356,16 +347,12 @@ const nameForAlt =
                     </a>
                   )}
                   {gradientUrl && (
-                    <a
-                      href={gradientUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Gradient"
-                    >
+                    <a href={gradientUrl} target="_blank" rel="noreferrer" title="Gradient">
                       <img
                         src={gradientUrl}
                         alt="gradient"
                         className="w-1/3 h-12 object-cover rounded border dark:border-gray-600"
+                        loading="lazy"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
