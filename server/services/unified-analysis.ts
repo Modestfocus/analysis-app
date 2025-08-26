@@ -149,6 +149,57 @@ function isRenderableSimilarArray(arr: any): boolean {
   });
 }
 
+/** Normalize a single similar item to include legacy-friendly fields */
+function normalizeSimilarItem(s: any) {
+  if (!s || typeof s !== "object") return s;
+
+  // Prefer explicit links bag; otherwise infer from common fields
+  const links = s.links ?? {
+    original: s.original ?? s.url ?? s.filePath ?? s.filepath ?? s.imageUrl ?? s.image_url ?? s.chart?.filePath ?? null,
+    depth:    s.depth ?? s.depthMapPath ?? s.depthMapUrl ?? s.links?.depth ?? null,
+    edge:     s.edge ?? s.edgeMapPath ?? s.links?.edge ?? null,
+    gradient: s.gradient ?? s.gradientMapPath ?? s.links?.gradient ?? null,
+  };
+
+  const original = links.original ?? s.url ?? s.filePath ?? s.filepath ?? null;
+  const filename = s.filename ?? s.chart?.filename ?? (typeof original === "string" ? original.split("/").pop() : null);
+
+  return {
+    ...s,
+    // canonical bag
+    links: {
+      original: links.original ?? null,
+      depth:    links.depth ?? null,
+      edge:     links.edge ?? null,
+      gradient: links.gradient ?? null,
+    },
+
+    // legacy top-level fields used by various clients
+    filePath: original ?? null,
+    url: original ?? s.url ?? null,
+    filename: filename ?? null,
+    original: links.original ?? null,
+    depth: links.depth ?? null,
+    edge: links.edge ?? null,
+    gradient: links.gradient ?? null,
+
+    // legacy “*MapPath” and “*MapUrl” spellings (both)
+    depthMapPath: links.depth ?? s.depthMapPath ?? null,
+    edgeMapPath: links.edge ?? s.edgeMapPath ?? null,
+    gradientMapPath: links.gradient ?? s.gradientMapPath ?? null,
+
+    depthMapUrl: links.depth ?? s.depthMapUrl ?? null,
+    edgeMapUrl: links.edge ?? s.edgeMapUrl ?? null,
+    gradientMapUrl: links.gradient ?? s.gradientMapUrl ?? null,
+  };
+}
+
+/** Normalize an array of similars so every item is legacy-friendly */
+function normalizeSimilarArray(arr: any[]): any[] {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(normalizeSimilarItem);
+}
+
 // Discover sibling maps (depth/edge/gradient) next to an original image path under /public/uploads
 async function discoverMapsFor(originalUrl: string) {
   try {
@@ -216,16 +267,34 @@ async function findSimilarCharts(images: string[], limit = 3): Promise<SimilarIt
 
     const original = `/uploads/${chart.filename}`;
     out.push({
-      id: String(chart.id),
-      label: `${chart.originalName || chart.filename} (${Math.round(similarity * 100)}%)`,
-      links: {
-        original,
-        depth: chart.depthMapPath || null,
-        edge: chart.edgeMapPath || null,
-        gradient: chart.gradientMapPath || null,
-      },
-      url: original,
-    });
+  id: String(chart.id),
+  label: `${chart.originalName || chart.filename} (${Math.round(similarity * 100)}%)`,
+
+  // canonical bag used by the model prompt
+  links: {
+    original,
+    depth: chart.depthMapPath || null,
+    edge: chart.edgeMapPath || null,
+    gradient: chart.gradientMapPath || null,
+  },
+
+  // legacy / gallery-friendly fields
+  url: original,
+  filePath: original,
+  filename: chart.filename,
+  original,
+  depth: chart.depthMapPath || null,
+  edge: chart.edgeMapPath || null,
+  gradient: chart.gradientMapPath || null,
+
+  depthMapPath: chart.depthMapPath || null,
+  edgeMapPath: chart.edgeMapPath || null,
+  gradientMapPath: chart.gradientMapPath || null,
+
+  depthMapUrl: chart.depthMapPath || null,
+  edgeMapUrl: chart.edgeMapPath || null,
+  gradientMapUrl: chart.gradientMapPath || null,
+});
 
     if (out.length >= limit) break;
   }
@@ -372,19 +441,28 @@ Rules:
     parsed = {};
   }
 
-    // If model's array is missing/empty OR not renderable, normalize/backfill from our RAG results
-  if (wantSimilar && !isRenderableSimilarArray(parsed?.similarImages)) {
-    parsed.similarImages = similarCharts.map((s) => ({
-      id: s.id,
-      label: s.label,
-      // Put canonical fields top-level so the client can render without guessing
+    // If model's array is missing/empty OR not renderable, backfill from our RAG results
+if (wantSimilar && !isRenderableSimilarArray(parsed?.similarImages)) {
+  parsed.similarImages = similarCharts.map((s) => ({
+    id: s.id,
+    label: s.label,
+    links: {
       original: s.links?.original ?? null,
       depth:    s.links?.depth ?? null,
       edge:     s.links?.edge ?? null,
       gradient: s.links?.gradient ?? null,
-      url: s.url ?? (s.links?.original ?? null),
-    }));
-  }
+    },
+    url: s.url ?? (s.links?.original ?? null),
+    // also include the top-level convenience fields
+    original: s.links?.original ?? null,
+    depth:    s.links?.depth ?? null,
+    edge:     s.links?.edge ?? null,
+    gradient: s.links?.gradient ?? null,
+  }));
+}
+
+// Final pass: ensure legacy-friendly shape for ALL similar items (model or backfilled)
+const normalizedSimilars = wantSimilar ? normalizeSimilarArray(parsed?.similarImages ?? []) : [];
 
   // Prefer model-provided visuals if present; otherwise use our exact paths
   const returnedTargetVisuals =
@@ -402,16 +480,21 @@ Rules:
 
   // Final normalized object
   return {
-    sessionPrediction: parsed?.sessionPrediction ?? null,
-    directionBias: parsed?.directionBias ?? null,
-    confidence: parsed?.confidence ?? null,
-    reasoning: parsed?.reasoning ?? null,
-    targetVisuals: returnedTargetVisuals,
-    similarImages: parsed?.similarImages ?? [],
-    model: completion?.model ?? "gpt-4o",
-    tokens: completion?.usage?.total_tokens ?? null,
-    similarUsed: (similarCharts?.length ?? 0) > 0,
-  };
+  sessionPrediction: parsed?.sessionPrediction ?? null,
+  directionBias: parsed?.directionBias ?? null,
+  confidence: parsed?.confidence ?? null,
+  reasoning: parsed?.reasoning ?? null,
+  targetVisuals: returnedTargetVisuals,
+
+  // normalized, legacy-friendly items
+  similarImages: normalizedSimilars,
+  // legacy alias some clients expect
+  similarCharts: normalizedSimilars,
+
+  model: completion?.model ?? "gpt-4o",
+  tokens: completion?.usage?.total_tokens ?? null,
+  similarUsed: (similarCharts?.length ?? 0) > 0,
+};
 }
 
 // Some callers import `.run(...)`; keep that API stable.
