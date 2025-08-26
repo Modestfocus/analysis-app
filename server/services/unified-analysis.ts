@@ -134,18 +134,30 @@ function pushIf<T>(arr: T[], part: T | null | undefined) {
 /** NEW: determine if similarImages array is renderable by the client */
 function isRenderableSimilarArray(arr: any): boolean {
   if (!Array.isArray(arr) || arr.length === 0) return false;
+
+  // Only consider strings renderable if they are actual URLs or /uploads/* paths.
+  // Bare filenames like "pasted-chart-123.png" are NOT renderable → trigger backfill.
+  const looksRenderableString = (v: string) =>
+    /^https?:\/\//i.test(v) || v.startsWith("/uploads/");
+
   // At least one recognizable field the client can use to show an image
   return arr.some((s) => {
-    if (!s || typeof s !== "object") return typeof s === "string";
-    return Boolean(
+    if (typeof s === "string") return looksRenderableString(s);
+    if (!s || typeof s !== "object") return false;
+
+    const candidate =
       s.original ||
       s.url ||
       s.filePath || s.filepath || s.file_url ||
       s.imageUrl || s.image_url ||
       s.filename ||
       s.chart?.filePath || s.chart?.file_url || s.chart?.filename ||
-      s.links?.original
-    );
+      s.links?.original;
+
+    if (typeof candidate === "string") {
+      return looksRenderableString(candidate);
+    }
+    return false;
   });
 }
 
