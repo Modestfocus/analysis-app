@@ -1,6 +1,98 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+// --- BEGIN: robust normalizer for mixed similar shapes ---
+function normalizeSimilar(item: any, idx: number) {
+  // 1) Plain string entry (model may return just filenames)
+  if (typeof item === "string") {
+    const looksAbs = /^(https?:|data:|\/)/i.test(item);
+    const original = looksAbs ? item : `/uploads/${item}`;
+    return {
+      id: `str-${idx}-${original}`,
+      filename: item.split("/").pop() || item,
+      filePath: original,
+      url: original,
+      links: { original },
+      original,
+      depth: null,
+      edge: null,
+      gradient: null,
+      label: null,
+      similarity: null,
+    };
+  }
+
+  // 2) Object – collect candidates
+  const originalCandidate =
+    item?.links?.original ??
+    item?.filePath ??
+    item?.url ??
+    item?.original ??
+    item?.chart?.filePath ??
+    item?.filename ??
+    null;
+
+  // turn bare filename into a server path
+  const resolvedOriginal =
+    typeof originalCandidate === "string" && !/^(https?:|data:|\/)/i.test(originalCandidate)
+      ? `/uploads/${originalCandidate}`
+      : originalCandidate;
+
+  const depth =
+    item?.links?.depth ??
+    item?.depth ??
+    item?.depthMapPath ??
+    item?.depthMapUrl ??
+    null;
+
+  const edge =
+    item?.links?.edge ??
+    item?.edge ??
+    item?.edgeMapPath ??
+    item?.edgeMapUrl ??
+    null;
+
+  const gradient =
+    item?.links?.gradient ??
+    item?.gradient ??
+    item?.gradientMapPath ??
+    item?.gradientMapUrl ??
+    null;
+
+  // Stable key: prefer id → filename → filePath → url → original → idx
+  const keyCandidate =
+    item?.id ||
+    item?.filename ||
+    item?.filePath ||
+    item?.url ||
+    resolvedOriginal ||
+    `idx-${idx}`;
+
+  return {
+    id: String(keyCandidate),
+    filename:
+      item?.filename ??
+      (typeof resolvedOriginal === "string"
+        ? resolvedOriginal.split("/").pop()
+        : undefined),
+    filePath: resolvedOriginal ?? null,
+    url: resolvedOriginal ?? null,
+    links: {
+      original: resolvedOriginal ?? null,
+      depth: depth ?? null,
+      edge: edge ?? null,
+      gradient: gradient ?? null,
+    },
+    original: resolvedOriginal ?? null,
+    depth: depth ?? null,
+    edge: edge ?? null,
+    gradient: gradient ?? null,
+    label: item?.label ?? null,
+    similarity: item?.similarity ?? item?.score ?? null,
+  };
+}
+// --- END: robust normalizer for mixed similar shapes ---
+
 
 /* ------------------------- helpers ------------------------- */
 const resolveMainUrl = (item: any): string | null => {
