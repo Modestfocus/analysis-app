@@ -14,6 +14,8 @@ const resolveMainUrl = (item: any): string | null => {
   // direct url-ish fields
   const direct =
   item.original ||          // normalized primary image
+  item.original ||          // normalized primary image
+  item.links?.original ||   // <-- accept { links: { original } }
   item.filePath ||
   item.filepath ||
   item.file_url ||
