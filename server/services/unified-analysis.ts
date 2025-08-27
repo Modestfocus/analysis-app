@@ -426,16 +426,28 @@ Rules:
   userContent.push({ type: "text", text: jsonInstruction });
 
   // --- OpenAI call (JSON only) ---
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
-    response_format: { type: "json_object" },
-    temperature: 0.2,
-    max_tokens: 1600,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: userContent as any },
-    ],
-  });
+  // Thread conversation history if provided
+const history = Array.isArray((opts as any).history) ? (opts as any).history : [];
+
+// Normalize history → ensure roles are only "user" or "assistant"
+const historyMessages = history
+  .filter(h => h.role === "user" || h.role === "assistant")
+  .map(h => ({
+    role: h.role,
+    content: String(h.content || "")
+  }));
+
+const completion = await openai.chat.completions.create({
+  model: "gpt-4o",
+  response_format: { type: "json_object" },
+  temperature: 0.2,
+  max_tokens: 1600,
+  messages: [
+    { role: "system", content: system },
+    ...historyMessages,
+    { role: "user", content: userContent as any },
+  ],
+});
 
   // Preview a safe slice of the response
   console.log(
