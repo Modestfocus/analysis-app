@@ -2685,16 +2685,37 @@ app.post("/api/chat/analyze", async (req, res) => {
       systemPrompt ||
       "You are a helpful trading assistant. Continue the conversation naturally. If the user references the last analysis, answer directly without re-running image analysis or repeating the same JSON card.";
 
-    // Normalize prior history (optional)
-    const safeHistory =
-      history
-        ?.filter(
-          (m: any) =>
-            m &&
-            typeof m.content === "string" &&
-            (m.role === "user" || m.role === "assistant" || m.role === "system")
-        )
-        .map((m: any) => ({ role: m.role, content: m.content })) ?? [];
+    // Normalize prior history (optional) — accept objects too
+const safeHistory =
+  (history ?? [])
+    .filter(
+      (m: any) =>
+        m &&
+        (m.role === "user" || m.role === "assistant" || m.role === "system")
+    )
+    .map((m: any) => {
+      let content = m?.content;
+
+      // Coerce non-string content (e.g., analysis objects) to JSON
+      if (typeof content !== "string") {
+        try {
+          content = JSON.stringify(content);
+        } catch {
+          content = String(content);
+        }
+      }
+
+      // If this looks like an analysis JSON, prefix a clear tag
+      if (
+        m.role === "assistant" &&
+        typeof content === "string" &&
+        /sessionPrediction|directionBias|reasoning|confidence/.test(content)
+      ) {
+        content = "[ANALYSIS_JSON_PINNED] " + content;
+      }
+
+      return { role: m.role as "user" | "assistant" | "system", content };
+    });
 
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> =
       [{ role: "system", content: system }, ...safeHistory, { role: "user", content: finalPrompt }];
