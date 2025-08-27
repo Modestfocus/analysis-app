@@ -236,14 +236,17 @@ function addMessage(m: {
     const res = await fetch("/api/chat/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-     body: JSON.stringify({ 
-  text, 
-  images, 
-  systemPrompt, 
+     body: JSON.stringify({
+  text,
+  images,
+  systemPrompt,
   wantSimilar,
   history: displayedMessages.map(m => ({
     role: m.role,
-    content: m.content || (m as any).aiResponse || ""
+    content:
+      m.role === "assistant"
+        ? ((m as any).aiResponse ?? m.content ?? "")
+        : (m.content ?? "")
   }))
 }),
     });
