@@ -423,7 +423,26 @@ Rules:
 - Explicitly reference which layer(s) informed each point (e.g., "edge: compression", "gradient: positive slope", "EMA20 > EMA50").
 `.trim();
 
+  // Determine first turn vs follow-ups using provided history (local scratch vars to avoid name clashes)
+const _histRaw = Array.isArray((opts as any).history) ? (opts as any).history : [];
+const _histMsgs = _histRaw.filter((h: any) => h && (h.role === "user" || h.role === "assistant"));
+const _hasAssistantAlready = _histMsgs.some((m: any) => m.role === "assistant");
+
+// First turn => enforce JSON instruction. Follow-ups => add playbook-style guidance instead.
+if (!_hasAssistantAlready) {
   userContent.push({ type: "text", text: jsonInstruction });
+} else {
+  userContent.push({
+    type: "text",
+    text: [
+      "FOLLOW-UP PLAYBOOK MODE:",
+      "- Continue conversationally; reference the prior JSON analysis already in the chat history.",
+      "- Provide an actionable playbook: entry zone(s), stop-loss/invalidation, 1–3 profit targets, risk/reward.",
+      "- Use the same instrument/levels you already analyzed unless a new chart is provided.",
+      "- You may give conditional scenarios (if/then) but be concise."
+    ].join("\n")
+  });
+}
 
   // --- OpenAI call (first-turn JSON, follow-ups free-form) ---
 const histRaw = Array.isArray((opts as any).history) ? (opts as any).history : [];
