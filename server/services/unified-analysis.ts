@@ -425,32 +425,7 @@ Rules:
 
   userContent.push({ type: "text", text: jsonInstruction });
 
-  // --- OpenAI call (JSON only) ---
-  // Thread conversation history if provided
-const history = Array.isArray((opts as any).history) ? (opts as any).history : [];
-
-// Normalize history → ensure roles are only "user" or "assistant"
-const historyMessages = history
-  .filter(h => h.role === "user" || h.role === "assistant")
-  .map(h => ({
-    role: h.role,
-    content: String(h.content || "")
-  }));
-
-// Thread conversation history if provided
-const history = Array.isArray((opts as any).history) ? (opts as any).history : [];
-const historyMessages = history
-  .filter(h => h.role === "user" || h.role === "assistant")
-  .map(h => ({
-    role: h.role,
-    content: String(h.content || "")
-  }));
-
-// Decide if this is the first analysis (no assistant messages yet)
-const hasAssistantReply = historyMessages.some(m => m.role === "assistant");
-const forceJson = !hasAssistantReply; // ✅ JSON only for the very first turn
-
-// --- OpenAI call (first-turn JSON, follow-ups free-form) ---
+  // --- OpenAI call (first-turn JSON, follow-ups free-form) ---
 const histRaw = Array.isArray((opts as any).history) ? (opts as any).history : [];
 
 // Normalize history (only user/assistant, stringify non-string content defensively)
@@ -461,15 +436,13 @@ const histMsgs = histRaw
     content:
       typeof h.content === "string"
         ? h.content
-        : // if earlier assistant messages were stored as objects (e.g., aiResponse JSON),
-          // stringify so OpenAI receives text
-          JSON.stringify(h.content ?? ""),
+        : JSON.stringify(h.content ?? ""),
   }));
 
 // Decide: first turn => enforce JSON; follow-ups => free-form
 const hasAssistantReply = histMsgs.some((m: any) => m.role === "assistant");
 
-// Build args dynamically to avoid duplicate variable declarations
+// Build args dynamically
 const openaiArgs: any = {
   model: "gpt-4o",
   temperature: 0.2,
