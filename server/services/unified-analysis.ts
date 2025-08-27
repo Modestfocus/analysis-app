@@ -450,18 +450,43 @@ const historyMessages = history
 const hasAssistantReply = historyMessages.some(m => m.role === "assistant");
 const forceJson = !hasAssistantReply; // ✅ JSON only for the very first turn
 
-const completion = await openai.chat.completions.create({
+// --- OpenAI call (first-turn JSON, follow-ups free-form) ---
+const histRaw = Array.isArray((opts as any).history) ? (opts as any).history : [];
+
+// Normalize history (only user/assistant, stringify non-string content defensively)
+const histMsgs = histRaw
+  .filter((h: any) => h && (h.role === "user" || h.role === "assistant"))
+  .map((h: any) => ({
+    role: h.role,
+    content:
+      typeof h.content === "string"
+        ? h.content
+        : // if earlier assistant messages were stored as objects (e.g., aiResponse JSON),
+          // stringify so OpenAI receives text
+          JSON.stringify(h.content ?? ""),
+  }));
+
+// Decide: first turn => enforce JSON; follow-ups => free-form
+const hasAssistantReply = histMsgs.some((m: any) => m.role === "assistant");
+
+// Build args dynamically to avoid duplicate variable declarations
+const openaiArgs: any = {
   model: "gpt-4o",
-  // Switch depending on conversation stage
-  ...(forceJson ? { response_format: { type: "json_object" } } : {}),
   temperature: 0.2,
   max_tokens: 1600,
   messages: [
     { role: "system", content: system },
-    ...historyMessages,
+    ...histMsgs,
     { role: "user", content: userContent as any },
   ],
-});
+};
+
+// Only enforce JSON on the first turn (no prior assistant reply)
+if (!hasAssistantReply) {
+  openaiArgs.response_format = { type: "json_object" };
+}
+
+const completion = await openai.chat.completions.create(openaiArgs);
 
   // Preview a safe slice of the response
   console.log(
