@@ -233,23 +233,65 @@ function addMessage(m: {
 
     const wantSimilar = true;
 
-    const res = await fetch("/api/chat/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-     body: JSON.stringify({
-  text,
-  images,
-  systemPrompt,
-  wantSimilar,
-  history: displayedMessages.map(m => ({
-    role: m.role,
-    content:
-      m.role === "assistant"
-        ? ((m as any).aiResponse ?? m.content ?? "")
-        : (m.content ?? "")
-  }))
-}),
-    });
+    // Build history with "pin + recent" policy
+const onlyUA = displayedMessages.filter(
+  (m) => m.role === "user" || m.role === "assistant"
+);
+
+// Pin #1: the first assistant JSON analysis (reference brain)
+const firstAssistantJson = onlyUA.find(
+  (m) =>
+    m.role === "assistant" &&
+    !!(m as any).aiResponse &&
+    (
+      (m as any).aiResponse.sessionPrediction !== undefined ||
+      (m as any).aiResponse.directionBias !== undefined ||
+      (m as any).aiResponse.reasoning !== undefined
+    )
+);
+
+// Pin #2: the most recent user message that included images (latest chart upload)
+const lastUserWithImages = [...onlyUA]
+  .reverse()
+  .find(
+    (m) => m.role === "user" && Array.isArray((m as any).imageUrls) && (m as any).imageUrls.length > 0
+  );
+
+const pinnedSet = new Set<string>();
+const pinnedMsgs: typeof onlyUA = [];
+
+if (firstAssistantJson) {
+  pinnedSet.add(firstAssistantJson.id);
+  pinnedMsgs.push(firstAssistantJson);
+}
+if (lastUserWithImages && !pinnedSet.has(lastUserWithImages.id)) {
+  pinnedSet.add(lastUserWithImages.id);
+  pinnedMsgs.push(lastUserWithImages);
+}
+
+// Recent tail (cap to last 12 user/assistant turns excluding pins)
+const recentTail = onlyUA.filter((m) => !pinnedSet.has(m.id)).slice(-12);
+
+// Final history payload
+const historyPayload = [...pinnedMsgs, ...recentTail].map((m) => ({
+  role: m.role,
+  content:
+    m.role === "assistant"
+      ? ((m as any).aiResponse ?? m.content ?? "")
+      : (m.content ?? ""),
+}));
+
+const res = await fetch("/api/chat/analyze", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    text,
+    images,
+    systemPrompt,
+    wantSimilar,
+    history: historyPayload,
+  }),
+});
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
