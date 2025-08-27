@@ -273,13 +273,15 @@ if (lastUserWithImages && !pinnedSet.has(lastUserWithImages.id)) {
 const recentTail = onlyUA.filter((m) => !pinnedSet.has(m.id)).slice(-12);
 
 // Final history payload
-const historyPayload = [...pinnedMsgs, ...recentTail].map((m) => ({
-  role: m.role,
-  content:
-    m.role === "assistant"
-      ? ((m as any).aiResponse ?? m.content ?? "")
-      : (m.content ?? ""),
-}));
+const historyPayload = [...pinnedMsgs, ...recentTail].map((m) => {
+  if (m.role === "assistant") {
+    const raw = (m as any).aiResponse ?? m.content ?? "";
+    const content = typeof raw === "string" ? raw : JSON.stringify(raw);
+    // Tag so the server/model knows this is the pinned analysis context
+    return { role: "assistant", content: "[ANALYSIS_JSON_PINNED] " + content };
+  }
+  return { role: m.role, content: m.content ?? "" };
+});
 
 const res = await fetch("/api/chat/analyze", {
   method: "POST",
