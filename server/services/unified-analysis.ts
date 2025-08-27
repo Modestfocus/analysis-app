@@ -437,9 +437,23 @@ const historyMessages = history
     content: String(h.content || "")
   }));
 
+// Thread conversation history if provided
+const history = Array.isArray((opts as any).history) ? (opts as any).history : [];
+const historyMessages = history
+  .filter(h => h.role === "user" || h.role === "assistant")
+  .map(h => ({
+    role: h.role,
+    content: String(h.content || "")
+  }));
+
+// Decide if this is the first analysis (no assistant messages yet)
+const hasAssistantReply = historyMessages.some(m => m.role === "assistant");
+const forceJson = !hasAssistantReply; // ✅ JSON only for the very first turn
+
 const completion = await openai.chat.completions.create({
   model: "gpt-4o",
-  response_format: { type: "json_object" },
+  // Switch depending on conversation stage
+  ...(forceJson ? { response_format: { type: "json_object" } } : {}),
   temperature: 0.2,
   max_tokens: 1600,
   messages: [
