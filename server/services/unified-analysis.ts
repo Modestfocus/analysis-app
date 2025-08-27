@@ -481,20 +481,39 @@ if (!hasAssistantReply) {
 const completion = await openai.chat.completions.create(openaiArgs);
 
   // Preview a safe slice of the response
-  console.log(
-    "[openai] preview:",
-    (completion?.choices?.[0]?.message?.content || "").slice(0, 160)
-  );
+const replyText = completion?.choices?.[0]?.message?.content?.trim() || "";
+console.log("[openai] preview:", replyText.slice(0, 160));
 
-  // Parse JSON result safely
-  const rawText = completion?.choices?.[0]?.message?.content?.trim() || "{}";
-  let parsed: any = {};
-  try {
-    parsed = JSON.parse(rawText);
-  } catch {
-    console.warn("[unified] JSON parse failed; returning minimal object.");
-    parsed = {};
-  }
+// If this is a follow-up (chat mode), return a chat payload instead of forcing JSON parsing
+if (hasAssistantReply) {
+  // Wrap as a "chat" response so the frontend renders a chat bubble
+  return {
+    // minimal AnalysisResult fields (kept null) so callers expecting the shape don't break
+    sessionPrediction: null,
+    directionBias: null,
+    confidence: null,
+    reasoning: null,
+    targetVisuals: {},
+    similarImages: [],
+    model: completion?.model ?? "gpt-4o",
+    tokens: completion?.usage?.total_tokens ?? null,
+    similarUsed: (similarCharts?.length ?? 0) > 0,
+
+    // extra fields the UI already handles via safeParseAI
+    // @ts-ignore – allowed at runtime
+    type: "chat",
+    text: replyText,
+  } as any;
+}
+
+// First turn (JSON mode) → parse as JSON
+let parsed: any = {};
+try {
+  parsed = JSON.parse(replyText || "{}");
+} catch {
+  console.warn("[unified] JSON parse failed; returning minimal object.");
+  parsed = {};
+}
 
     // If model's array is missing/empty OR not renderable, backfill from our RAG results
 if (wantSimilar && !isRenderableSimilarArray(parsed?.similarImages)) {
