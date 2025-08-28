@@ -68,6 +68,13 @@ async function toImagePartFromUrl(u?: string | null, req?: any) {
 function pushIf<T>(arr: T[], v: T | null | undefined) {
   if (v) arr.push(v);
 }
+// Resolve server-relative paths like "/depthmaps/..." → "<cwd>/server/depthmaps/..."
+const toServerAbs = (p?: string | null) =>
+  !p
+    ? null
+    : p.startsWith("/")
+    ? path.join(process.cwd(), "server", p.replace(/^\//, ""))
+    : path.join(process.cwd(), "server", p);
 
 export interface AnalysisResult {
   analysis: string;
