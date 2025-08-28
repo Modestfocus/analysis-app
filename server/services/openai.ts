@@ -162,7 +162,7 @@ const contentParts: any[] = [];
 // Intro cue
 contentParts.push({
   type: "text",
-  text: `Analyze these ${charts.length} chart(s) as a unified multi-timeframe view. Where provided, the order of images is: original → depth → edge → gradient.`,
+  text: `Analyze these ${charts.length} chart(s) as a unified multi-timeframe view. Target includes original + depth + edge + gradient; similars include original only.`,
 });
 
 // Target (original + maps)
