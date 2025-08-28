@@ -145,44 +145,62 @@ export async function analyzeMultipleChartsWithAllMaps(
     }));
 
     // Build unified prompt
-    const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
-    
-    // Extract target metadata for logging
-    const targetTimeframe = target?.timeframe ?? "UNKNOWN";
-    const targetInstrument = target?.instrument ?? "UNKNOWN";
-    
-    console.log(`[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`);
+const unifiedPrompt = buildUnifiedPrompt(basePrompt, target, similars);
 
-    // Send the unified prompt directly to OpenAI (using markdown image URLs)
-    const messages = [
-      {
-        role: 'system' as const,
-        content: unifiedPrompt
-      },
-      {
-        role: 'user' as const,
-        content: `Please analyze these ${charts.length} charts together as a unified multi-timeframe view.`
-      }
-    ];
+// Extract target metadata for logging
+const targetTimeframe = target?.timeframe ?? "UNKNOWN";
+const targetInstrument = target?.instrument ?? "UNKNOWN";
 
-    // Debug logging
-    const allImageRefs = [
-      { kind: "target" as const, id: target.id, url: target.originalPath },
-      ...similars.map(s => ({ kind: "similar-original" as const, id: s.id, url: s.originalPath })),
-      ...similars.filter(s => s.depthMapPath).map(s => ({ kind: "similar-depth" as const, id: s.id, url: s.depthMapPath! })),
-      ...similars.filter(s => s.edgeMapPath).map(s => ({ kind: "similar-edge" as const, id: s.id, url: s.edgeMapPath! })),
-      ...similars.filter(s => s.gradientMapPath).map(s => ({ kind: "similar-gradient" as const, id: s.id, url: s.gradientMapPath! }))
-    ];
+console.log(
+  `[CHAT] unifiedPrompt chars: ${unifiedPrompt.length} target: ${targetInstrument}/${targetTimeframe} similars: ${similars.length}`
+);
 
-    logUnifiedPromptDebugOnce("multi-chart-analysis", messages);
+// ---------- Build rich content (images + maps) ----------
+const contentParts: any[] = [];
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages,
-      max_tokens: 1000,
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-    });
+// Intro cue
+contentParts.push({
+  type: "text",
+  text: `Analyze these ${charts.length} chart(s) as a unified multi-timeframe view. Where provided, the order of images is: original → depth → edge → gradient.`,
+});
+
+// Target (original + maps)
+pushIf(contentParts, await toImagePartFromUrl(target.originalPath, req));
+pushIf(contentParts, await toImagePartFromUrl(target.depthMapPath || undefined, req));
+pushIf(contentParts, await toImagePartFromUrl(target.edgeMapPath || undefined, req));
+pushIf(contentParts, await toImagePartFromUrl(target.gradientMapPath || undefined, req));
+
+// Similars (each: original + maps)
+if (similars.length) {
+  contentParts.push({
+    type: "text",
+    text: `SIMILARS=${similars.length} (each similar shows: original → depth → edge → gradient when available)`,
+  });
+  for (const s of similars) {
+    contentParts.push({ type: "text", text: `Similar: #${s.id} (${s.instrument ?? "?"}, ${s.timeframe ?? "?"})` });
+    pushIf(contentParts, await toImagePartFromUrl(s.originalPath, req));
+    pushIf(contentParts, await toImagePartFromUrl(s.depthMapPath || undefined, req));
+    pushIf(contentParts, await toImagePartFromUrl(s.edgeMapPath || undefined, req));
+    pushIf(contentParts, await toImagePartFromUrl(s.gradientMapPath || undefined, req));
+  }
+}
+
+// Debug logging (keep this for parity)
+const messages = [
+  { role: "system" as const, content: unifiedPrompt },
+  { role: "user" as const, content: contentParts as any },
+];
+
+logUnifiedPromptDebugOnce("multi-chart-analysis", messages);
+
+// ---------- OpenAI call (JSON response) ----------
+const response = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages,
+  max_tokens: 1000,
+  temperature: 0.1,
+  response_format: { type: "json_object" },
+});
 
     console.log("✅ Received OpenAI response");
     const rawResponse = response.choices[0].message.content;
