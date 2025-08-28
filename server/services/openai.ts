@@ -289,8 +289,8 @@ export async function analyzeChartWithRAG(
         ragContext += `   - Uploaded: ${new Date(chart.uploadedAt).toLocaleDateString()}\n`;
         if (chart.comment) {
           ragContext += `   - Previous outcome: ${chart.comment}\n`;
-        }
-        ragContext += "\n`;
+                }
+        ragContext += "\n";
       });
     }
     // Build the comprehensive prompt with full visual stack - use custom prompt if provided
