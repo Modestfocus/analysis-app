@@ -17,6 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import AnalysisCard from "./AnalysisCard";
 // import SimilarChartsGallery from "./SimilarChartsGallery"; // removed
 import { normalizeAnalysis } from '../lib/normalize-analysis';
+import Markdown from "./Markdown";
 
 // Safely turn whatever the assistant returned into an object
 function safeParseAI(raw: any) {
