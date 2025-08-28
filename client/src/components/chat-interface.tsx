@@ -700,13 +700,10 @@ addMessage({
     }
 
     // 1) Chat-mode: explicit { type: "chat", text: string }
-    if (parsed?.type === "chat" && typeof parsed?.text === "string") {
-      return (
-        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-          {parsed.text}
-        </div>
-      );
-    }
+if (parsed?.type === "chat" && typeof parsed?.text === "string") {
+  // Render markdown (bullets, headings, code fences) cleanly
+  return <Markdown>{parsed.text}</Markdown>;
+}
 
     // 2) Analysis-mode: explicit { type: "analysis", ... } OR legacy analysis-like shapes
     const looksLikeAnalysis =
