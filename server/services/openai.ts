@@ -266,23 +266,24 @@ export async function analyzeChartWithRAG(
     const base64Image = imageBuffer.toString('base64');
     console.log("📸 Main image size:", Math.round(imageBuffer.length / 1024), "KB, Base64 length:", base64Image.length);
 
-    // Read depth/edge/gradient maps if available
-    let base64DepthMap: string | null = null;
-    let base64EdgeMap: string | null = null;
-    let base64GradientMap: string | null = null;
+    // Read depth/edge/gradient maps if available (robust to leading "/")
+let base64DepthMap: string | null = null;
+let base64EdgeMap: string | null = null;
+let base64GradientMap: string | null = null;
 
-    if (maps.depth && fs.existsSync(path.join(process.cwd(), 'server', maps.depth))) {
-      const buf = fs.readFileSync(path.join(process.cwd(), 'server', maps.depth));
-      base64DepthMap = buf.toString('base64');
-    }
-    if (maps.edge && fs.existsSync(path.join(process.cwd(), 'server', maps.edge))) {
-      const buf = fs.readFileSync(path.join(process.cwd(), 'server', maps.edge));
-      base64EdgeMap = buf.toString('base64');
-    }
-    if (maps.gradient && fs.existsSync(path.join(process.cwd(), 'server', maps.gradient))) {
-      const buf = fs.readFileSync(path.join(process.cwd(), 'server', maps.gradient));
-      base64GradientMap = buf.toString('base64');
-    }
+const depthAbs = toServerAbs(maps.depth ?? null);
+const edgeAbs  = toServerAbs(maps.edge ?? null);
+const gradAbs  = toServerAbs(maps.gradient ?? null);
+
+if (depthAbs && fs.existsSync(depthAbs)) {
+  base64DepthMap = fs.readFileSync(depthAbs).toString('base64');
+}
+if (edgeAbs && fs.existsSync(edgeAbs)) {
+  base64EdgeMap = fs.readFileSync(edgeAbs).toString('base64');
+}
+if (gradAbs && fs.existsSync(gradAbs)) {
+  base64GradientMap = fs.readFileSync(gradAbs).toString('base64');
+}
 
     // Build RAG context from similar charts
     let ragContext = "";
