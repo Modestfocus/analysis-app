@@ -175,8 +175,9 @@ pushIf(contentParts, await toImagePartFromUrl(target.gradientMapPath || undefine
 if (similars.length) {
   contentParts.push({
     type: "text",
-    text: `SIMILARS=${similars.length} (each similar shows: original → depth → edge → gradient when available)`,
+    text: `SIMILARS=${similars.length} (each similar shows: original only)`,
   });
+  
   for (const s of similars) {
     contentParts.push({ type: "text", text: `Similar: #${s.id} (${s.instrument ?? "?"}, ${s.timeframe ?? "?"})` });
     pushIf(contentParts, await toImagePartFromUrl(s.originalPath, req));
