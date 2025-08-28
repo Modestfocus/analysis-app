@@ -9,6 +9,65 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// --- local helpers for turning same-origin URLs into OpenAI image parts ---
+const SERVER_ROOT_DIR = path.join(process.cwd(), "server");
+
+function guessMimeFromUrl(u: string) {
+  const ext = path.extname(u).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  return "application/octet-stream";
+}
+
+function sameOriginPathToDisk(u: string): string | null {
+  // Strip configured base, if present
+  const bases = [process.env.APP_BASE_URL, process.env.PUBLIC_BASE_URL].filter(Boolean) as string[];
+  for (const base of bases) {
+    if (u.startsWith(base)) {
+      u = u.slice(base.length);
+      break;
+    }
+  }
+  // Accept server-relative paths only
+  if (!u.startsWith("/")) return null;
+
+  if (u.startsWith("/uploads/"))      return path.join(SERVER_ROOT_DIR, "uploads",      u.replace(/^\/uploads\//, ""));
+  if (u.startsWith("/depthmaps/"))    return path.join(SERVER_ROOT_DIR, "depthmaps",    u.replace(/^\/depthmaps\//, ""));
+  if (u.startsWith("/edgemaps/"))     return path.join(SERVER_ROOT_DIR, "edgemaps",     u.replace(/^\/edgemaps\//, ""));
+  if (u.startsWith("/gradientmaps/")) return path.join(SERVER_ROOT_DIR, "gradientmaps", u.replace(/^\/gradientmaps\//, ""));
+  return null;
+}
+
+async function toImagePartFromUrl(u?: string | null, req?: any) {
+  if (!u) return null;
+  // Normalize to absolute URL if the caller gave us a relative path
+  const { toAbsoluteUrl } = await import("./visual-maps");
+  const abs = toAbsoluteUrl(u, req);
+
+  // If it's our own origin/static file, embed as data URL (faster, avoids external fetch)
+  const localPath = sameOriginPathToDisk(abs) || sameOriginPathToDisk(u);
+  if (localPath) {
+    try {
+      await fs.promises.access(localPath);
+      const mime = guessMimeFromUrl(localPath);
+      const buf = await fs.promises.readFile(localPath);
+      const dataUrl = `data:${mime};base64,${buf.toString("base64")}`;
+      return { type: "image_url", image_url: { url: dataUrl } } as const;
+    } catch {
+      // Fall through to URL mode if file missing
+    }
+  }
+
+  // Otherwise let OpenAI fetch the absolute URL directly
+  return { type: "image_url", image_url: { url: abs } } as const;
+}
+
+function pushIf<T>(arr: T[], v: T | null | undefined) {
+  if (v) arr.push(v);
+}
+
 export interface AnalysisResult {
   analysis: string;
   confidence: number;
