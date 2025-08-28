@@ -1388,9 +1388,10 @@ const slimSimilars = similarCharts.map(sc => ({
 const prediction = await analyzeChartWithRAG(
   chartImagePath,
   {
-    depth: maps.depthMapPath,
-    edge: maps.edgeMapPath,
-    gradient: maps.gradientMapPath,
+    depth: maps.depthMapPath || null,
+    edge: maps.edgeMapPath || null,
+    gradient: maps.gradientMapPath || null,
+    original: `/uploads/${chart.filename}`,   // ✅ include original explicitly
   },
   slimSimilars,
   customSystemPrompt
