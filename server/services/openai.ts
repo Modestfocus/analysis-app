@@ -245,11 +245,10 @@ const response = await openai.chat.completions.create({
 
 export async function analyzeChartWithRAG(
   chartImagePath: string,
-  depthMapPath: string | null,
+  maps: { depth?: string | null; edge?: string | null; gradient?: string | null } = {},
   similarCharts: Array<{ 
     chart: any; 
     similarity: number;
-    depthMapPath?: string;
   }> = [],
   customSystemPrompt?: string
 ): Promise<ChartPrediction> {
@@ -260,17 +259,28 @@ export async function analyzeChartWithRAG(
     const base64Image = imageBuffer.toString('base64');
     console.log("📸 Main image size:", Math.round(imageBuffer.length / 1024), "KB, Base64 length:", base64Image.length);
 
-    // Read depth map if available
-    let base64DepthMap = null;
-    if (depthMapPath && fs.existsSync(path.join(process.cwd(), 'server', depthMapPath))) {
-      const depthBuffer = fs.readFileSync(path.join(process.cwd(), 'server', depthMapPath));
-      base64DepthMap = depthBuffer.toString('base64');
+    // Read depth/edge/gradient maps if available
+    let base64DepthMap: string | null = null;
+    let base64EdgeMap: string | null = null;
+    let base64GradientMap: string | null = null;
+
+    if (maps.depth && fs.existsSync(path.join(process.cwd(), 'server', maps.depth))) {
+      const buf = fs.readFileSync(path.join(process.cwd(), 'server', maps.depth));
+      base64DepthMap = buf.toString('base64');
+    }
+    if (maps.edge && fs.existsSync(path.join(process.cwd(), 'server', maps.edge))) {
+      const buf = fs.readFileSync(path.join(process.cwd(), 'server', maps.edge));
+      base64EdgeMap = buf.toString('base64');
+    }
+    if (maps.gradient && fs.existsSync(path.join(process.cwd(), 'server', maps.gradient))) {
+      const buf = fs.readFileSync(path.join(process.cwd(), 'server', maps.gradient));
+      base64GradientMap = buf.toString('base64');
     }
 
     // Build RAG context from similar charts
     let ragContext = "";
     if (similarCharts.length > 0) {
-      ragContext = "\nHere are 3 similar historical charts and their patterns:\n\n";
+      ragContext = "\nHere are up to 3 similar historical charts and their patterns:\n\n";
       similarCharts.slice(0, 3).forEach((item, index) => {
         const chart = item.chart;
         ragContext += `${index + 1}. Chart ID ${chart.id} (${chart.instrument}, ${chart.timeframe})\n`;
@@ -280,13 +290,9 @@ export async function analyzeChartWithRAG(
         if (chart.comment) {
           ragContext += `   - Previous outcome: ${chart.comment}\n`;
         }
-        if (item.depthMapPath) {
-          ragContext += `   - Has depth map analysis available\n`;
-        }
-        ragContext += "\n";
+        ragContext += "\n`;
       });
     }
-
     // Build the comprehensive prompt with full visual stack - use custom prompt if provided
     let baseSystemPrompt;
     if (customSystemPrompt && customSystemPrompt.trim().length > 0) {
@@ -387,25 +393,37 @@ Respond with a JSON object containing these exact fields:
     const prompt = systemPrompt;
 
     const messageContent: any[] = [
-      {
-        type: "text",
-        text: prompt,
-      },
-      {
-        type: "image_url",
-        image_url: {
-          url: `data:image/jpeg;base64,${base64Image}`,
-        },
-      }
+      { type: "text", text: prompt },
+      { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
     ];
 
-    // Add depth map if available
+    // Add depth/edge/gradient maps if available
     if (base64DepthMap) {
-      messageContent.push({
-        type: "image_url",
-        image_url: {
-          url: `data:image/png;base64,${base64DepthMap}`,
-        },
+      messageContent.push({ type: "image_url", image_url: { url: `data:image/png;base64,${base64DepthMap}` } });
+    }
+    if (base64EdgeMap) {
+      messageContent.push({ type: "image_url", image_url: { url: `data:image/png;base64,${base64EdgeMap}` } });
+    }
+    if (base64GradientMap) {
+      messageContent.push({ type: "image_url", image_url: { url: `data:image/png;base64,${base64GradientMap}` } });
+    }
+
+    // Attach similars (originals only, capped at 3)
+    if (similarCharts.length > 0) {
+      messageContent.push({ type: "text", text: `SIMILARS=${Math.min(similarCharts.length, 3)} (original only)` });
+      similarCharts.slice(0, 3).forEach((item, index) => {
+        messageContent.push({
+          type: "text",
+          text: `Similar #${index + 1}: ${item.chart.instrument ?? "?"}, ${item.chart.timeframe ?? "?"}`
+        });
+        if (item.chart.filename) {
+          const simPath = path.join(process.cwd(), "server", "uploads", item.chart.filename);
+          if (fs.existsSync(simPath)) {
+            const buf = fs.readFileSync(simPath);
+            const base64Sim = buf.toString("base64");
+            messageContent.push({ type: "image_url", image_url: { url: `data:image/png;base64,${base64Sim}` } });
+          }
+        }
       });
     }
 
