@@ -178,12 +178,10 @@ if (similars.length) {
     text: `SIMILARS=${similars.length} (each similar shows: original only)`,
   });
   
-  for (const s of similars) {
+    for (const s of similars) {
     contentParts.push({ type: "text", text: `Similar: #${s.id} (${s.instrument ?? "?"}, ${s.timeframe ?? "?"})` });
+    // cost-capped: only original (omit depth/edge/gradient)
     pushIf(contentParts, await toImagePartFromUrl(s.originalPath, req));
-    pushIf(contentParts, await toImagePartFromUrl(s.depthMapPath || undefined, req));
-    pushIf(contentParts, await toImagePartFromUrl(s.edgeMapPath || undefined, req));
-    pushIf(contentParts, await toImagePartFromUrl(s.gradientMapPath || undefined, req));
   }
 }
 
