@@ -724,12 +724,17 @@ if (parsed?.type === "chat" && typeof parsed?.text === "string") {
       );
     }
 
-    // 3) Unknown shape → render JSON so you can debug
-    return (
-      <pre className="text-xs whitespace-pre-wrap">
-        {JSON.stringify(parsed, null, 2)}
-      </pre>
-    );
+    // 3) Unknown shape OR unparseable →
+// If the raw is a string (often markdown), render as markdown.
+// Otherwise, show JSON for debugging.
+if (typeof raw === "string") {
+  return <Markdown>{raw}</Markdown>;
+}
+return (
+  <pre className="text-xs whitespace-pre-wrap">
+    {JSON.stringify(parsed, null, 2)}
+  </pre>
+);
   })()
 ) : (
     
