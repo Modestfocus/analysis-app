@@ -1365,31 +1365,56 @@ app.use("/api/chat", analysisRouter);
         console.log('No embedding available for similarity search');
       }
 
-      // 3. Prepare depth map path
-      const depthMapPath = chart.depthMapPath;
+      // 3. Ensure all visual maps (depth, edge, gradient) exist
+const { ensureVisualMapsForChart } = await import("./services/visual-maps");
+const maps = await ensureVisualMapsForChart(chart.id, chart.filename);
 
-      // 4. Call GPT-4o with RAG context and custom system prompt
-      const prediction = await analyzeChartWithRAG(chartImagePath, depthMapPath, similarCharts, customSystemPrompt);
+// 4. Build similars limited to ORIGINAL only (cap cost)
+const slimSimilars = similarCharts.map(sc => ({
+  chart: {
+    id: sc.chart.id,
+    filename: sc.chart.filename,
+    originalName: sc.chart.originalName,
+    instrument: sc.chart.instrument,
+    timeframe: sc.chart.timeframe,
+    session: sc.chart.session,
+    // only keep original path
+    original: sc.chart.filename ? `/uploads/${sc.chart.filename}` : null
+  },
+  similarity: sc.similarity,
+}));
 
-      // 5. Save analysis result to database
-      const analysisData = {
-        chartId,
-        gptAnalysis: JSON.stringify(prediction),
-        similarCharts: JSON.stringify(similarCharts.map(sc => ({
-          chartId: sc.chart.id,
-          similarity: sc.similarity,
-          filename: sc.chart.filename,
-          instrument: sc.chart.instrument,
-          session: sc.chart.session,
-          comment: sc.chart.comment
-        }))),
-        confidence: prediction.confidence === 'High' ? 0.9 : prediction.confidence === 'Medium' ? 0.7 : 0.5,
-      };
+// 5. Call GPT-4o with target (all 4 maps) + similars (original-only)
+const prediction = await analyzeChartWithRAG(
+  chartImagePath,
+  {
+    depth: maps.depthMapPath,
+    edge: maps.edgeMapPath,
+    gradient: maps.gradientMapPath,
+  },
+  slimSimilars,
+  customSystemPrompt
+);
+
+// 6. Save analysis result to database
+const analysisData = {
+  chartId,
+  gptAnalysis: JSON.stringify(prediction),
+  similarCharts: JSON.stringify(similarCharts.map(sc => ({
+    chartId: sc.chart.id,
+    similarity: sc.similarity,
+    filename: sc.chart.filename,
+    instrument: sc.chart.instrument,
+    session: sc.chart.session,
+    comment: sc.chart.comment
+  }))),
+  confidence: prediction.confidence === 'High' ? 0.9 : prediction.confidence === 'Medium' ? 0.7 : 0.5,
+};
 
       const validatedAnalysis = insertAnalysisSchema.parse(analysisData);
       const savedAnalysis = await storage.createAnalysis(validatedAnalysis);
 
-      // 6. Return structured prediction
+      // 7. Return structured prediction
       res.json({
         success: true,
         chartId,
