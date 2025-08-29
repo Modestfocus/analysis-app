@@ -1388,17 +1388,17 @@ const slimSimilars = similarCharts.map(sc => ({
 }));
 
 // 5. Call GPT-4o with target (all 4 maps) + similars (original-only)
-const prediction = await analyzeChartWithRAG(
-  chartImagePath,
-  {
-    depth: maps.depthMapPath || null,
-    edge: maps.edgeMapPath || null,
-    gradient: maps.gradientMapPath || null,
-    original: `/uploads/${chart.filename}`,   // ✅ include original explicitly
-  },
-  slimSimilars,
-  customSystemPrompt
-);
+const prediction = await generateAnalysis({
+  prompt: "Chart analysis request",
+  images: [
+    `/uploads/${chart.filename}`,
+    maps.depthMapPath,
+    maps.edgeMapPath,
+    maps.gradientMapPath
+  ].filter(Boolean),
+  systemPrompt: customSystemPrompt || "",
+  wantSimilar: true,
+});
 
 // 6. Save analysis result to database
 const analysisData = {
