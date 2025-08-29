@@ -1789,8 +1789,13 @@ const analysisData = {
 
       // Generate bundle analysis using multi-timeframe context and custom system prompt
       const bundleMetadata = JSON.parse(bundle.metadata);
-      const analysis = await analyzeBundleWithGPT(chartData, bundleMetadata, customSystemPrompt);
-
+      const analysis = await generateAnalysis({
+  prompt: `Bundle analysis for ${bundleId}`,
+  images: chartData.map(c => `/uploads/${c.chart.filename}`),
+  systemPrompt: customSystemPrompt || "",
+  wantSimilar: true,
+});
+      
       // Save bundle analysis
       const analysisData = {
         bundleId,
