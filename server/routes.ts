@@ -2698,17 +2698,17 @@ app.post("/api/chat/analyze", async (req, res) => {
     });
 
     // ——— BRANCH 1: ANALYSIS MODE (images present) ———
-    if (modelImages.length > 0) {
-      const { generateAnalysis } = await import("./services/unified-analysis");
-      const result = await generateAnalysis({
-        prompt: finalPrompt,
-        images: modelImages,
-        systemPrompt,
-        wantSimilar,
-      });
-      // Tag the payload so the UI can render an analysis card
-      return res.json({ type: "analysis", ...result });
-    }
+if (modelImages.length > 0) {
+  const { generateAnalysis } = await import("./services/unified-analysis");
+  const result = await generateAnalysis({
+    prompt: finalPrompt,
+    images: modelImages,
+    systemPrompt,
+    wantSimilar,
+    history, // <-- critical: lets unified-analysis detect follow-up mode
+  });
+  return res.json({ type: "analysis", ...result });
+}
 
     // ——— BRANCH 2: CHAT MODE (no images → keep the conversation going) ———
     const { default: OpenAI } = await import("openai");
