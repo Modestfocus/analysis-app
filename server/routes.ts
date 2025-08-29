@@ -11,7 +11,8 @@ import { embedImageToVectorCached, EMB_DIM, EMB_MODEL_ID } from "./services/embe
 import { backfillAllVisualMaps } from "./services/visual-maps";
 import crypto from 'crypto';
 import { generateDepthMap, generateDepthMapBatch } from "./services/midas";
-import { analyzeChartWithGPT, analyzeChartWithRAG, analyzeBundleWithGPT, analyzeChartWithEnhancedContext, analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
+import { analyzeMultipleChartsWithAllMaps, MultiChartData } from "./services/openai";
+import { generateAnalysis } from "./services/unified-analysis";
 import { insertChartSchema, insertAnalysisSchema, insertDocumentSchema, insertNoteSchema, type Chart, type Document } from "@shared/schema";
 import debugRoutes from './debug-routes';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
