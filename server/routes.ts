@@ -911,11 +911,13 @@ app.use("/api/chat", analysisRouter);
         depthMapBase64 = depthBuffer.toString('base64');
       }
 
-      // Analyze with enhanced GPT-4o (including bundle context)
-      const analysis = await analyzeChartWithEnhancedContext(
-        chartImagePath,
-        enrichedSimilarCharts
-      );
+      // Use unified analysis pipeline
+const analysis = await generateAnalysis({
+  prompt: "Chart analysis request",
+  images: [chartImagePath],
+  systemPrompt: "",
+  wantSimilar: true,
+});
 
       // Save analysis if not quick mode
       if (chartId && !quickAnalysis) {
