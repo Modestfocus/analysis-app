@@ -2703,10 +2703,7 @@ if (modelImages.length > 0) {
   const result = await generateAnalysis({
   prompt: finalPrompt,
   images: modelImages,
-  systemPrompt:
-    systemPrompt && systemPrompt.trim().length > 0
-      ? systemPrompt
-      : "You are a trading assistant. When asked, provide structured trade plans including entry zones, stop-loss levels, and profit-taking targets, formatted in a clear playbook style.",
+  systemPrompt: systemPrompt && systemPrompt.trim().length > 0 ? systemPrompt : undefined,
   wantSimilar,
   history,
 });
