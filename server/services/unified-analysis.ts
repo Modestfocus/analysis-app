@@ -435,11 +435,13 @@ if (!_hasAssistantAlready) {
   userContent.push({
     type: "text",
     text: [
-      "FOLLOW-UP PLAYBOOK MODE:",
-      "- Continue conversationally; reference the prior JSON analysis already in the chat history.",
-      "- Provide an actionable playbook: entry zone(s), stop-loss/invalidation, 1–3 profit targets, risk/reward.",
-      "- Use the same instrument/levels you already analyzed unless a new chart is provided.",
-      "- You may give conditional scenarios (if/then) but be concise."
+      "FOLLOW-UP PLAYBOOK MODE (EDUCATIONAL/HYPOTHETICAL):",
+      "- You MUST answer with a concise, concrete trade playbook using the prior JSON analysis as context. Do NOT refuse or apologize.",
+      "- Treat everything as hypothetical/for-education. Include a single line disclaimer like: 'Educational only — not financial advice.'",
+      "- Provide: 1) Entry zone(s) with numbers, 2) Invalidation/stop with numbers, 3) 1–3 profit targets with numbers, 4) Risk-to-reward estimate, 5) Brief why based on the initial analysis (EMA, compression, gradient slope, etc.).",
+      "- If uncertainty exists, present two scenarios (bullish/bearish) with conditions (e.g., 'if price closes above X, …'). Still provide concrete levels for each scenario.",
+      "- Use the same instrument and timeframe unless the user uploads a new chart.",
+      "- Keep it tight: bullets, numeric levels, no apologies, no refusals."
     ].join("\n")
   });
 }
