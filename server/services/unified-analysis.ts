@@ -318,9 +318,10 @@ async function findSimilarCharts(images: string[], limit = 3): Promise<SimilarIt
 
 export async function generateAnalysis(opts: {
   prompt?: string;
-  images?: string[]; // [original, depth, edge, gradient] or just [original]
+  images?: string[];
   systemPrompt?: string;
   wantSimilar?: boolean;
+  history?: Array<{ role: "user" | "assistant"; content: any }>;
 }): Promise<AnalysisResult> {
     const prompt = (opts.prompt ?? "").trim();
   const images = Array.isArray(opts.images) ? opts.images.filter(Boolean) : [];
