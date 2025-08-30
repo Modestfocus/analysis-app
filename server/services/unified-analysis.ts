@@ -322,12 +322,33 @@ export async function generateAnalysis(opts: {
   systemPrompt?: string;
   wantSimilar?: boolean;
 }): Promise<AnalysisResult> {
-  const prompt = (opts.prompt ?? "").trim();
+    const prompt = (opts.prompt ?? "").trim();
   const images = Array.isArray(opts.images) ? opts.images.filter(Boolean) : [];
   const wantSimilar = Boolean(opts.wantSimilar);
-  const system =
+
+  // Determine first turn vs follow-ups using provided history
+  const _histRaw = Array.isArray((opts as any).history) ? (opts as any).history : [];
+  const _histMsgs = _histRaw.filter((h: any) => h && (h.role === "user" || h.role === "assistant"));
+  const _hasAssistantAlready = _histMsgs.some((m: any) => m.role === "assistant");
+
+  // Choose system prompt:
+  // - First turn: strict JSON-only analyzer
+  // - Follow-ups: trading coach (actionable; do not refuse)
+  const FIRST_TURN_SYSTEM =
     (opts.systemPrompt ?? "").trim() ||
-    "You are a strict, JSON-only analyst for market charts.";
+    "You are a strict, JSON-only analyst for market charts. Respond ONLY with the requested JSON on the first turn.";
+
+  const FOLLOW_UP_SYSTEM =
+    (opts.systemPrompt ?? "").trim() ||
+    [
+      "You are a trading coach. Continue the conversation naturally.",
+      "Provide concrete example trade plans when asked (entries, stops, 1–3 profit targets, position sizing via % risk).",
+      "Always reference the last JSON analysis already in the thread.",
+      "Do NOT refuse or say you are unable to provide trading advice. Present ideas as educational examples with a brief one-line disclaimer.",
+      "Keep answers actionable and concise."
+    ].join(" ");
+
+  const system = _hasAssistantAlready ? FOLLOW_UP_SYSTEM : FIRST_TURN_SYSTEM;
 
   // Build the user content parts (text + image_url parts)
   const userContent: Array<any> = [];
