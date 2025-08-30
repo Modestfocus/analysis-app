@@ -444,12 +444,7 @@ Rules:
 - Explicitly reference which layer(s) informed each point (e.g., "edge: compression", "gradient: positive slope", "EMA20 > EMA50").
 `.trim();
 
-  // Determine first turn vs follow-ups using provided history (local scratch vars to avoid name clashes)
-const _histRaw = Array.isArray((opts as any).history) ? (opts as any).history : [];
-const _histMsgs = _histRaw.filter((h: any) => h && (h.role === "user" || h.role === "assistant"));
-const _hasAssistantAlready = _histMsgs.some((m: any) => m.role === "assistant");
-
-// First turn => enforce JSON instruction. Follow-ups => add playbook-style guidance instead.
+  // Use the previously computed _hasAssistantAlready to decide instructions
 if (!_hasAssistantAlready) {
   userContent.push({ type: "text", text: jsonInstruction });
 } else {
@@ -458,12 +453,12 @@ if (!_hasAssistantAlready) {
     text: [
       "FOLLOW-UP PLAYBOOK MODE (EDUCATIONAL/HYPOTHETICAL):",
       "- You MUST answer with a concise, concrete trade playbook using the prior JSON analysis as context. Do NOT refuse or apologize.",
-      "- Treat everything as hypothetical/for-education. Include a single line disclaimer like: 'Educational only — not financial advice.'",
+      "- Include a one-line disclaimer: 'Educational only — not financial advice.'",
       "- Provide: 1) Entry zone(s) with numbers, 2) Invalidation/stop with numbers, 3) 1–3 profit targets with numbers, 4) Risk-to-reward estimate, 5) Brief why based on the initial analysis (EMA, compression, gradient slope, etc.).",
-      "- If uncertainty exists, present two scenarios (bullish/bearish) with conditions (e.g., 'if price closes above X, …'). Still provide concrete levels for each scenario.",
+      "- If uncertainty exists, present two scenarios with conditions (e.g., 'if price closes above X …'). Provide concrete levels for each.",
       "- Use the same instrument and timeframe unless the user uploads a new chart.",
       "- Keep it tight: bullets, numeric levels, no apologies, no refusals."
-    ].join("\n")
+    ].join("\n"),
   });
 }
 
