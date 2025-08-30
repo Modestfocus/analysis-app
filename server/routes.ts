@@ -2701,12 +2701,15 @@ app.post("/api/chat/analyze", async (req, res) => {
 if (modelImages.length > 0) {
   const { generateAnalysis } = await import("./services/unified-analysis");
   const result = await generateAnalysis({
-    prompt: finalPrompt,
-    images: modelImages,
-    systemPrompt,
-    wantSimilar,
-    history, // <-- critical: lets unified-analysis detect follow-up mode
-  });
+  prompt: finalPrompt,
+  images: modelImages,
+  systemPrompt:
+    systemPrompt && systemPrompt.trim().length > 0
+      ? systemPrompt
+      : "You are a trading assistant. When asked, provide structured trade plans including entry zones, stop-loss levels, and profit-taking targets, formatted in a clear playbook style.",
+  wantSimilar,
+  history,
+});
   return res.json({ type: "analysis", ...result });
 }
 
