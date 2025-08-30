@@ -96,11 +96,13 @@ router.post("/analyze", async (req, res) => {
     }
 
     // Call the analysis
-    const result = await generateAnalysis({
+        const result = await generateAnalysis({
       prompt: promptText,
       images,
       systemPrompt,
       wantSimilar,
+      // Pass the full messages array as history so follow-ups are detected
+      history: Array.isArray(body.messages) ? body.messages : [],
     });
 
     res.type("application/json");
